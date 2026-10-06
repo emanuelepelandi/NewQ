@@ -78,6 +78,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         };
         _progressTimer.Start();
 
+        // Diagnostics (NEWQ_DEBUG): resource counters every 5 s, to spot leaks in stress tests.
+        if (Environment.GetEnvironmentVariable("NEWQ_DEBUG") is not null)
+        {
+            var diag = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            diag.Tick += (_, _) => VlcRuntime.Debug($"state: running={Engine.Running.Count} voices={_audio.ActiveVoiceCount} vlcPlayers={PreparedVideo.LiveCount} playhead={Engine.Playhead?.Number}");
+            diag.Start();
+        }
+
         GoCommand = new RelayCommand(() => Engine.Go());
         StopAllCommand = new RelayCommand(() => Engine.StopAll(TimeSpan.Zero));
         PanicCommand = new RelayCommand(() => Engine.Panic());
@@ -88,19 +96,25 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         PlayheadUpCommand = new RelayCommand(() => Engine.MovePlayhead(-1));
         PlayheadDownCommand = new RelayCommand(() => Engine.MovePlayhead(1));
 
-        NewCommand = new RelayCommand(() => { if (ConfirmDiscard()) LoadWorkspace(new Workspace()); });
-        OpenCommand = new RelayCommand(Open);
+        NewCommand = new RelayCommand(() => { if (ConfirmDiscard()) LoadWorkspace(new Workspace()); }, () => CanEdit);
+        OpenCommand = new RelayCommand(Open, () => CanEdit);
         SaveCommand = new RelayCommand(() => Save(saveAs: false));
         SaveAsCommand = new RelayCommand(() => Save(saveAs: true));
 
-        AddCueCommand = new RelayCommand(p => AddCue(CreateCue(p as string ?? "audio")));
-        DeleteCueCommand = new RelayCommand(DeleteSelected, () => SelectedCue is not null);
-        DuplicateCueCommand = new RelayCommand(Duplicate, () => SelectedCue is not null);
-        MoveUpCommand = new RelayCommand(() => MoveSelected(-1), () => SelectedCue is not null);
-        MoveDownCommand = new RelayCommand(() => MoveSelected(1), () => SelectedCue is not null);
-        BrowseFileCommand = new RelayCommand(p => { if (p is MediaCue m) BrowseFile(m); });
-        CloseOutputsCommand = new RelayCommand(() => { Engine.StopAll(TimeSpan.Zero); _outputs.CloseAll(); });
-        RefreshDevicesCommand = new RelayCommand(RefreshDevices);
+        AddCueCommand = new RelayCommand(p =>
+        {
+            var kind = p as string ?? "audio";
+            if (kind is "audio" or "video" or "image") AddMediaCues(kind);
+            else AddCue(CreateCue(kind));
+        }, _ => CanEdit);
+        DeleteCueCommand = new RelayCommand(DeleteSelected, () => CanEdit && SelectedCue is not null);
+        DuplicateCueCommand = new RelayCommand(Duplicate, () => CanEdit && SelectedCue is not null);
+        MoveUpCommand = new RelayCommand(() => MoveSelected(-1), () => CanEdit && SelectedCue is not null);
+        MoveDownCommand = new RelayCommand(() => MoveSelected(1), () => CanEdit && SelectedCue is not null);
+        BrowseFileCommand = new RelayCommand(p => { if (p is MediaCue m) BrowseFile(m); }, _ => CanEdit);
+        CloseOutputsCommand = new RelayCommand(() => { Engine.StopAll(TimeSpan.Zero); _outputs.CloseAll(); }, () => CanEdit);
+        RefreshDevicesCommand = new RelayCommand(RefreshDevices, () => CanEdit);
+        ToggleSafeModeCommand = new RelayCommand(() => IsSafeMode = !IsSafeMode);
         ResetClipsCommand = new RelayCommand(ResetClips);
         ShowCheckCommand = new RelayCommand(OpenShowCheck);
 
@@ -131,7 +145,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         set { Engine.SetPlayhead(value); OnPropertyChanged(); }
     }
 
-    public string WindowTitle => $"{Workspace.DisplayName}{(IsDirty ? " •" : "")} — NewQ";
+    public string WindowTitle => $"{Workspace.DisplayName}{(IsDirty ? " •" : "")}{(IsSafeMode ? "  [SAFE]" : "")} — NewQ";
 
     public bool IsDirty
     {
@@ -159,9 +173,23 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     /// <summary>Scrubs a paused cue to a fraction (0–1) of its length.</summary>
     public void SeekCue(Cue cue, double fraction)
     {
+        // Seeking updates the cue's progress, which moves the timeline slider, which raises another seek:
+        // without this guard that loop recursed until the stack overflowed (crash while scrubbing audio).
+        if (_seeking) return;
         if (!cue.CanSeek || cue.RuntimeDuration is not double duration || duration <= 0) return;
-        Engine.Seek(cue, TimeSpan.FromSeconds(Math.Clamp(fraction, 0, 1) * duration));
+        _seeking = true;
+        try
+        {
+            Engine.Seek(cue, TimeSpan.FromSeconds(Math.Clamp(fraction, 0, 1) * duration));
+        }
+        finally
+        {
+            _seeking = false;
+        }
     }
+
+    private bool _seeking;
+
     public ICommand FireSelectedCommand { get; }
     public ICommand PlayheadUpCommand { get; }
     public ICommand PlayheadDownCommand { get; }
@@ -201,6 +229,33 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (!ActiveCues.Contains(cue)) ActiveCues.Add(cue);
         OnPropertyChanged(nameof(IsPaused));
     }
+
+    // ------------------------------------------------------------------ safe mode
+
+    private bool _isSafeMode;
+
+    /// <summary>
+    /// Show mode: the workspace can't be modified (cues, properties, files) and risky machine actions
+    /// (settings, closing outputs, re-opening devices) are blocked. Playback stays fully available.
+    /// </summary>
+    public bool IsSafeMode
+    {
+        get => _isSafeMode;
+        set
+        {
+            if (!SetField(ref _isSafeMode, value)) return;
+            OnPropertyChanged(nameof(CanEdit));
+            OnPropertyChanged(nameof(WindowTitle));
+            CommandManager.InvalidateRequerySuggested();
+            AddLog(EngineLogLevel.Info, value
+                ? "Modalità Safe attivata: modifiche bloccate."
+                : "Modalità Safe disattivata: modifiche consentite.");
+        }
+    }
+
+    public bool CanEdit => !_isSafeMode;
+
+    public ICommand ToggleSafeModeCommand { get; }
 
     // ------------------------------------------------------------------ metering
 
@@ -428,6 +483,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void AddFiles(IEnumerable<string> paths)
     {
+        if (!CanEdit)
+        {
+            AddLog(EngineLogLevel.Warning, "Modalità Safe: impossibile aggiungere cue.");
+            return;
+        }
         foreach (var path in paths)
         {
             var ext = Path.GetExtension(path).ToLowerInvariant();
@@ -474,7 +534,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectedCue));
     }
 
-    private void BrowseFile(MediaCue cue)
+    private static string MediaFilter(MediaCue cue)
     {
         var filter = cue switch
         {
@@ -482,7 +542,36 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             VideoCue => "Video|" + string.Join(";", VideoExtensions.Select(e => "*" + e)),
             _ => "Immagini|" + string.Join(";", ImageExtensions.Select(e => "*" + e)),
         };
-        var dialog = new OpenFileDialog { Filter = filter + "|Tutti i file|*.*" };
+        return filter + "|Tutti i file|*.*";
+    }
+
+    /// <summary>
+    /// "+ Audio/Video/Immagine": opens the file picker right away. Several files give several cues;
+    /// cancelling creates nothing.
+    /// </summary>
+    private void AddMediaCues(string kind)
+    {
+        var template = (MediaCue)CreateCue(kind);
+        var dialog = new OpenFileDialog
+        {
+            Title = $"Nuova cue {template.TypeName}: scegli il file",
+            Filter = MediaFilter(template),
+            Multiselect = true,
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        foreach (var path in dialog.FileNames)
+        {
+            var cue = (MediaCue)CreateCue(kind);
+            cue.FilePath = Workspace.MakePortablePath(path);
+            cue.Name = Path.GetFileNameWithoutExtension(path);
+            AddCue(cue);
+        }
+    }
+
+    private void BrowseFile(MediaCue cue)
+    {
+        var dialog = new OpenFileDialog { Filter = MediaFilter(cue) };
         if (dialog.ShowDialog() != true) return;
         cue.FilePath = Workspace.MakePortablePath(dialog.FileName);
         if (string.IsNullOrWhiteSpace(cue.Name) || cue.Name == cue.TypeName)

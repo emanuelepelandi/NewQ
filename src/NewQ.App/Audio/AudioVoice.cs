@@ -86,7 +86,9 @@ internal sealed class AudioVoice : ISampleProvider, IDisposable
 
     public void Stop(TimeSpan fade)
     {
-        lock (_lock) RampToLocked(0, fade.TotalSeconds, stopAfter: true);
+        // A paused voice is silent and its ramp never advances: a fade-out would never finish and the voice
+        // (and its open file) would stay in the mixer forever. Stop it right away.
+        lock (_lock) RampToLocked(0, _paused ? 0 : fade.TotalSeconds, stopAfter: true);
     }
 
     public void FadeTo(double? volumeDb, TimeSpan duration, bool stopAfter)
@@ -94,7 +96,7 @@ internal sealed class AudioVoice : ISampleProvider, IDisposable
         lock (_lock)
         {
             var target = volumeDb.HasValue ? (float)Decibels.ToGain(volumeDb.Value) : _targetGain;
-            RampToLocked(target, duration.TotalSeconds, stopAfter);
+            RampToLocked(target, _paused && stopAfter ? 0 : duration.TotalSeconds, stopAfter);
         }
     }
 

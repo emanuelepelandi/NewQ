@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -96,8 +97,12 @@ internal sealed class PreparedVideo : IDisposable
     private readonly Media _media;
     private bool _disposed;
 
+    /// <summary>libVLC players currently alive (playing or preloaded); diagnostics.</summary>
+    public static int LiveCount;
+
     public PreparedVideo(string path, int screenIndex, OutputWindow window, bool loop)
     {
+        Interlocked.Increment(ref LiveCount);
         _path = path;
         _screenIndex = screenIndex;
         Loop = loop;
@@ -209,6 +214,7 @@ internal sealed class PreparedVideo : IDisposable
             try { player.Stop(); } catch { /* already stopped */ }
             Window.Dispatcher.BeginInvoke(() =>
             {
+                Interlocked.Decrement(ref LiveCount);
                 host.Children.Remove(surface);
                 surface.Dispose();
                 player.Dispose();

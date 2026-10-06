@@ -25,5 +25,9 @@ public sealed class RelayCommand : ICommand
 
     public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
 
-    public void Execute(object? parameter) => _execute(parameter);
+    /// <summary>Never runs a disabled command, even when called from code (keyboard shortcuts, Safe mode).</summary>
+    public void Execute(object? parameter)
+    {
+        if (CanExecute(parameter)) _execute(parameter);
+    }
 }

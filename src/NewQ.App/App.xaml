@@ -34,6 +34,8 @@
             <SolidColorBrush x:Key="SoftTextBrush" Color="#C9CCD2" />
             <SolidColorBrush x:Key="InactiveBrush" Color="#E3AE5B" />
             <SolidColorBrush x:Key="ClipBrush" Color="#E0504B" />
+            <SolidColorBrush x:Key="SafeBrush" Color="#7FB8E6" />
+            <SolidColorBrush x:Key="SafeTintBrush" Color="#2E7FB8E6" />
             <SolidColorBrush x:Key="InactiveTintBrush" Color="#33E3AE5B" />
 
             <c:CueTypeBrushConverter x:Key="TypeForeground" />
@@ -58,39 +60,104 @@
                 <Setter Property="CornerRadius" Value="10" />
             </Style>
 
-            <!-- Flat coloured button with rounded corners; hover/press lighten/darken softly. -->
-            <Style x:Key="SoftButton" TargetType="Button">
+            <!--
+                Desktop-style button: slight relief (top light, bottom shade, hairline border, 1 px bottom edge),
+                smooth animated hover, and a physical press (sinks 1 px, darkens, loses its edge).
+                Background/BorderBrush/Foreground give the colour; Tag the corner radius (default 6).
+            -->
+            <ControlTemplate x:Key="DeskButtonTemplate" TargetType="Button">
+                <Grid x:Name="Root" SnapsToDevicePixels="True">
+                    <!-- bottom edge: makes the key look raised -->
+                    <Border x:Name="Edge" Background="#59000000" Margin="0,1,0,-1"
+                            CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, FallbackValue=6, TargetNullValue=6}" />
+                    <Border x:Name="Body" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                            CornerRadius="{Binding CornerRadius, ElementName=Edge}" />
+                    <!-- relief: light from above, gentle shade at the bottom -->
+                    <Border x:Name="Relief" Margin="1" CornerRadius="{Binding CornerRadius, ElementName=Edge}">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#1FFFFFFF" Offset="0" />
+                                <GradientStop Color="#06FFFFFF" Offset="0.45" />
+                                <GradientStop Color="#00000000" Offset="0.55" />
+                                <GradientStop Color="#1A000000" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <!-- hairline highlight on the top edge -->
+                    <Border x:Name="TopLight" Margin="1" BorderBrush="#2EFFFFFF" BorderThickness="0,1,0,0"
+                            CornerRadius="{Binding CornerRadius, ElementName=Edge}" />
+                    <Border x:Name="Hover" Background="White" Opacity="0" Margin="1"
+                            CornerRadius="{Binding CornerRadius, ElementName=Edge}" />
+                    <Border x:Name="Press" Background="Black" Opacity="0" Margin="1"
+                            CornerRadius="{Binding CornerRadius, ElementName=Edge}" />
+                    <ContentPresenter Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Trigger.EnterActions>
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0.07" Duration="0:0:0.12" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </Trigger.EnterActions>
+                        <Trigger.ExitActions>
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </Trigger.ExitActions>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="Root" Property="RenderTransform">
+                            <Setter.Value>
+                                <TranslateTransform Y="1" />
+                            </Setter.Value>
+                        </Setter>
+                        <Setter TargetName="Edge" Property="Visibility" Value="Hidden" />
+                        <Setter TargetName="Press" Property="Opacity" Value="0.18" />
+                        <Setter TargetName="Relief" Property="Opacity" Value="0.35" />
+                        <Setter TargetName="TopLight" Property="Opacity" Value="0" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter TargetName="Root" Property="Opacity" Value="0.38" />
+                        <Setter TargetName="Edge" Property="Visibility" Value="Hidden" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+
+            <!-- Neutral button (toolbar, dialogs, inspector). Implicit: every Button in the app. -->
+            <Style x:Key="DeskButton" TargetType="Button">
+                <Setter Property="Template" Value="{StaticResource DeskButtonTemplate}" />
+                <Setter Property="Background" Value="#272A31" />
+                <Setter Property="BorderBrush" Value="#3A3E47" />
+                <Setter Property="Foreground" Value="{StaticResource SoftTextBrush}" />
+                <Setter Property="Padding" Value="12,5" />
+                <Setter Property="MinHeight" Value="30" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            </Style>
+            <Style TargetType="Button" BasedOn="{StaticResource DeskButton}" />
+
+            <!-- Coloured button (GO, transport, primary actions). -->
+            <Style x:Key="SoftButton" TargetType="Button" BasedOn="{StaticResource DeskButton}">
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="BorderBrush" Value="#33000000" />
                 <Setter Property="Focusable" Value="False" />
-                <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Padding" Value="16,0" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Grid>
-                                <Border x:Name="Bg" Background="{TemplateBinding Background}"
-                                        CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, FallbackValue=8, TargetNullValue=8}" />
-                                <Border x:Name="Overlay" Background="White" Opacity="0"
-                                        CornerRadius="{Binding CornerRadius, ElementName=Bg}" />
-                                <ContentPresenter Margin="{TemplateBinding Padding}"
-                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Overlay" Property="Opacity" Value="0.08" />
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Overlay" Property="Background" Value="Black" />
-                                    <Setter TargetName="Overlay" Property="Opacity" Value="0.15" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.4" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
+            </Style>
+
+            <!-- Primary action in dialogs (OK, Chiudi). -->
+            <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource SoftButton}">
+                <Setter Property="Background" Value="#4F7FC4" />
+                <Setter Property="Focusable" Value="True" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

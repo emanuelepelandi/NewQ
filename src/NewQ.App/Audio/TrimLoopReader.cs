@@ -45,7 +45,9 @@ internal sealed class TrimLoopReader : ISampleProvider
     public void Seek(TimeSpan position)
     {
         var format = _reader.WaveFormat;
-        var bytes = Align((long)(Math.Max(0, position.TotalSeconds) * format.AverageBytesPerSecond), format.BlockAlign);
+        // Round to the nearest frame (truncating made each seek/progress round trip drift back by one frame).
+        var frames = Math.Round(Math.Max(0, position.TotalSeconds) * format.SampleRate);
+        var bytes = (long)frames * format.BlockAlign;
         var target = Math.Min(_startByte + bytes, Math.Max(_startByte, _endByte - format.BlockAlign));
         _reader.Position = target;
         System.Threading.Interlocked.Exchange(ref _samplesRead, (target - _startByte) / sizeof(float));

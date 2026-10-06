@@ -162,19 +162,36 @@ public class CueEngineTests
         Assert.Empty(engine.Running);  // forced after fade + margin
     }
 
+    [Fact]
+    public void Safety_timer_hard_stops_a_player_that_never_confirms()
+    {
+        var player = new NeverEndingPlayer();
+        var workspace = new Workspace();
+        workspace.Cues.Add(Audio("1"));
+        var engine = new CueEngine(_scheduler, new[] { player }, workspace);
+
+        engine.Go();
+        engine.StopAll(TimeSpan.FromSeconds(1));
+        _scheduler.Advance(2);
+
+        Assert.Equal(new[] { TimeSpan.FromSeconds(1), TimeSpan.Zero }, player.Handle!.Stops);
+    }
+
     private sealed class NeverEndingPlayer : ICuePlayer
     {
+        public NeverEndingHandle? Handle { get; private set; }
         public bool CanPlay(Cue cue) => true;
-        public IActiveCue Start(Cue cue, CueContext context) => new NeverEndingHandle();
+        public IActiveCue Start(Cue cue, CueContext context) => Handle = new NeverEndingHandle();
     }
 
     private sealed class NeverEndingHandle : IActiveCue
     {
+        public List<TimeSpan> Stops { get; } = new();
         public TimeSpan Elapsed => TimeSpan.Zero;
         public TimeSpan? Duration => null;
         public void Pause() { }
         public void Resume() { }
-        public void Stop(TimeSpan fade) { }
+        public void Stop(TimeSpan fade) => Stops.Add(fade);
         public void Fade(FadeRequest request) { }
     }
 
