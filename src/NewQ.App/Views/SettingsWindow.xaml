@@ -68,7 +68,7 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,10,0">
             <Button Content="Annulla" IsCancel="True" MinWidth="100" Margin="0,0,8,0" />
-            <Button Content="OK" IsDefault="True" MinWidth="100" Click="OnOk" Style="{StaticResource AccentButtonStyle}"
+            <Button Content="OK" IsDefault="True" MinWidth="100" Click="OnOk" Style="{StaticResource PrimaryButton}"
                     ui:ControlHelper.CornerRadius="6" />
         </StackPanel>
     </StackPanel>

@@ -8,10 +8,11 @@
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="{Binding WindowTitle}"
         Width="1440" Height="880" MinWidth="1000" MinHeight="620"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="Manual"
         Background="{StaticResource WindowBrush}"
         FontFamily="{StaticResource UiFont}"
         PreviewKeyDown="OnPreviewKeyDown"
+        PreviewMouseDown="OnPreviewMouseDown"
         Closing="OnClosing">
 
     <Window.InputBindings>
@@ -24,6 +25,7 @@
         <KeyBinding Gesture="Ctrl+Down" Command="{Binding MoveDownCommand}" />
         <KeyBinding Gesture="Ctrl+Return" Command="{Binding FireSelectedCommand}" />
         <KeyBinding Gesture="Ctrl+K" Command="{Binding ShowCheckCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+L" Command="{Binding ToggleSafeModeCommand}" />
     </Window.InputBindings>
 
     <Window.Resources>
@@ -49,14 +51,9 @@
             <Setter Property="Margin" Value="8,0,0,0" />
             <Setter Property="FontSize" Value="13" />
         </Style>
-        <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource DeskButton}">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="Margin" Value="0,0,6,0" />
-            <Setter Property="Padding" Value="12,5" />
-            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
-            <Setter Property="Background" Value="{StaticResource SubtleFillBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
         </Style>
 
         <!-- File picker shared by media cues -->
@@ -257,9 +254,12 @@
                 <MenuItem Header="Panic (fade out tutto)" InputGestureText="Esc" Command="{Binding PanicCommand}" />
             </MenuItem>
             <MenuItem Header="_Strumenti">
+                <MenuItem Header="Safe (blocca le modifiche durante lo spettacolo)" IsCheckable="True"
+                          IsChecked="{Binding IsSafeMode, Mode=TwoWay}" InputGestureText="Ctrl+Maiusc+L" />
+                <Separator />
                 <MenuItem Header="Show Check…" InputGestureText="Ctrl+K" Command="{Binding ShowCheckCommand}" />
                 <Separator />
-                <MenuItem Header="Impostazioni…" Click="OnSettingsClick" />
+                <MenuItem Header="Impostazioni…" Click="OnSettingsClick" IsEnabled="{Binding CanEdit}" />
                 <MenuItem Header="Aggiorna dispositivi MIDI e schermi" Command="{Binding RefreshDevicesCommand}" />
                 <MenuItem Header="Chiudi uscite video" Command="{Binding CloseOutputsCommand}" />
             </MenuItem>
@@ -275,7 +275,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Content="GO" Command="{Binding GoCommand}" Style="{StaticResource SoftButton}" Tag="12"
+            <Button Grid.Column="0" Content="GO" Command="{Binding GoCommand}" Style="{StaticResource SoftButton}" Tag="10"
                     Width="150" Height="88" FontSize="38" FontWeight="Bold" FontFamily="{StaticResource DisplayFont}"
                     Background="{StaticResource GoBrush}" ToolTip="Spazio" />
 
@@ -288,6 +288,13 @@
                             Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
                         <TextBlock Text="{Binding SelectedCue.TypeName}" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{Binding SelectedCue.TypeName, Converter={StaticResource TypeForeground}}" />
+                    </Border>
+                    <!-- Safe mode: editing locked for the show. -->
+                    <Border CornerRadius="4" Padding="8,1" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Background="{StaticResource SafeTintBrush}"
+                            ToolTip="Modalità Safe: le modifiche allo show sono bloccate. Strumenti → Safe (Ctrl+Maiusc+L) per sbloccare."
+                            Visibility="{Binding IsSafeMode, Converter={StaticResource BoolToVis}}">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SafeBrush}" Text="🔒  SAFE" />
                     </Border>
                     <!-- Shown when the window loses focus: keyboard GO/Panic don't reach NewQ. -->
                     <Border CornerRadius="4" Padding="8,1" Margin="10,0,0,0" VerticalAlignment="Center"
@@ -427,8 +434,9 @@
                           CanUserSortColumns="False" CanUserReorderColumns="False"
                           SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource SubtleFillBrush}"
+                          IsReadOnly="{Binding IsSafeMode}"
                           Background="Transparent" BorderThickness="0" RowHeight="38"
-                          AllowDrop="True" Drop="OnCueGridDrop"
+                          AllowDrop="{Binding CanEdit}" Drop="OnCueGridDrop"
                           SelectionChanged="OnCueGridSelectionChanged">
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
@@ -675,6 +683,13 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedCue}"
                                   Visibility="{Binding Converter={StaticResource NotEmpty}}">
                         <StackPanel>
+                        <!-- Safe mode: fields are read-only (scrolling still works). -->
+                        <Border CornerRadius="6" Padding="10,6" Margin="0,12,8,0" Background="{StaticResource SafeTintBrush}"
+                                Visibility="{Binding DataContext.IsSafeMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}">
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SafeBrush}" FontSize="12"
+                                       Text="🔒  Modalità Safe: proprietà in sola lettura. Disattivala da Strumenti → Safe (Ctrl+Maiusc+L)." />
+                        </Border>
+                        <StackPanel IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}">
                             <TextBlock Text="CUE" Style="{StaticResource SectionTitle}" />
                             <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource ErrorBrush}" TextWrapping="Wrap"
                                        Margin="0,0,8,8" Visibility="{Binding ErrorMessage, Converter={StaticResource NotEmpty}}" />
@@ -697,6 +712,7 @@
                             <CheckBox Content="Armata (se disattivata la cue viene saltata)" IsChecked="{Binding Armed}" />
 
                             <ContentControl Content="{Binding}" Focusable="False" />
+                        </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

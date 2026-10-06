@@ -412,7 +412,12 @@ public sealed class CueEngine
     private void ArmSafetyTimer(RunningCue rc, TimeSpan fade)
     {
         rc.SafetyTimer?.Dispose();
-        rc.SafetyTimer = _scheduler.Schedule(fade + StopSafetyMargin, () => Complete(rc));
+        rc.SafetyTimer = _scheduler.Schedule(fade + StopSafetyMargin, () =>
+        {
+            // The player didn't confirm the end of its fade: force it, so nothing is left playing or open.
+            if (!rc.IsFinished) rc.Handle?.Stop(TimeSpan.Zero);
+            Complete(rc);
+        });
     }
 
     private void Complete(RunningCue rc)

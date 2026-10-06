@@ -66,7 +66,7 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button x:Name="RerunButton" Content="Ricontrolla" MinWidth="110" Margin="0,0,8,0" Click="OnRerun" ui:ControlHelper.CornerRadius="6" />
-            <Button Content="Chiudi" MinWidth="110" IsCancel="True" Click="OnClose" Style="{StaticResource AccentButtonStyle}" ui:ControlHelper.CornerRadius="6" />
+            <Button Content="Chiudi" MinWidth="110" IsCancel="True" Click="OnClose" Style="{StaticResource PrimaryButton}" ui:ControlHelper.CornerRadius="6" />
         </StackPanel>
     </Grid>
 </Window>

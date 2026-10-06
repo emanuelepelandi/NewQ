@@ -22,6 +22,11 @@ Ogni cue ha **pre-wait**, **post-wait**, modalità **auto-continue** e **auto-fo
 - **Per ogni cue audio** in esecuzione, un mini-meter. Se la cue va in clip, compare un'etichetta rossa **CLIP** nella sua riga, che si azzera al GO successivo.
 - Il clip viene segnalato sia quando un campione supera 0 dBFS (volume troppo alto) sia quando ci sono più campioni consecutivi a fondo scala (file già distorto all'origine).
 
+**Modalità Safe** (Strumenti → Safe, Ctrl+Maiusc+L): da usare durante lo spettacolo.
+- **Bloccato**: creazione, eliminazione, spostamento e modifica delle cue, trascinamento di file, Nuovo/Apri, Impostazioni, "Chiudi uscite video" e "Aggiorna dispositivi".
+- **Sempre attivo**: GO, Stop, Panic, Pausa e timeline, spostamento del playhead, Show Check e salvataggio.
+- Chiudere NewQ con Safe attivo richiede una conferma.
+
 **Pausa e timeline**: ogni cue in esecuzione si può mettere in pausa da sola. In pausa, la barra di avanzamento di audio e video diventa trascinabile.
 
 **Show Check** (Strumenti → Show Check, Ctrl+K): un rundown virtuale a buio e in muto che non riproduce e non mostra nulla. Controlla:

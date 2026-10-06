@@ -27,6 +27,9 @@ public sealed class AudioEngine : IDisposable
     public event Action<string>? Error;
 
     public bool IsReady => _mixer is not null;
+
+    /// <summary>Voices currently in the mixer (diagnostics).</summary>
+    public int ActiveVoiceCount => _mixer?.MixerInputs.Count() ?? 0;
     public string Description { get; private set; } = "Audio non inizializzato";
 
     public static IReadOnlyList<(string Id, string Name)> GetWasapiDevices()
