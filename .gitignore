@@ -1,0 +1,8 @@
+bin/
+obj/
+dist/
+.vs/
+*.user
+*.suo
+*.newq.tmp
+TestResults/

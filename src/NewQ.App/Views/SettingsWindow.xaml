@@ -1,0 +1,75 @@
+<Window x:Class="NewQ.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="Impostazioni" Width="560" SizeToContent="Height"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource PanelBrush}" FontFamily="{StaticResource UiFont}">
+    <Window.Resources>
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Margin" Value="0,0,10,10" />
+            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
+        </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Margin" Value="0,0,10,10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
+        </Style>
+        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
+        </Style>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Margin" Value="0,0,10,10" />
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="20,8,20,20">
+        <TextBlock Text="AUDIO" Style="{StaticResource SectionTitle}" />
+        <ComboBox x:Name="DriverBox" ui:ControlHelper.Header="Driver" SelectionChanged="OnDriverChanged">
+            <ComboBoxItem Content="WASAPI (Windows, consigliato)" Tag="Wasapi" />
+            <ComboBoxItem Content="ASIO (interfacce audio professionali)" Tag="Asio" />
+        </ComboBox>
+
+        <StackPanel x:Name="WasapiPanel">
+            <ComboBox x:Name="WasapiDeviceBox" ui:ControlHelper.Header="Dispositivo di uscita" DisplayMemberPath="Name" />
+            <UniformGrid Columns="2">
+                <TextBox x:Name="LatencyBox" ui:ControlHelper.Header="Latenza (ms)" />
+                <CheckBox x:Name="ExclusiveBox" Content="Modalità esclusiva" VerticalAlignment="Bottom" />
+            </UniformGrid>
+        </StackPanel>
+
+        <StackPanel x:Name="AsioPanel">
+            <ComboBox x:Name="AsioDriverBox" ui:ControlHelper.Header="Driver ASIO" />
+            <UniformGrid Columns="2">
+                <TextBox x:Name="SampleRateBox" ui:ControlHelper.Header="Frequenza (Hz)" />
+                <TextBox x:Name="AsioOffsetBox" ui:ControlHelper.Header="Prima uscita (1 = out 1-2)" />
+            </UniformGrid>
+        </StackPanel>
+
+        <TextBox x:Name="MasterBox" ui:ControlHelper.Header="Volume master (dB)" />
+
+        <TextBlock Text="MIDI" Style="{StaticResource SectionTitle}" />
+        <ComboBox x:Name="MidiBox" ui:ControlHelper.Header="Uscita MIDI predefinita" IsEditable="True" />
+
+        <TextBlock Text="CONTROLLO REMOTO OSC" Style="{StaticResource SectionTitle}" />
+        <UniformGrid Columns="2">
+            <CheckBox x:Name="OscEnabledBox" Content="Ricevi comandi OSC" VerticalAlignment="Bottom" />
+            <TextBox x:Name="OscPortBox" ui:ControlHelper.Header="Porta UDP" />
+        </UniformGrid>
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" FontSize="12" Margin="0,0,10,6"
+                   Text="Comandi compatibili QLab: /go, /stop, /panic, /pause, /resume, /playhead/next, /playhead/previous, /cue/{numero}/start, /cue/{numero}/stop." />
+
+        <TextBlock Text="WORKSPACE CORRENTE" Style="{StaticResource SectionTitle}" />
+        <UniformGrid Columns="2">
+            <TextBox x:Name="PanicFadeBox" ui:ControlHelper.Header="Fade del Panic (s)" />
+            <TextBox x:Name="LockoutBox" ui:ControlHelper.Header="Blocco doppio GO (ms)" />
+        </UniformGrid>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,10,0">
+            <Button Content="Annulla" IsCancel="True" MinWidth="100" Margin="0,0,8,0" />
+            <Button Content="OK" IsDefault="True" MinWidth="100" Click="OnOk" Style="{StaticResource AccentButtonStyle}"
+                    ui:ControlHelper.CornerRadius="6" />
+        </StackPanel>
+    </StackPanel>
+</Window>

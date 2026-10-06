@@ -1,0 +1,12 @@
+{
+  "FormatVersion": 1,
+  "Settings": { "PanicFadeSeconds": 1, "GoLockoutMs": 200 },
+  "Cues": [
+    { "$type": "video", "Number": "1", "Name": "Test 60 fps su Schermo 2", "Notes": "",
+      "ContinueMode": "DoNotContinue", "Armed": true, "FilePath": "media/test-hd60.mp4", "FadeIn": 0, "FadeOut": 0,
+      "ScreenIndex": 1, "Layer": 1, "FitMode": "Fit", "Opacity": 1, "VolumeDb": 0, "Loop": false },
+    { "$type": "video", "Number": "2", "Name": "Test 60 fps con fade-in 1 s", "Notes": "",
+      "ContinueMode": "DoNotContinue", "Armed": true, "FilePath": "media/test-hd60.mp4", "FadeIn": 1, "FadeOut": 1,
+      "ScreenIndex": 1, "Layer": 1, "FitMode": "Fit", "Opacity": 1, "VolumeDb": 0, "Loop": false }
+  ]
+}

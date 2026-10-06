@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Only for System.Windows.Forms.Screen (monitor enumeration). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>NewQ.App</RootNamespace>
+    <AssemblyName>NewQ</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- WinForms analyzer: DPI awareness for a WPF app is correctly declared in app.manifest. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <!-- libVLC: only the 64-bit native libraries, without VLC's GUI/script/visualisation plugins. -->
+  <PropertyGroup>
+    <VlcWindowsX86Enabled>false</VlcWindowsX86Enabled>
+    <VlcWindowsX64ExcludeFiles>plugins\gui\%2A;plugins\lua\%2A;plugins\visualization\%2A;lua\%2A;plugins\control\%2A;plugins\services_discovery\%2A</VlcWindowsX64ExcludeFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="ModernWpfUI" Version="0.9.6" />
+    <PackageReference Include="LibVLCSharp" Version="3.8.5" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NewQ.Core\NewQ.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,587 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
+using Microsoft.Win32;
+using NewQ.App.Audio;
+using NewQ.App.Infrastructure;
+using NewQ.App.Midi;
+using NewQ.App.Settings;
+using NewQ.App.Video;
+using NewQ.Core;
+using NewQ.Core.Engine;
+using NewQ.Core.Midi;
+using NewQ.Core.Model;
+using NewQ.Core.Network;
+using NewQ.Core.Serialization;
+
+namespace NewQ.App.ViewModels;
+
+public sealed record LogEntry(DateTime Time, EngineLogLevel Level, string Message)
+{
+    public string TimeText => Time.ToString("HH:mm:ss");
+}
+
+public sealed class MainViewModel : ObservableObject, IDisposable
+{
+    private const string WorkspaceFilter = "Workspace NewQ (*.newq)|*.newq";
+    private static readonly string[] AudioExtensions = { ".wav", ".mp3", ".aif", ".aiff", ".flac", ".m4a", ".aac", ".wma" };
+    private static readonly string[] VideoExtensions = { ".mp4", ".mov", ".m4v", ".wmv", ".avi", ".mkv" };
+    private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff" };
+
+    private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _progressTimer;
+    private readonly AudioEngine _audio = new();
+    private readonly OutputWindowManager _outputs = new();
+    private readonly NAudioMidiOutput _midi = new();
+    private OscRemoteListener? _oscListener;
+    private AppSettings _settings;
+    private bool _isDirty;
+    private string _statusText = "Pronto";
+    private string _audioStatus = "";
+    private IReadOnlyList<string> _midiDevices = Array.Empty<string>();
+    private IReadOnlyList<ScreenOption> _screens = Array.Empty<ScreenOption>();
+
+    public MainViewModel(Dispatcher dispatcher)
+    {
+        _dispatcher = dispatcher;
+        _settings = AppSettings.Load();
+
+        Engine = new CueEngine(
+            new DispatcherScheduler(dispatcher),
+            new ICuePlayer[]
+            {
+                new AudioCuePlayer(_audio),
+                new VisualCuePlayer(_outputs),
+                new MidiCuePlayer(_midi, () => _settings.DefaultMidiDevice),
+                new NetworkCuePlayer(),
+            });
+
+        Engine.PlayheadChanged += (_, _) => OnPropertyChanged(nameof(SelectedCue));
+        Engine.RunningChanged += (_, _) => RefreshActiveCues();
+        Engine.Log += (_, e) => AddLog(e.Level, e.Message);
+        _audio.Error += message => _dispatcher.BeginInvoke(() => AddLog(EngineLogLevel.Error, message));
+        _outputs.Warning += message => AddLog(EngineLogLevel.Warning, message);
+
+        _progressTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(50) };
+        _progressTimer.Tick += (_, _) =>
+        {
+            Engine.UpdateProgress();
+            UpdateMeters();
+        };
+        _progressTimer.Start();
+
+        GoCommand = new RelayCommand(() => Engine.Go());
+        StopAllCommand = new RelayCommand(() => Engine.StopAll(TimeSpan.Zero));
+        PanicCommand = new RelayCommand(() => Engine.Panic());
+        TogglePauseCommand = new RelayCommand(TogglePause);
+        StopCueCommand = new RelayCommand(p => { if (p is Cue c) Engine.Stop(c, TimeSpan.Zero); });
+        TogglePauseCueCommand = new RelayCommand(p => { if (p is Cue c) { Engine.TogglePause(c); OnPropertyChanged(nameof(IsPaused)); } });
+        FireSelectedCommand = new RelayCommand(() => { if (SelectedCue is Cue c) Engine.Fire(c); }, () => SelectedCue is not null);
+        PlayheadUpCommand = new RelayCommand(() => Engine.MovePlayhead(-1));
+        PlayheadDownCommand = new RelayCommand(() => Engine.MovePlayhead(1));
+
+        NewCommand = new RelayCommand(() => { if (ConfirmDiscard()) LoadWorkspace(new Workspace()); });
+        OpenCommand = new RelayCommand(Open);
+        SaveCommand = new RelayCommand(() => Save(saveAs: false));
+        SaveAsCommand = new RelayCommand(() => Save(saveAs: true));
+
+        AddCueCommand = new RelayCommand(p => AddCue(CreateCue(p as string ?? "audio")));
+        DeleteCueCommand = new RelayCommand(DeleteSelected, () => SelectedCue is not null);
+        DuplicateCueCommand = new RelayCommand(Duplicate, () => SelectedCue is not null);
+        MoveUpCommand = new RelayCommand(() => MoveSelected(-1), () => SelectedCue is not null);
+        MoveDownCommand = new RelayCommand(() => MoveSelected(1), () => SelectedCue is not null);
+        BrowseFileCommand = new RelayCommand(p => { if (p is MediaCue m) BrowseFile(m); });
+        CloseOutputsCommand = new RelayCommand(() => { Engine.StopAll(TimeSpan.Zero); _outputs.CloseAll(); });
+        RefreshDevicesCommand = new RelayCommand(RefreshDevices);
+        ResetClipsCommand = new RelayCommand(ResetClips);
+        ShowCheckCommand = new RelayCommand(OpenShowCheck);
+
+        VlcRuntime.WarmUp(); // libVLC loads its plugins in background (~1 s)
+        RefreshDevices();
+        ApplyDeviceSettings();
+
+        var workspace = new Workspace();
+        if (_settings.LastWorkspace is string last && File.Exists(last))
+        {
+            try { workspace = WorkspaceSerializer.Load(last); }
+            catch (Exception ex) { AddLog(EngineLogLevel.Error, $"Impossibile riaprire {last}: {ex.Message}"); }
+        }
+        LoadWorkspace(workspace);
+    }
+
+    // ------------------------------------------------------------------ bindable state
+
+    public CueEngine Engine { get; }
+    public Workspace Workspace => Engine.Workspace;
+    public ObservableCollection<Cue> ActiveCues { get; } = new();
+    public ObservableCollection<LogEntry> Log { get; } = new();
+    public AppSettings Settings => _settings;
+
+    public Cue? SelectedCue
+    {
+        get => Engine.Playhead;
+        set { Engine.SetPlayhead(value); OnPropertyChanged(); }
+    }
+
+    public string WindowTitle => $"{Workspace.DisplayName}{(IsDirty ? " •" : "")} — NewQ";
+
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set { if (SetField(ref _isDirty, value)) OnPropertyChanged(nameof(WindowTitle)); }
+    }
+
+    public string StatusText { get => _statusText; private set => SetField(ref _statusText, value); }
+    public string AudioStatus { get => _audioStatus; private set => SetField(ref _audioStatus, value); }
+    public string OscStatus => _oscListener is null ? "OSC in: off" : $"OSC in: UDP {_oscListener.Port}";
+    public bool IsPaused => Engine.IsPaused;
+
+    public IReadOnlyList<string> MidiDevices { get => _midiDevices; private set => SetField(ref _midiDevices, value); }
+    public IReadOnlyList<ScreenOption> Screens { get => _screens; private set => SetField(ref _screens, value); }
+
+    // ------------------------------------------------------------------ commands
+
+    public ICommand GoCommand { get; }
+    public ICommand StopAllCommand { get; }
+    public ICommand PanicCommand { get; }
+    public ICommand TogglePauseCommand { get; }
+    public ICommand StopCueCommand { get; }
+    public ICommand TogglePauseCueCommand { get; }
+
+    /// <summary>Scrubs a paused cue to a fraction (0–1) of its length.</summary>
+    public void SeekCue(Cue cue, double fraction)
+    {
+        if (!cue.CanSeek || cue.RuntimeDuration is not double duration || duration <= 0) return;
+        Engine.Seek(cue, TimeSpan.FromSeconds(Math.Clamp(fraction, 0, 1) * duration));
+    }
+    public ICommand FireSelectedCommand { get; }
+    public ICommand PlayheadUpCommand { get; }
+    public ICommand PlayheadDownCommand { get; }
+    public ICommand NewCommand { get; }
+    public ICommand OpenCommand { get; }
+    public ICommand SaveCommand { get; }
+    public ICommand SaveAsCommand { get; }
+    public ICommand AddCueCommand { get; }
+    public ICommand DeleteCueCommand { get; }
+    public ICommand DuplicateCueCommand { get; }
+    public ICommand MoveUpCommand { get; }
+    public ICommand MoveDownCommand { get; }
+    public ICommand BrowseFileCommand { get; }
+    public ICommand CloseOutputsCommand { get; }
+    public ICommand RefreshDevicesCommand { get; }
+    public ICommand ResetClipsCommand { get; }
+    public ICommand ShowCheckCommand { get; }
+
+    // ------------------------------------------------------------------ transport
+
+    private void TogglePause()
+    {
+        if (Engine.IsPaused) Engine.ResumeAll(); else Engine.PauseAll();
+        OnPropertyChanged(nameof(IsPaused));
+    }
+
+    private void RefreshActiveCues()
+    {
+        var running = Engine.Running.Select(r => r.Cue).Distinct().ToList();
+        for (var i = ActiveCues.Count - 1; i >= 0; i--)
+            if (!running.Contains(ActiveCues[i]))
+            {
+                ActiveCues[i].MeterDb = Decibels.Floor;
+                ActiveCues.RemoveAt(i);
+            }
+        foreach (var cue in running)
+            if (!ActiveCues.Contains(cue)) ActiveCues.Add(cue);
+        OnPropertyChanged(nameof(IsPaused));
+    }
+
+    // ------------------------------------------------------------------ metering
+
+    private readonly System.Diagnostics.Stopwatch _meterClock = System.Diagnostics.Stopwatch.StartNew();
+    private TimeSpan _lastMeterUpdate;
+    private double _outLeftDb = Decibels.Floor, _outRightDb = Decibels.Floor;
+    private double _outPeakLeftDb = Decibels.Floor, _outPeakRightDb = Decibels.Floor;
+    private TimeSpan _outPeakLeftAt, _outPeakRightAt;
+    private bool _outputClip;
+
+    public double OutputLeftDb { get => _outLeftDb; private set => SetField(ref _outLeftDb, value); }
+    public double OutputRightDb { get => _outRightDb; private set => SetField(ref _outRightDb, value); }
+    public double OutputPeakLeftDb { get => _outPeakLeftDb; private set => SetField(ref _outPeakLeftDb, value); }
+    public double OutputPeakRightDb { get => _outPeakRightDb; private set => SetField(ref _outPeakRightDb, value); }
+
+    /// <summary>Latched: the output reached digital full scale. Reset with <see cref="ResetClipsCommand"/>.</summary>
+    public bool OutputClip { get => _outputClip; private set => SetField(ref _outputClip, value); }
+
+    private void UpdateMeters()
+    {
+        var now = _meterClock.Elapsed;
+        var dt = (now - _lastMeterUpdate).TotalSeconds;
+        _lastMeterUpdate = now;
+
+        // Output (after master volume): this is what reaches the sound card.
+        var output = _audio.TakeOutputPeaks();
+        OutputLeftDb = MeterMath.Fall(OutputLeftDb, MeterMath.ToDb(output.Left), dt);
+        OutputRightDb = MeterMath.Fall(OutputRightDb, MeterMath.ToDb(output.Right), dt);
+        (OutputPeakLeftDb, _outPeakLeftAt) = Hold(OutputPeakLeftDb, _outPeakLeftAt, OutputLeftDb, now, dt);
+        (OutputPeakRightDb, _outPeakRightAt) = Hold(OutputPeakRightDb, _outPeakRightAt, OutputRightDb, now, dt);
+        if (output.Clip && !OutputClip)
+        {
+            OutputClip = true;
+            AddLog(EngineLogLevel.Warning, "Uscita audio in clip (0 dBFS): abbassa il volume delle cue o il master.");
+        }
+
+        // Each playing audio cue (several instances of the same cue are combined).
+        var levels = new Dictionary<Cue, MeterReading>();
+        foreach (var rc in Engine.Running)
+        {
+            if (rc.Handle is not IAudioMeterSource source) continue;
+            var reading = source.TakePeaks();
+            levels[rc.Cue] = levels.TryGetValue(rc.Cue, out var other)
+                ? new MeterReading(Math.Max(other.Left, reading.Left), Math.Max(other.Right, reading.Right), other.Clip || reading.Clip)
+                : reading;
+        }
+        foreach (var (cue, reading) in levels)
+        {
+            cue.MeterDb = MeterMath.Fall(cue.MeterDb, MeterMath.ToDb(reading.Max), dt);
+            if (reading.Clip && !cue.Clipped)
+            {
+                cue.Clipped = true;
+                AddLog(EngineLogLevel.Warning, $"Cue {cue.Number} in clip (0 dBFS): abbassa il suo volume.");
+            }
+        }
+    }
+
+    private static (double Db, TimeSpan At) Hold(double holdDb, TimeSpan holdAt, double levelDb, TimeSpan now, double dt)
+    {
+        if (levelDb >= holdDb) return (levelDb, now);
+        if ((now - holdAt).TotalSeconds < MeterMath.HoldSeconds) return (holdDb, holdAt);
+        return (Math.Max(levelDb, holdDb - MeterMath.FallDbPerSecond * dt), holdAt);
+    }
+
+    private void ResetClips()
+    {
+        OutputClip = false;
+        foreach (var cue in Workspace.Cues) cue.Clipped = false;
+    }
+
+    // ------------------------------------------------------------------ workspace
+
+    private void LoadWorkspace(Workspace workspace)
+    {
+        UnhookWorkspace(Engine.Workspace);
+        Engine.LoadWorkspace(workspace);
+        HookWorkspace(workspace);
+        foreach (var cue in workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
+        IsDirty = false;
+        OnPropertyChanged(nameof(Workspace));
+        OnPropertyChanged(nameof(SelectedCue));
+        OnPropertyChanged(nameof(WindowTitle));
+        StatusText = workspace.FilePath is null ? "Nuovo workspace" : $"Aperto {workspace.FilePath}";
+    }
+
+    private void HookWorkspace(Workspace workspace)
+    {
+        workspace.Cues.CollectionChanged += OnCuesChanged;
+        workspace.Settings.PropertyChanged += OnSettingsChanged;
+        foreach (var cue in workspace.Cues) cue.PropertyChanged += OnCuePropertyChanged;
+    }
+
+    private void UnhookWorkspace(Workspace workspace)
+    {
+        workspace.Cues.CollectionChanged -= OnCuesChanged;
+        workspace.Settings.PropertyChanged -= OnSettingsChanged;
+        foreach (var cue in workspace.Cues) cue.PropertyChanged -= OnCuePropertyChanged;
+    }
+
+    private void OnCuesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null) foreach (Cue c in e.OldItems) c.PropertyChanged -= OnCuePropertyChanged;
+        if (e.NewItems is not null) foreach (Cue c in e.NewItems) c.PropertyChanged += OnCuePropertyChanged;
+        IsDirty = true;
+        Engine.SchedulePreload(); // reordering can change what the next GO fires
+    }
+
+    private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e) => IsDirty = true;
+
+    private void OnCuePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!Cue.IsPersistentProperty(e.PropertyName)) return;
+        IsDirty = true;
+        Engine.SchedulePreload(); // file, output or continue mode may have changed
+        if (sender is AudioCue audio && e.PropertyName == nameof(MediaCue.FilePath)) ProbeDuration(audio);
+    }
+
+    private void ProbeDuration(AudioCue cue)
+    {
+        var path = Workspace.ResolvePath(cue.FilePath);
+        Task.Run(() => AudioEngine.ProbeDuration(path))
+            .ContinueWith(t => cue.MediaDuration = t.Result, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    public bool ConfirmDiscard()
+    {
+        if (!IsDirty) return true;
+        var answer = MessageBox.Show("Salvare le modifiche al workspace?", "NewQ",
+            MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        return answer switch
+        {
+            MessageBoxResult.Yes => Save(saveAs: false),
+            MessageBoxResult.No => true,
+            _ => false,
+        };
+    }
+
+    private void Open()
+    {
+        if (!ConfirmDiscard()) return;
+        var dialog = new OpenFileDialog { Filter = WorkspaceFilter };
+        if (dialog.ShowDialog() != true) return;
+        OpenFile(dialog.FileName);
+    }
+
+    public void OpenFile(string path)
+    {
+        try
+        {
+            LoadWorkspace(WorkspaceSerializer.Load(path));
+            RememberWorkspace(path);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Impossibile aprire il file:\n{ex.Message}", "NewQ", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private bool Save(bool saveAs)
+    {
+        var path = Workspace.FilePath;
+        if (saveAs || path is null)
+        {
+            var dialog = new SaveFileDialog { Filter = WorkspaceFilter, FileName = Workspace.DisplayName + Workspace.FileExtension };
+            if (dialog.ShowDialog() != true) return false;
+            path = dialog.FileName;
+        }
+
+        try
+        {
+            WorkspaceSerializer.Save(Workspace, path);
+            IsDirty = false;
+            OnPropertyChanged(nameof(WindowTitle));
+            RememberWorkspace(path);
+            StatusText = $"Salvato {path}";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Salvataggio non riuscito:\n{ex.Message}", "NewQ", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
+
+    private void RememberWorkspace(string path)
+    {
+        _settings.LastWorkspace = path;
+        TrySaveSettings();
+    }
+
+    // ------------------------------------------------------------------ editing
+
+    private Cue CreateCue(string kind)
+    {
+        Cue cue = kind switch
+        {
+            "audio" => new AudioCue(),
+            "video" => new VideoCue { ScreenIndex = DefaultScreen() },
+            "image" => new ImageCue { ScreenIndex = DefaultScreen() },
+            "midi" => new MidiCue(),
+            "network" => new NetworkCue(),
+            "wait" => new WaitCue(),
+            "fade" => new FadeCue { TargetNumber = SelectedCue is MediaCue m ? m.Number : "" },
+            "stop" => new StopCue(),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+        };
+        cue.Name = cue.TypeName;
+        return cue;
+    }
+
+    /// <summary>Last connected monitor (usually the projector); preview window with a single monitor.</summary>
+    private static int DefaultScreen()
+    {
+        var count = System.Windows.Forms.Screen.AllScreens.Length;
+        return count > 1 ? count - 1 : VisualCue.PreviewWindow;
+    }
+
+    private void AddCue(Cue cue)
+    {
+        if (string.IsNullOrEmpty(cue.Number)) cue.Number = Workspace.NextCueNumber();
+        var index = SelectedCue is null ? Workspace.Cues.Count : Workspace.Cues.IndexOf(SelectedCue) + 1;
+        Workspace.Cues.Insert(index, cue);
+        SelectedCue = cue;
+    }
+
+    public void AddFiles(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            MediaCue? cue =
+                AudioExtensions.Contains(ext) ? new AudioCue() :
+                VideoExtensions.Contains(ext) ? new VideoCue { ScreenIndex = DefaultScreen() } :
+                ImageExtensions.Contains(ext) ? new ImageCue { ScreenIndex = DefaultScreen() } : null;
+            if (cue is null)
+            {
+                AddLog(EngineLogLevel.Warning, $"Formato non supportato: {Path.GetFileName(path)}");
+                continue;
+            }
+            cue.FilePath = Workspace.MakePortablePath(path);
+            cue.Name = Path.GetFileNameWithoutExtension(path);
+            AddCue(cue);
+        }
+    }
+
+    private void DeleteSelected()
+    {
+        if (SelectedCue is not Cue cue) return;
+        var index = Workspace.Cues.IndexOf(cue);
+        Engine.Stop(cue, TimeSpan.Zero);
+        Workspace.Cues.Remove(cue);
+        if (Workspace.Cues.Count > 0) SelectedCue = Workspace.Cues[Math.Min(index, Workspace.Cues.Count - 1)];
+    }
+
+    private void Duplicate()
+    {
+        if (SelectedCue is not Cue cue) return;
+        var copy = WorkspaceSerializer.CloneCue(cue);
+        copy.Number = Workspace.NextCueNumber();
+        if (copy is AudioCue a) ProbeDuration(a);
+        AddCue(copy);
+    }
+
+    private void MoveSelected(int delta)
+    {
+        if (SelectedCue is not Cue cue) return;
+        var index = Workspace.Cues.IndexOf(cue);
+        var target = index + delta;
+        if (target < 0 || target >= Workspace.Cues.Count) return;
+        Workspace.Cues.Move(index, target);
+        OnPropertyChanged(nameof(SelectedCue));
+    }
+
+    private void BrowseFile(MediaCue cue)
+    {
+        var filter = cue switch
+        {
+            AudioCue => "Audio|" + string.Join(";", AudioExtensions.Select(e => "*" + e)),
+            VideoCue => "Video|" + string.Join(";", VideoExtensions.Select(e => "*" + e)),
+            _ => "Immagini|" + string.Join(";", ImageExtensions.Select(e => "*" + e)),
+        };
+        var dialog = new OpenFileDialog { Filter = filter + "|Tutti i file|*.*" };
+        if (dialog.ShowDialog() != true) return;
+        cue.FilePath = Workspace.MakePortablePath(dialog.FileName);
+        if (string.IsNullOrWhiteSpace(cue.Name) || cue.Name == cue.TypeName)
+            cue.Name = Path.GetFileNameWithoutExtension(dialog.FileName);
+    }
+
+    // ------------------------------------------------------------------ show check
+
+    private Views.ShowCheckWindow? _checkWindow;
+
+    private void OpenShowCheck()
+    {
+        if (_checkWindow is { IsVisible: true })
+        {
+            _checkWindow.Activate();
+            _checkWindow.Run();
+            return;
+        }
+        _checkWindow = new Views.ShowCheckWindow(this) { Owner = Application.Current.MainWindow };
+        _checkWindow.Show();
+    }
+
+    /// <summary>Snapshot of this machine (outputs, devices) for the Show Check.</summary>
+    public Core.Check.IShowCheckEnvironment CreateCheckEnvironment()
+        => new Check.AppShowCheckEnvironment(System.Windows.Forms.Screen.AllScreens.Length, _audio.IsReady,
+                                             MidiDevices, _settings.DefaultMidiDevice);
+
+    // ------------------------------------------------------------------ devices / settings
+
+    private void RefreshDevices()
+    {
+        try { MidiDevices = _midi.DeviceNames; }
+        catch (Exception ex) { AddLog(EngineLogLevel.Warning, $"MIDI: {ex.Message}"); }
+        _midi.Reset();
+        Screens = ScreenOption.All();
+    }
+
+    public void ApplySettings(AppSettings settings)
+    {
+        Engine.StopAll(TimeSpan.Zero);
+        _settings = settings;
+        TrySaveSettings();
+        ApplyDeviceSettings();
+        OnPropertyChanged(nameof(Settings));
+    }
+
+    private void ApplyDeviceSettings()
+    {
+        _audio.Initialize(_settings);
+        AudioStatus = _audio.Description;
+
+        _oscListener?.Dispose();
+        _oscListener = null;
+        if (_settings.OscInputEnabled)
+        {
+            try
+            {
+                _oscListener = new OscRemoteListener(_settings.OscInputPort,
+                    (message, from) => _dispatcher.BeginInvoke(() => HandleRemote(message, from.ToString())),
+                    error => _dispatcher.BeginInvoke(() => AddLog(EngineLogLevel.Warning, error)));
+            }
+            catch (Exception ex)
+            {
+                AddLog(EngineLogLevel.Error, $"Porta OSC {_settings.OscInputPort} non disponibile: {ex.Message}");
+            }
+        }
+        OnPropertyChanged(nameof(OscStatus));
+    }
+
+    private void HandleRemote(OscMessage message, string from)
+    {
+        var result = RemoteCommandRouter.Handle(Engine, message);
+        AddLog(result is null ? EngineLogLevel.Warning : EngineLogLevel.Info,
+               result is null ? $"OSC da {from}: comando sconosciuto {message}" : $"OSC da {from}: {result}");
+        OnPropertyChanged(nameof(IsPaused));
+    }
+
+    private void TrySaveSettings()
+    {
+        try { _settings.Save(); }
+        catch (Exception ex) { AddLog(EngineLogLevel.Warning, $"Impostazioni non salvate: {ex.Message}"); }
+    }
+
+    private void AddLog(EngineLogLevel level, string message)
+    {
+        Log.Insert(0, new LogEntry(DateTime.Now, level, message));
+        while (Log.Count > 500) Log.RemoveAt(Log.Count - 1);
+        StatusText = message;
+    }
+
+    public void ReportUnhandled(Exception ex) => AddLog(EngineLogLevel.Error, $"Errore imprevisto: {ex.Message}");
+
+    public void Dispose()
+    {
+        _progressTimer.Stop();
+        Engine.StopAll(TimeSpan.Zero);
+        _oscListener?.Dispose();
+        _outputs.Dispose();
+        _audio.Dispose();
+        _midi.Dispose();
+    }
+}
