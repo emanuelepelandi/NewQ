@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation.Peers;
@@ -20,17 +20,18 @@ public sealed class GeometryEditor : FrameworkElement
     private const double Inset = 24;
     private const double Nudge = 0.001;
 
-    private static readonly Brush Background = Freeze(new SolidColorBrush(Color.FromRgb(0x14, 0x16, 0x1A)));
-    private static readonly Pen ScreenPen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(0x5B, 0x60, 0x6B)), 1) { DashStyle = DashStyles.Dash });
-    private static readonly Brush ScreenFill = Freeze(new SolidColorBrush(Color.FromRgb(0x0B, 0x0C, 0x0E)));
+    // Frozen brushes mirroring the design tokens (InsetBrush, AccentBrush, WarningBrush, TextMutedBrush).
+    private static readonly Brush Background = Freeze(new SolidColorBrush(Color.FromRgb(0x0D, 0x0F, 0x12)));
+    private static readonly Pen ScreenPen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(0x4A, 0x50, 0x5B)), 1) { DashStyle = DashStyles.Dash });
+    private static readonly Brush ScreenFill = Freeze(new SolidColorBrush(Color.FromRgb(0x08, 0x09, 0x0B)));
     private static readonly Pen GridPen = Freeze(new Pen(new SolidColorBrush(Color.FromArgb(0x90, 0x5B, 0x8D, 0xD6)), 1));
     private static readonly Pen OutlinePen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(0x5B, 0x8D, 0xD6)), 2));
-    private static readonly Pen BlendPen = Freeze(new Pen(new SolidColorBrush(Color.FromArgb(0xC0, 0xE2, 0xC1, 0x4E)), 1) { DashStyle = DashStyles.Dot });
+    private static readonly Pen BlendPen = Freeze(new Pen(new SolidColorBrush(Color.FromArgb(0xC0, 0xE2, 0xA9, 0x45)), 1) { DashStyle = DashStyles.Dot });
     private static readonly Brush CornerFill = Freeze(new SolidColorBrush(Color.FromRgb(0x5B, 0x8D, 0xD6)));
-    private static readonly Brush WarpFill = Freeze(new SolidColorBrush(Color.FromRgb(0xE2, 0xC1, 0x4E)));
+    private static readonly Brush WarpFill = Freeze(new SolidColorBrush(Color.FromRgb(0xE2, 0xA9, 0x45)));
     private static readonly Brush SelectedFill = Freeze(new SolidColorBrush(Colors.White));
-    private static readonly Pen HandlePen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(0x14, 0x16, 0x1A)), 1.5));
-    private static readonly Brush LabelBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x8C, 0x91, 0x9B)));
+    private static readonly Pen HandlePen = Freeze(new Pen(new SolidColorBrush(Color.FromRgb(0x0D, 0x0F, 0x12)), 1.5));
+    private static readonly Brush LabelBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x7A, 0x81, 0x8D)));
 
     public static readonly DependencyProperty OutputProperty = DependencyProperty.Register(
         nameof(Output), typeof(VideoOutput), typeof(GeometryEditor),

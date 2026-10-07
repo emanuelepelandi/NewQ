@@ -1,0 +1,132 @@
+<!--
+    NewQ design tokens (docs/NEWQ-DESIGN-SYSTEM.md). Every colour, spacing, radius and type size used by the UI
+    comes from here: change a value once and the whole application follows.
+    Dark, neutral, slightly cool surfaces; one accent; semantic colours only for state.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ============ Surfaces (darkest → lightest) ============ -->
+    <Color x:Key="WindowColor">#111317</Color>
+    <Color x:Key="PanelColor">#16191E</Color>
+    <Color x:Key="RaisedColor">#1B1E24</Color>
+    <Color x:Key="ControlColor">#23272E</Color>
+    <Color x:Key="ControlHoverColor">#2B3038</Color>
+    <Color x:Key="ControlPressedColor">#1E2228</Color>
+    <Color x:Key="InsetColor">#0D0F12</Color>
+
+    <SolidColorBrush x:Key="WindowBrush" Color="{StaticResource WindowColor}" />
+    <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
+    <SolidColorBrush x:Key="RaisedBrush" Color="{StaticResource RaisedColor}" />
+    <SolidColorBrush x:Key="ControlBrush" Color="{StaticResource ControlColor}" />
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHoverColor}" />
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="{StaticResource ControlPressedColor}" />
+    <!-- Recessed areas: meter tracks, editing surfaces. -->
+    <SolidColorBrush x:Key="InsetBrush" Color="{StaticResource InsetColor}" />
+    <SolidColorBrush x:Key="HoverOverlayBrush" Color="#12FFFFFF" />
+    <SolidColorBrush x:Key="PressOverlayBrush" Color="#33000000" />
+
+    <!-- ============ Lines ============ -->
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#262A31" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#373C46" />
+
+    <!-- ============ Text ============ -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E4E7EC" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A9AFB9" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#7A818D" />
+    <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FFFFFF" />
+
+    <!-- ============ Accent: selection, focus, primary action, active state ============ -->
+    <Color x:Key="AccentColor">#5B8DD6</Color>
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#6C9ADD" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#4C7CC2" />
+    <SolidColorBrush x:Key="AccentTintBrush" Color="#2E5B8DD6" />
+
+    <!-- ============ Semantic state ============ -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#4CB27E" />
+    <SolidColorBrush x:Key="SuccessTintBrush" Color="#1F4CB27E" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#E2A945" />
+    <SolidColorBrush x:Key="WarningTintBrush" Color="#2BE2A945" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#E2625D" />
+    <SolidColorBrush x:Key="ErrorTintBrush" Color="#2BE2625D" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#7AB4E6" />
+    <SolidColorBrush x:Key="InfoTintBrush" Color="#267AB4E6" />
+
+    <!-- ============ Show state ============ -->
+    <!-- GO is the one strongly coloured control: the primary show action. -->
+    <SolidColorBrush x:Key="GoBrush" Color="#2F8F5E" />
+    <SolidColorBrush x:Key="GoHoverBrush" Color="#36A069" />
+    <SolidColorBrush x:Key="GoPressedBrush" Color="#287A50" />
+    <SolidColorBrush x:Key="PlayheadBrush" Color="#E8C468" />
+    <SolidColorBrush x:Key="RunningBrush" Color="#7CCB9F" />
+    <SolidColorBrush x:Key="RunningRowBrush" Color="#144CB27E" />
+    <SolidColorBrush x:Key="PreWaitBrush" Color="#DDBA6A" />
+    <SolidColorBrush x:Key="PausedBrush" Color="#7FA6E2" />
+    <SolidColorBrush x:Key="ClipBrush" Color="#E0504B" />
+    <SolidColorBrush x:Key="SafeBrush" Color="#7AB4E6" />
+
+    <!-- ============ Cue types: categorical, low saturation (badges only) ============ -->
+    <Color x:Key="CueAudioColor">#6FA3E0</Color>
+    <Color x:Key="CueVideoColor">#A98FDB</Color>
+    <Color x:Key="CueImageColor">#6CC2B4</Color>
+    <Color x:Key="CueMidiColor">#D9AE6E</Color>
+    <Color x:Key="CueNetworkColor">#6FBFD9</Color>
+    <Color x:Key="CueWaitColor">#9A9FA8</Color>
+    <Color x:Key="CueFadeColor">#D48FB6</Color>
+    <Color x:Key="CueStopColor">#D98682</Color>
+
+    <!-- ============ Spacing scale: 4 · 8 · 12 · 16 · 24 · 32 ============ -->
+    <sys:Double x:Key="Space4">4</sys:Double>
+    <sys:Double x:Key="Space8">8</sys:Double>
+    <sys:Double x:Key="Space12">12</sys:Double>
+    <sys:Double x:Key="Space16">16</sys:Double>
+    <sys:Double x:Key="Space24">24</sys:Double>
+    <Thickness x:Key="PanelPadding">16,12,16,16</Thickness>
+    <Thickness x:Key="FieldMargin">0,0,8,12</Thickness>
+    <Thickness x:Key="ToolbarPadding">12,8</Thickness>
+
+    <!-- ============ Shape ============ -->
+    <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+    <CornerRadius x:Key="RadiusPanel">6</CornerRadius>
+    <CornerRadius x:Key="RadiusBadge">3</CornerRadius>
+    <sys:Double x:Key="ControlHeight">32</sys:Double>
+    <sys:Double x:Key="CompactControlHeight">26</sys:Double>
+
+    <!-- ============ Type ============ -->
+    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas</FontFamily>
+    <!-- One icon family for the whole app (Windows 11 glyphs, Windows 10 fallback). -->
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <sys:Double x:Key="FontCaption">11</sys:Double>
+    <sys:Double x:Key="FontSmall">12</sys:Double>
+    <sys:Double x:Key="FontBody">13</sys:Double>
+    <sys:Double x:Key="FontTitle">15</sys:Double>
+    <sys:Double x:Key="FontIcon">14</sys:Double>
+
+    <!-- ============ Icon glyphs ============ -->
+    <sys:String x:Key="IconAdd">&#xE710;</sys:String>
+    <sys:String x:Key="IconAudio">&#xE8D6;</sys:String>
+    <sys:String x:Key="IconVideo">&#xE714;</sys:String>
+    <sys:String x:Key="IconImage">&#xEB9F;</sys:String>
+    <sys:String x:Key="IconMidi">&#xEC4F;</sys:String>
+    <sys:String x:Key="IconNetwork">&#xE968;</sys:String>
+    <sys:String x:Key="IconWait">&#xE916;</sys:String>
+    <sys:String x:Key="IconFade">&#xE9E9;</sys:String>
+    <sys:String x:Key="IconStop">&#xE71A;</sys:String>
+    <sys:String x:Key="IconPlay">&#xE768;</sys:String>
+    <sys:String x:Key="IconPause">&#xE769;</sys:String>
+    <sys:String x:Key="IconCopy">&#xE8C8;</sys:String>
+    <sys:String x:Key="IconUp">&#xE74A;</sys:String>
+    <sys:String x:Key="IconDown">&#xE74B;</sys:String>
+    <sys:String x:Key="IconDelete">&#xE74D;</sys:String>
+    <sys:String x:Key="IconLock">&#xE72E;</sys:String>
+    <sys:String x:Key="IconWarning">&#xE7BA;</sys:String>
+    <sys:String x:Key="IconCheck">&#xE73E;</sys:String>
+    <sys:String x:Key="IconShowCheck">&#xE9D9;</sys:String>
+    <sys:String x:Key="IconSettings">&#xE713;</sys:String>
+    <sys:String x:Key="IconFolder">&#xE8B7;</sys:String>
+    <sys:String x:Key="IconPlayhead">&#xE768;</sys:String>
+</ResourceDictionary>

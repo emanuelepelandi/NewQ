@@ -219,7 +219,7 @@ public partial class TestAudioPanel : UserControl
                 _ => "sweep",
             };
         }
-        StartButton.Content = _context.TestSignals.Count > 0 ? "▶  Avvia / riavvia sulle selezionate" : "▶  Avvia sulle route selezionate";
+        StartButton.Content = _context.TestSignals.Count > 0 ? "Avvia / riavvia sulle selezionate" : "Avvia sulle route selezionate";
     }
 
     private void OnSelectAll(object sender, RoutedEventArgs e) { foreach (var r in _routes) r.Selected = true; }

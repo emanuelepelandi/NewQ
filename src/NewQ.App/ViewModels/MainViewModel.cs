@@ -157,7 +157,17 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     public string StatusText { get => _statusText; private set => SetField(ref _statusText, value); }
-    public string AudioStatus { get => _audioStatus; private set => SetField(ref _audioStatus, value); }
+    public string AudioStatus
+    {
+        get => _audioStatus;
+        private set { if (SetField(ref _audioStatus, value)) OnPropertyChanged(nameof(IsAudioReady)); }
+    }
+
+    /// <summary>The audio graph is running (status bar light).</summary>
+    public bool IsAudioReady => _audio.IsReady;
+
+    /// <summary>The OSC remote input is listening (status bar light).</summary>
+    public bool IsOscListening => _oscListener is not null;
     public string OscStatus => _oscListener is null ? "OSC in: off" : $"OSC in: UDP {_oscListener.Port}";
     public bool IsPaused => Engine.IsPaused;
 
@@ -793,6 +803,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
         }
         OnPropertyChanged(nameof(OscStatus));
+        OnPropertyChanged(nameof(IsOscListening));
     }
 
     private void HandleRemote(OscMessage message, string from)

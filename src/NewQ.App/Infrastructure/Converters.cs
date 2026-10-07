@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Data;
@@ -70,19 +70,19 @@ public sealed class NotEmptyToVisibilityConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
-/// <summary>Soft colour per cue type (TypeName), used for the type badges in the list.</summary>
+/// <summary>Soft colour per cue type (TypeName), used for the type badges. Colours are design tokens (Cue*Color).</summary>
 public sealed class CueTypeBrushConverter : IValueConverter
 {
-    private static readonly Dictionary<string, System.Windows.Media.Color> Colors = new()
+    private static readonly Dictionary<string, string> TokenKeys = new()
     {
-        ["Audio"] = System.Windows.Media.Color.FromRgb(0x6F, 0xA3, 0xE0),
-        ["Video"] = System.Windows.Media.Color.FromRgb(0xA9, 0x8F, 0xDB),
-        ["Immagine"] = System.Windows.Media.Color.FromRgb(0x6C, 0xC2, 0xB4),
-        ["MIDI"] = System.Windows.Media.Color.FromRgb(0xD9, 0xAE, 0x6E),
-        ["Rete"] = System.Windows.Media.Color.FromRgb(0x6F, 0xBF, 0xD9),
-        ["Attesa"] = System.Windows.Media.Color.FromRgb(0x9A, 0x9F, 0xA8),
-        ["Fade"] = System.Windows.Media.Color.FromRgb(0xD4, 0x8F, 0xB6),
-        ["Stop"] = System.Windows.Media.Color.FromRgb(0xD9, 0x86, 0x82),
+        ["Audio"] = "CueAudioColor",
+        ["Video"] = "CueVideoColor",
+        ["Immagine"] = "CueImageColor",
+        ["MIDI"] = "CueMidiColor",
+        ["Rete"] = "CueNetworkColor",
+        ["Attesa"] = "CueWaitColor",
+        ["Fade"] = "CueFadeColor",
+        ["Stop"] = "CueStopColor",
     };
 
     private readonly Dictionary<string, System.Windows.Media.SolidColorBrush> _cache = new();
@@ -94,7 +94,9 @@ public sealed class CueTypeBrushConverter : IValueConverter
     {
         var key = value as string ?? "";
         if (_cache.TryGetValue(key, out var brush)) return brush;
-        var color = Colors.TryGetValue(key, out var c) ? c : System.Windows.Media.Color.FromRgb(0x9A, 0x9F, 0xA8);
+        var token = TokenKeys.TryGetValue(key, out var k) ? k : "CueWaitColor";
+        var color = System.Windows.Application.Current?.TryFindResource(token) is System.Windows.Media.Color c
+            ? c : System.Windows.Media.Color.FromRgb(0x9A, 0x9F, 0xA8);
         color.A = Alpha;
         brush = new System.Windows.Media.SolidColorBrush(color);
         brush.Freeze();

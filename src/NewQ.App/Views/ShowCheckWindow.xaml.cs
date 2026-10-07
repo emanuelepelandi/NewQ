@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -23,37 +23,26 @@ public partial class ShowCheckWindow : Window
             _ => "INFO",
         };
 
-        public Brush BadgeForeground => Issue.Severity switch
+        // Semantic colours from the design tokens (Themes/Tokens.xaml).
+        public Brush BadgeForeground => Token(Issue.Severity switch
         {
-            CheckSeverity.Error => Brushes.Get(0xE0, 0x7A, 0x76),
-            CheckSeverity.Warning => Brushes.Get(0xE3, 0xAE, 0x5B),
-            _ => Brushes.Get(0x7F, 0xA8, 0xE0),
-        };
+            CheckSeverity.Error => "ErrorBrush",
+            CheckSeverity.Warning => "WarningBrush",
+            _ => "InfoBrush",
+        });
 
-        public Brush BadgeBackground => Issue.Severity switch
+        public Brush BadgeBackground => Token(Issue.Severity switch
         {
-            CheckSeverity.Error => Brushes.Get(0xE0, 0x7A, 0x76, 0x30),
-            CheckSeverity.Warning => Brushes.Get(0xE3, 0xAE, 0x5B, 0x30),
-            _ => Brushes.Get(0x7F, 0xA8, 0xE0, 0x26),
-        };
+            CheckSeverity.Error => "ErrorTintBrush",
+            CheckSeverity.Warning => "WarningTintBrush",
+            _ => "InfoTintBrush",
+        });
 
         public string CueLabel => Issue.Cue is Cue cue ? $"{cue.Number}  {cue.Name}".Trim() : "Workspace";
         public string Message => Issue.Message;
     }
 
-    private static class Brushes
-    {
-        private static readonly Dictionary<uint, Brush> Cache = new();
-
-        public static Brush Get(byte r, byte g, byte b, byte a = 0xFF)
-        {
-            var key = (uint)(a << 24 | r << 16 | g << 8 | b);
-            if (Cache.TryGetValue(key, out var brush)) return brush;
-            brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
-            brush.Freeze();
-            return Cache[key] = brush;
-        }
-    }
+    private static Brush Token(string key) => (Brush)Application.Current.FindResource(key);
 
     private readonly MainViewModel _viewModel;
     private IReadOnlyList<CheckIssue> _issues = Array.Empty<CheckIssue>();

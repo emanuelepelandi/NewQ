@@ -92,7 +92,8 @@ NewQ.sln
 │   │                     render per schermo, geometria delle uscite, edge blend, test pattern
 │   ├─ Views/Setup/       Pagine route audio/video e test, editor di keystone e warp
 │   ├─ Midi/              Uscite MIDI WinMM
-│   ├─ ViewModels/ Views/ Interfaccia (tema scuro ModernWpf)
+│   ├─ Themes/            Design system: token (colori, spaziature, raggi, icone) e stili condivisi
+│   ├─ ViewModels/ Views/ Interfaccia (ModernWpfUI, docs/NEWQ-DESIGN-SYSTEM.md)
 │   └─ Settings/          Impostazioni della macchina (%AppData%\NewQ\settings.json)
 └─ tests/NewQ.Core.Tests  xUnit: sequenza, temporizzazioni, protocolli, salvataggio
 ```

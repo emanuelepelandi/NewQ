@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
@@ -15,14 +15,15 @@ public sealed class LevelMeter : FrameworkElement
     public const double YellowDb = -12;
     public const double RedDb = -3;
 
-    private static readonly Brush Track = Freeze(new SolidColorBrush(Color.FromRgb(0x14, 0x16, 0x1A)));
-    private static readonly Brush Green = Freeze(new SolidColorBrush(Color.FromRgb(0x4C, 0xC2, 0x7A)));
-    private static readonly Brush Yellow = Freeze(new SolidColorBrush(Color.FromRgb(0xE2, 0xC1, 0x4E)));
-    private static readonly Brush Red = Freeze(new SolidColorBrush(Color.FromRgb(0xE0, 0x5A, 0x55)));
-    private static readonly Brush GreenDim = Freeze(new SolidColorBrush(Color.FromArgb(0x2A, 0x4C, 0xC2, 0x7A)));
-    private static readonly Brush YellowDim = Freeze(new SolidColorBrush(Color.FromArgb(0x2A, 0xE2, 0xC1, 0x4E)));
-    private static readonly Brush RedDim = Freeze(new SolidColorBrush(Color.FromArgb(0x2A, 0xE0, 0x5A, 0x55)));
-    private static readonly Brush SegmentGap = Freeze(new SolidColorBrush(Color.FromArgb(0x90, 0x14, 0x16, 0x1A)));
+    // Frozen brushes mirroring the design tokens (InsetBrush, SuccessBrush, WarningBrush, ErrorBrush): drawn every frame.
+    private static readonly Brush Track = Freeze(new SolidColorBrush(Color.FromRgb(0x0D, 0x0F, 0x12)));
+    private static readonly Brush Green = Freeze(new SolidColorBrush(Color.FromRgb(0x4C, 0xB2, 0x7E)));
+    private static readonly Brush Yellow = Freeze(new SolidColorBrush(Color.FromRgb(0xE2, 0xA9, 0x45)));
+    private static readonly Brush Red = Freeze(new SolidColorBrush(Color.FromRgb(0xE2, 0x62, 0x5D)));
+    private static readonly Brush GreenDim = Freeze(new SolidColorBrush(Color.FromArgb(0x2A, 0x4C, 0xB2, 0x7E)));
+    private static readonly Brush YellowDim = Freeze(new SolidColorBrush(Color.FromArgb(0x2A, 0xE2, 0xA9, 0x45)));
+    private static readonly Brush RedDim = Freeze(new SolidColorBrush(Color.FromArgb(0x2A, 0xE2, 0x62, 0x5D)));
+    private static readonly Brush SegmentGap = Freeze(new SolidColorBrush(Color.FromArgb(0x90, 0x0D, 0x0F, 0x12)));
 
     public static readonly DependencyProperty LevelProperty = DependencyProperty.Register(
         nameof(Level), typeof(double), typeof(LevelMeter),
@@ -106,7 +107,7 @@ public sealed class LevelMeter : FrameworkElement
 public sealed class MeterScale : FrameworkElement
 {
     private static readonly double[] Marks = { -60, -40, -30, -20, -12, -6, -3, 0 };
-    private static readonly Brush Text = new SolidColorBrush(Color.FromRgb(0x8C, 0x91, 0x9B));
+    private static readonly Brush Text = new SolidColorBrush(Color.FromRgb(0x7A, 0x81, 0x8D));
 
     static MeterScale() => Text.Freeze();
 

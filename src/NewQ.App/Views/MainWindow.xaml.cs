@@ -143,6 +143,14 @@ public partial class MainWindow : Window
             ViewModel.AddFiles(files);
     }
 
+    // The route list arrives (RelativeSource binding) after the selected id: show the id again once loaded.
+    private void OnRoutePickerLoaded(object sender, RoutedEventArgs e)
+    {
+        var combo = (ComboBox)sender;
+        combo.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle,
+            () => combo.GetBindingExpression(Selector.SelectedValueProperty)?.UpdateTarget());
+    }
+
     private void OnSettingsClick(object sender, RoutedEventArgs e) => OpenSettings(0);
 
     private void OnSetupTabClick(object sender, RoutedEventArgs e)

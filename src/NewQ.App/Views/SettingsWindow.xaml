@@ -6,23 +6,13 @@
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="Impostazioni" Width="1100" Height="780" MinWidth="900" MinHeight="560"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="{StaticResource PanelBrush}" FontFamily="{StaticResource UiFont}">
+        Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="{StaticResource UiFont}">
     <Window.Resources>
-        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-            <Setter Property="Margin" Value="0,0,10,10" />
-            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
-        </Style>
-        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="Margin" Value="0,0,10,10" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
-        </Style>
-        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="ui:ControlHelper.CornerRadius" Value="6" />
-        </Style>
-        <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
-            <Setter Property="Margin" Value="0,0,10,10" />
-        </Style>
+        <!-- Form rhythm for every page of the window. -->
+        <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBox}" />
+        <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBox}" />
+        <Style TargetType="CheckBox" BasedOn="{StaticResource FormCheckBox}" />
     </Window.Resources>
 
     <Grid>
@@ -30,11 +20,11 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TabControl x:Name="Tabs" Margin="12,4,12,0">
+        <TabControl x:Name="Tabs" Padding="16,0">
             <TabItem Header="Generale">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="8,0,8,16" MaxWidth="560" HorizontalAlignment="Left" Width="560">
-                    <TextBlock Text="AUDIO" Style="{StaticResource SectionTitle}" />
+                    <StackPanel Margin="24,16,24,24" HorizontalAlignment="Left" Width="560">
+                    <TextBlock Text="AUDIO" Style="{StaticResource SectionHeaderFirst}" />
                     <ComboBox x:Name="DriverBox" ui:ControlHelper.Header="Driver" SelectionChanged="OnDriverChanged">
                         <ComboBoxItem Content="WASAPI (Windows, consigliato)" Tag="Wasapi" />
                         <ComboBoxItem Content="ASIO (interfacce audio professionali)" Tag="Asio" />
@@ -52,24 +42,24 @@
                         <ComboBox x:Name="AsioDriverBox" ui:ControlHelper.Header="Driver ASIO" />
                         <UniformGrid Columns="2">
                             <TextBox x:Name="SampleRateBox" ui:ControlHelper.Header="Frequenza (Hz)" />
-                            <TextBlock Text="I canali di uscita si scelgono in ogni route audio." TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Bottom" Margin="0,0,10,14" />
+                            <TextBlock Text="I canali di uscita si scelgono in ogni route audio." Style="{StaticResource Hint}" VerticalAlignment="Bottom" Margin="0,0,8,16" />
                         </UniformGrid>
                     </StackPanel>
 
                     <TextBox x:Name="MasterBox" ui:ControlHelper.Header="Volume master (dB)" />
 
-                    <TextBlock Text="MIDI" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="MIDI" Style="{StaticResource SectionHeader}" />
                     <ComboBox x:Name="MidiBox" ui:ControlHelper.Header="Uscita MIDI predefinita" IsEditable="True" />
 
-                    <TextBlock Text="CONTROLLO REMOTO OSC" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="CONTROLLO REMOTO OSC" Style="{StaticResource SectionHeader}" />
                     <UniformGrid Columns="2">
                         <CheckBox x:Name="OscEnabledBox" Content="Ricevi comandi OSC" VerticalAlignment="Bottom" />
                         <TextBox x:Name="OscPortBox" ui:ControlHelper.Header="Porta UDP" />
                     </UniformGrid>
-                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" FontSize="12" Margin="0,0,10,6"
+                    <TextBlock Style="{StaticResource Hint}"
                                Text="Comandi compatibili QLab: /go, /stop, /panic, /pause, /resume, /playhead/next, /playhead/previous, /cue/{numero}/start, /cue/{numero}/stop." />
 
-                    <TextBlock Text="WORKSPACE CORRENTE" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="WORKSPACE CORRENTE" Style="{StaticResource SectionHeader}" />
                     <UniformGrid Columns="2">
                         <TextBox x:Name="PanicFadeBox" ui:ControlHelper.Header="Fade del Panic (s)" />
                         <TextBox x:Name="LockoutBox" ui:ControlHelper.Header="Blocco doppio GO (ms)" />
@@ -91,14 +81,13 @@
             </TabItem>
         </TabControl>
 
-        <Border Grid.Row="1" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="20,12">
+        <Border Grid.Row="1" Background="{StaticResource RaisedBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="16,12">
             <DockPanel>
                 <TextBlock Text="Route e test si applicano subito. OK / Annulla riguardano solo la scheda Generale."
-                           Foreground="{StaticResource MutedTextBrush}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                           Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSmall}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Annulla" IsCancel="True" MinWidth="100" Margin="0,0,8,0" />
-                    <Button Content="OK" IsDefault="True" MinWidth="100" Click="OnOk" Style="{StaticResource PrimaryButton}"
-                            ui:ControlHelper.CornerRadius="6" />
+                    <Button Content="OK" IsDefault="True" MinWidth="100" Click="OnOk" Style="{StaticResource PrimaryButton}" />
                 </StackPanel>
             </DockPanel>
         </Border>

@@ -3,22 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.modernwpf.com/2019"
              xmlns:ctl="clr-namespace:NewQ.App.Controls">
-    <Grid Margin="16">
+    <Grid Margin="24,16,24,16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="260" />
-            <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="24" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- Route list -->
         <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="ROUTE AUDIO" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-                <Button Content="+ Route" Click="OnAdd" Margin="0,0,6,0" />
-                <Button Content="Duplica" Click="OnDuplicate" Margin="0,0,6,0" />
-                <Button Content="Rimuovi" Click="OnRemove" />
+            <TextBlock DockPanel.Dock="Top" Text="ROUTE AUDIO" Style="{StaticResource SectionHeaderFirst}" />
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
+                <Button Content="Nuova route" ctl:ButtonIcon.Glyph="{StaticResource IconAdd}" Click="OnAdd" Margin="0,0,8,0" />
+                <Button Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="{StaticResource IconCopy}" Click="OnDuplicate" Margin="0,0,8,0" ToolTip="Duplica la route" />
+                <Button Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="{StaticResource IconDelete}" Click="OnRemove" ToolTip="Rimuovi la route" />
             </StackPanel>
-            <Border Style="{StaticResource Card}" Padding="4">
+            <Border Style="{StaticResource Panel}" Padding="4">
                 <ListBox x:Name="RouteList" DisplayMemberPath="Name" SelectionChanged="OnRouteSelected" Background="Transparent" />
             </Border>
         </DockPanel>
@@ -26,20 +26,20 @@
         <!-- Selected route -->
         <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="Editor">
-                <TextBlock Text="ROUTE" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                <TextBlock Text="ROUTE" Style="{StaticResource SectionHeaderFirst}" />
                 <TextBox ui:ControlHelper.Header="Nome" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
 
                 <ComboBox x:Name="DeviceBox" ui:ControlHelper.Header="Scheda audio" DisplayMemberPath="Label"
                           SelectedValuePath="Id" SelectedValue="{Binding DeviceId}" HorizontalAlignment="Stretch"
                           SelectionChanged="OnDeviceChanged" Margin="0,0,0,4" />
-                <TextBlock x:Name="AsioNote" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12"
+                <TextBlock x:Name="AsioNote" TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"
                            Text="Con ASIO tutte le route usano il driver scelto nella scheda Generale: qui si sceglie solo la coppia di canali." />
 
                 <ComboBox x:Name="PairBox" ui:ControlHelper.Header="Canali di uscita" DisplayMemberPath="Label"
                           SelectedValuePath="First" SelectedValue="{Binding FirstChannel}" Width="200" HorizontalAlignment="Left"
                           Margin="0,0,0,12" />
 
-                <TextBlock Text="LIVELLO" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="LIVELLO" Style="{StaticResource SectionHeader}" />
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -51,11 +51,11 @@
                 </Grid>
                 <CheckBox Content="Muto" IsChecked="{Binding Muted}" Margin="0,0,0,12" />
 
-                <TextBlock Text="SEGNALE IN USCITA" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="SEGNALE IN USCITA" Style="{StaticResource SectionHeader}" />
                 <ctl:LevelMeter x:Name="RouteMeter" Height="8" Margin="0,4,0,2" />
                 <ctl:MeterScale Margin="0,2,0,12" />
 
-                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedTextBrush}"
+                <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}"
                            Text="Le modifiche alle route si applicano subito e si salvano con il workspace. Cambiare scheda o canali ferma le cue in riproduzione (gain e muto no)." />
             </StackPanel>
         </ScrollViewer>
