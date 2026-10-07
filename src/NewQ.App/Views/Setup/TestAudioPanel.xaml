@@ -1,0 +1,111 @@
+<UserControl x:Class="NewQ.App.Views.Setup.TestAudioPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:ctl="clr-namespace:NewQ.App.Controls">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="INVIA ALLE ROUTE" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Tutte" Click="OnSelectAll" Margin="0,0,6,0" />
+                <Button Content="Nessuna" Click="OnSelectNone" />
+            </StackPanel>
+            <Border Style="{StaticResource Card}" Padding="10">
+                <ItemsControl x:Name="RouteChecks">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,2,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Content="{Binding Route.Name}" IsChecked="{Binding Selected}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Status}" VerticalAlignment="Center" FontSize="12"
+                                               Foreground="{StaticResource RunningBrush}" />
+                                </Grid>
+                                <ctl:LevelMeter Level="{Binding LevelDb}" Height="6" Margin="28,2,0,0" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </DockPanel>
+
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,12,0">
+                <TextBlock Text="SEGNALE" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                <WrapPanel>
+                    <RadioButton x:Name="KindSine" Content="Tono sinusoidale" GroupName="Kind" IsChecked="True" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                    <RadioButton x:Name="KindPink" Content="Rumore rosa" GroupName="Kind" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                    <RadioButton x:Name="KindWhite" Content="Rumore bianco" GroupName="Kind" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                    <RadioButton x:Name="KindSweep" Content="Sweep in frequenza" GroupName="Kind" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                </WrapPanel>
+
+                <StackPanel x:Name="TonePanel">
+                    <TextBlock Text="FREQUENZA" Style="{StaticResource SectionTitle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="100" />
+                        </Grid.ColumnDefinitions>
+                        <Slider x:Name="FrequencySlider" Minimum="1.30103" Maximum="4.30103" Value="3" SmallChange="0.01" LargeChange="0.1"
+                                VerticalAlignment="Center" Margin="0,0,12,0" ValueChanged="OnFrequencySlider" />
+                        <TextBox x:Name="FrequencyBox" Grid.Column="1" Text="1000" ui:ControlHelper.PlaceholderText="Hz" LostFocus="OnFrequencyBox" />
+                    </Grid>
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Content="50 Hz" Tag="50" Click="OnFrequencyPreset" Margin="0,0,6,6" />
+                        <Button Content="100 Hz" Tag="100" Click="OnFrequencyPreset" Margin="0,0,6,6" />
+                        <Button Content="440 Hz" Tag="440" Click="OnFrequencyPreset" Margin="0,0,6,6" />
+                        <Button Content="1 kHz" Tag="1000" Click="OnFrequencyPreset" Margin="0,0,6,6" />
+                        <Button Content="4 kHz" Tag="4000" Click="OnFrequencyPreset" Margin="0,0,6,6" />
+                        <Button Content="10 kHz" Tag="10000" Click="OnFrequencyPreset" Margin="0,0,6,6" />
+                    </WrapPanel>
+                </StackPanel>
+
+                <StackPanel x:Name="SweepPanel">
+                    <TextBlock Text="SWEEP (LOGARITMICO, RIPARTE ALLA FINE)" Style="{StaticResource SectionTitle}" />
+                    <UniformGrid Columns="3">
+                        <TextBox x:Name="SweepFromBox" ui:ControlHelper.Header="Da (Hz)" Text="20" Margin="0,0,8,0" LostFocus="OnSettingChanged" />
+                        <TextBox x:Name="SweepToBox" ui:ControlHelper.Header="A (Hz)" Text="20000" Margin="0,0,8,0" LostFocus="OnSettingChanged" />
+                        <TextBox x:Name="SweepSecondsBox" ui:ControlHelper.Header="Durata (s)" Text="10" Margin="0,0,8,0" LostFocus="OnSettingChanged" />
+                    </UniformGrid>
+                </StackPanel>
+
+                <TextBlock Text="LIVELLO (dBFS)" Style="{StaticResource SectionTitle}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="100" />
+                    </Grid.ColumnDefinitions>
+                    <Slider x:Name="LevelSlider" Minimum="-60" Maximum="0" Value="-20" SmallChange="1" LargeChange="6" TickFrequency="6"
+                            TickPlacement="BottomRight" VerticalAlignment="Center" Margin="0,0,12,0" ValueChanged="OnLevelSlider" />
+                    <TextBox x:Name="LevelBox" Grid.Column="1" Text="-20" LostFocus="OnLevelBox" />
+                </Grid>
+                <TextBlock x:Name="LevelWarning" Text="Attenzione: livello alto. Abbassa l'impianto prima di avviare." Foreground="{StaticResource PanicBrush}"
+                           FontSize="12" Margin="0,4,0,0" Visibility="Collapsed" />
+
+                <TextBlock Text="CANALI" Style="{StaticResource SectionTitle}" />
+                <WrapPanel>
+                    <RadioButton x:Name="ChBoth" Content="Entrambi" GroupName="Channels" IsChecked="True" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                    <RadioButton x:Name="ChLeft" Content="Solo sinistro" GroupName="Channels" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                    <RadioButton x:Name="ChRight" Content="Solo destro" GroupName="Channels" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                    <RadioButton x:Name="ChAlternate" Content="Alternati (1 s)" GroupName="Channels" Checked="OnSettingChanged" Margin="0,0,16,6" />
+                </WrapPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                    <Button x:Name="StartButton" AutomationProperties.Name="Avvia test audio" Content="▶  Avvia sulle route selezionate" Click="OnStart" Style="{StaticResource PrimaryButton}" MinWidth="220" Margin="0,0,8,0" />
+                    <Button AutomationProperties.Name="Ferma test audio" Content="■  Ferma tutto" Click="OnStopAll" MinWidth="140" />
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,12,0,0"
+                           Text="I test escono dopo il gain della route e il volume master. Le modifiche a tipo, frequenza, livello e canali si applicano subito ai test in corso. Panic, la modalità Safe e la chiusura di questa finestra li fermano." />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

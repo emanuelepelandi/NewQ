@@ -91,7 +91,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         GoCommand = new RelayCommand(() => Engine.Go());
         StopAllCommand = new RelayCommand(() => Engine.StopAll(TimeSpan.Zero));
-        PanicCommand = new RelayCommand(() => Engine.Panic());
+        PanicCommand = new RelayCommand(() => { Engine.Panic(); StopTestSignals(); });
         TogglePauseCommand = new RelayCommand(TogglePause);
         StopCueCommand = new RelayCommand(p => { if (p is Cue c) Engine.Stop(c, TimeSpan.Zero); });
         TogglePauseCueCommand = new RelayCommand(p => { if (p is Cue c) { Engine.TogglePause(c); OnPropertyChanged(nameof(IsPaused)); } });
@@ -249,6 +249,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (!SetField(ref _isSafeMode, value)) return;
             OnPropertyChanged(nameof(CanEdit));
             OnPropertyChanged(nameof(WindowTitle));
+            if (value) StopTestSignals(); // nothing from the setup tools may stay on during the show
             CommandManager.InvalidateRequerySuggested();
             AddLog(EngineLogLevel.Info, value
                 ? "Modalità Safe attivata: modifiche bloccate."
@@ -475,6 +476,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void ReconfigureAudio()
     {
         Engine.StopAll(TimeSpan.Zero);
+        // Test tones live in the old graph: drop them (the test page shows they stopped).
+        foreach (var signal in _testSignals) signal.Detach();
+        _testSignals.Clear();
         _audio.Configure(_settings, Workspace.AudioRoutes.ToList());
         AudioStatus = _audio.Description;
     }
@@ -708,6 +712,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         cue.FilePath = Workspace.MakePortablePath(dialog.FileName);
         if (string.IsNullOrWhiteSpace(cue.Name) || cue.Name == cue.TypeName)
             cue.Name = Path.GetFileNameWithoutExtension(dialog.FileName);
+    }
+
+    // ------------------------------------------------------------------ setup (routes, test signals)
+
+    private readonly List<TestSignal> _testSignals = new();
+
+    /// <summary>What the setup pages need: workspace routes, audio engine, compositor, devices.</summary>
+    public Views.Setup.SetupContext CreateSetupContext() => new(Workspace, _audio, _hub, _settings, Screens, _testSignals, AddLog);
+
+    /// <summary>Silences every test tone and removes every test pattern (Panic, Safe mode, closing the setup).</summary>
+    public void StopTestSignals()
+    {
+        foreach (var signal in _testSignals) signal.Stop();
+        _testSignals.Clear();
+        _hub.ClearTestPatterns();
+        _hub.IdentifyOutputs = false;
     }
 
     // ------------------------------------------------------------------ show check

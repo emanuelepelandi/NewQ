@@ -269,6 +269,10 @@
                 <MenuItem Header="Show Check…" InputGestureText="Ctrl+K" Command="{Binding ShowCheckCommand}" />
                 <Separator />
                 <MenuItem Header="Impostazioni…" Click="OnSettingsClick" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Route audio…" Click="OnSetupTabClick" Tag="1" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Route video…" Click="OnSetupTabClick" Tag="2" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Test tone e rumore rosa…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />
                 <MenuItem Header="Aggiorna dispositivi MIDI e schermi" Command="{Binding RefreshDevicesCommand}" />
                 <MenuItem Header="Chiudi uscite video" Command="{Binding CloseOutputsCommand}" />
             </MenuItem>

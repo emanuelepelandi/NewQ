@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -143,11 +143,21 @@ public partial class MainWindow : Window
             ViewModel.AddFiles(files);
     }
 
-    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    private void OnSettingsClick(object sender, RoutedEventArgs e) => OpenSettings(0);
+
+    private void OnSetupTabClick(object sender, RoutedEventArgs e)
+        => OpenSettings(int.Parse((string)((FrameworkElement)sender).Tag, System.Globalization.CultureInfo.InvariantCulture));
+
+    /// <summary>Opens the settings on a tab: 0 general, 1 audio routes, 2 video routes, 3 video tests, 4 audio tests.</summary>
+    public void OpenSettings(int tab)
     {
-        if (!ViewModel.CanEdit) return; // Safe mode: no device changes during the show
-        var dialog = new SettingsWindow(ViewModel.Settings.Clone(), ViewModel.Workspace.Settings, ViewModel.MidiDevices) { Owner = this };
-        if (dialog.ShowDialog() == true)
+        if (!ViewModel.CanEdit) return; // Safe mode: no device or route changes during the show
+        var dialog = new SettingsWindow(ViewModel.Settings.Clone(), ViewModel.Workspace.Settings, ViewModel.MidiDevices,
+            ViewModel.CreateSetupContext(), tab) { Owner = this };
+        bool? result;
+        try { result = dialog.ShowDialog(); }
+        finally { ViewModel.StopTestSignals(); } // test tones and patterns never outlive the setup window
+        if (result == true)
             ViewModel.ApplySettings(dialog.Result);
     }
 

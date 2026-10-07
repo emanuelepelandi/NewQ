@@ -1,0 +1,63 @@
+<UserControl x:Class="NewQ.App.Views.Setup.AudioRoutesPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:ctl="clr-namespace:NewQ.App.Controls">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Route list -->
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="ROUTE AUDIO" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="+ Route" Click="OnAdd" Margin="0,0,6,0" />
+                <Button Content="Duplica" Click="OnDuplicate" Margin="0,0,6,0" />
+                <Button Content="Rimuovi" Click="OnRemove" />
+            </StackPanel>
+            <Border Style="{StaticResource Card}" Padding="4">
+                <ListBox x:Name="RouteList" DisplayMemberPath="Name" SelectionChanged="OnRouteSelected" Background="Transparent" />
+            </Border>
+        </DockPanel>
+
+        <!-- Selected route -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="Editor">
+                <TextBlock Text="ROUTE" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                <TextBox ui:ControlHelper.Header="Nome" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                <ComboBox x:Name="DeviceBox" ui:ControlHelper.Header="Scheda audio" DisplayMemberPath="Label"
+                          SelectedValuePath="Id" SelectedValue="{Binding DeviceId}" HorizontalAlignment="Stretch"
+                          SelectionChanged="OnDeviceChanged" Margin="0,0,0,4" />
+                <TextBlock x:Name="AsioNote" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12"
+                           Text="Con ASIO tutte le route usano il driver scelto nella scheda Generale: qui si sceglie solo la coppia di canali." />
+
+                <ComboBox x:Name="PairBox" ui:ControlHelper.Header="Canali di uscita" DisplayMemberPath="Label"
+                          SelectedValuePath="First" SelectedValue="{Binding FirstChannel}" Width="200" HorizontalAlignment="Left"
+                          Margin="0,0,0,12" />
+
+                <TextBlock Text="LIVELLO" Style="{StaticResource SectionTitle}" />
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="90" />
+                    </Grid.ColumnDefinitions>
+                    <Slider Minimum="-60" Maximum="12" SmallChange="0.5" LargeChange="3" TickFrequency="6" TickPlacement="BottomRight"
+                            Value="{Binding GainDb}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <TextBox Grid.Column="1" Text="{Binding GainDb, StringFormat=0.0}" ui:ControlHelper.Header="Gain (dB)" />
+                </Grid>
+                <CheckBox Content="Muto" IsChecked="{Binding Muted}" Margin="0,0,0,12" />
+
+                <TextBlock Text="SEGNALE IN USCITA" Style="{StaticResource SectionTitle}" />
+                <ctl:LevelMeter x:Name="RouteMeter" Height="8" Margin="0,4,0,2" />
+                <ctl:MeterScale Margin="0,2,0,12" />
+
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedTextBrush}"
+                           Text="Le modifiche alle route si applicano subito e si salvano con il workspace. Cambiare scheda o canali ferma le cue in riproduzione (gain e muto no)." />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

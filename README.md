@@ -6,9 +6,9 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 
 | Cue | Cosa fa |
 |---|---|
-| **Audio** | WAV, MP3, AIFF, FLAC, M4A/AAC, WMA. Volume in dB, inizio/fine (trim), loop, fade in, fade out finale. Mixer sempre attivo per una latenza di GO minima. Uscita **WASAPI** (condivisa o esclusiva) o **ASIO**. |
-| **Video** | Motore **libVLC** (lo stesso di VLC): H.264, HEVC, VP9, AV1, ProRes, HAP, DNxHD; contenitori MP4/MOV/MKV/AVI/WMV…, con decodifica hardware. Precaricamento automatico: il primo fotogramma appare circa 70 ms dopo il GO, poi la riproduzione è fluida a 60 fps anche con monitor a frequenze diverse. Uscita a schermo intero su qualsiasi monitor o in una finestra di anteprima. Fade da e verso il nero, volume, loop senza stacchi. |
-| **Immagine** | PNG/JPG/BMP/GIF/TIFF sugli stessi output dei video (sempre sopra ai video), con layer, fade e durata. Decodificate in anticipo in background. |
+| **Audio** | WAV, MP3, AIFF, FLAC, M4A/AAC, WMA. Volume in dB, inizio/fine (trim), loop, fade in, fade out finale. Mixer sempre attivo per una latenza di GO minima. Suona su una **route audio**. Uscita **WASAPI** (condivisa o esclusiva) o **ASIO**. |
+| **Video** | Motore **libVLC** (lo stesso di VLC): H.264, HEVC, VP9, AV1, ProRes, HAP, DNxHD; contenitori MP4/MOV/MKV/AVI/WMV…, con decodifica hardware. Precaricamento automatico: il primo fotogramma appare circa 70 ms dopo il GO, poi la riproduzione è fluida a 60 fps anche con monitor a frequenze diverse. Composizione su **GPU** (Direct3D 11) verso le **route video**. Fade da e verso il nero, volume, loop senza stacchi; l'audio del video esce sulla scheda della sua route audio. |
+| **Immagine** | PNG/JPG/BMP/GIF/TIFF sulle stesse route dei video (sempre sopra ai video), con layer, fade e durata. Decodificate in anticipo in background. |
 | **MIDI** | Note On/Off, Control Change, Program Change, Pitch Bend, **MIDI Show Control** (GO/STOP/RESUME… per mixer luci e audio), **SysEx** raw. |
 | **Rete** | **OSC su UDP**, **OSC su TCP** (framing SLIP, OSC 1.1), **testo/byte su UDP o TCP** con escape (`\r`, `\n`, `\xHH`), per esempio per proiettori PJLink o media server. |
 | **Attesa** | Pausa temporizzata nella sequenza. |
@@ -41,6 +41,25 @@ Un doppio clic su un problema seleziona la cue interessata.
 **Controllo remoto OSC** (UDP, porta 53000 di default), con indirizzi compatibili QLab:
 `/go`, `/stop`, `/panic`, `/pause`, `/resume`, `/playhead/next`, `/playhead/previous`, `/cue/{n}/start`, `/cue/{n}/stop`, `/cue/{n}/select` (accettato anche il prefisso `/newq`).
 
+### Route, test e configurazione delle uscite
+
+Le cue non scelgono più un monitor o una scheda audio: scelgono una **route**. Le route si configurano in **Strumenti → Impostazioni** (o direttamente dalle voci *Route audio…*, *Route video…*, *Test pattern video…*, *Test tone e rumore rosa…*). Le modifiche si applicano subito e si salvano con il workspace; i file della versione precedente vengono convertiti all'apertura.
+
+**Route audio**: nome, scheda audio (WASAPI; con ASIO vale il driver scelto in *Generale*), coppia di canali di uscita in base ai canali reali della scheda, **gain di uscita** da −60 a +12 dB e muto, con meter dal vivo. Gain e muto non interrompono ciò che suona; cambiare scheda o canali ferma le cue in corso.
+
+**Route video**: ogni route ha un **canvas** (risoluzione) e una o più **uscite**, ciascuna su un monitor/proiettore o nella finestra di anteprima. Per ogni uscita:
+- **Porzione del canvas** mostrata e **posizione/scala** sullo schermo.
+- **Keystone / corner pin**: si trascinano i 4 angoli nell'editor (Ctrl = trascinamento fine, frecce = 0,1 %, Maiusc+frecce = 1 %, Canc = azzera).
+- **Warping**: griglia fino a 8×8 di punti interpolati in modo morbido (Catmull-Rom).
+- **Edge blending** sui quattro lati, con gamma del proiettore e forma della curva. *Affianca uscite in blend* imposta in un clic porzioni, sovrapposizione e blend per più proiettori affiancati.
+- *Griglia di test su questa route* e *Identifica uscite* (numero e cornice colorata su ogni uscita).
+
+**Test video**: si inviano alle route selezionate pattern generati dalla GPU, ognuno per un controllo preciso: **fluidità** in stile Resolume (barre e quadrato in moto costante, striscia di 60 frame, contatore: scatti, judder, frame persi), **griglia** di allineamento (keystone, warp, fuoco, overscan), **barre colore**, **rampa di grigi** (gamma, nero, banding), **scacchiera**, campiture piene **bianco / grigio 50 % / nero / rosso / verde / blu** (uniformità, pixel difettosi, zone di blend).
+
+**Test audio**: **tono sinusoidale** (20 Hz–20 kHz, preset rapidi), **rumore rosa**, **rumore bianco** e **sweep logaritmico** (da/a/durata), livello in dBFS (−20 di default, avviso sopra −10), su entrambi i canali, uno solo o **alternati** ogni secondo per verificare il cablaggio. Le modifiche valgono subito sui test in corso; ogni route mostra il proprio meter.
+
+I test non sopravvivono mai allo spettacolo: **Panic**, l'attivazione di **Safe** e la chiusura della finestra li spengono tutti. Lo **Show Check** segnala route audio su schede non collegate o canali inesistenti, route mute, route video senza uscite o su schermi non collegati, nomi duplicati e cue che puntano a route rimosse.
+
 ### Comandi da tastiera
 
 | Tasto | Azione |
@@ -63,12 +82,15 @@ NewQ.sln
 ├─ src/NewQ.Core          (.NET, nessuna dipendenza da Windows: testabile)
 │   ├─ Model/             Cue e workspace (JSON *.newq, percorsi relativi al file)
 │   ├─ Engine/            CueEngine: playhead, GO, pre/post-wait, continue, fade, stop, panic
+│   ├─ Signals/           Generatori di toni, rumore rosa/bianco e sweep
+│   ├─ Video/             Geometria delle uscite: omografia (keystone), warp, mesh
 │   ├─ Network/           OSC (encoder/decoder, bundle, SLIP), player UDP/TCP, listener remoto
 │   └─ Midi/              Costruzione messaggi MIDI/MSC/SysEx, player astratto
 ├─ src/NewQ.App           (WPF, Windows)
-│   ├─ Audio/             NAudio: mixer, voci con fade calcolati sui campioni, WASAPI/ASIO
-│   ├─ Video/             Uscite per monitor: video libVLC in finestre native, più un livello WPF
-│   │                     trasparente sopra (immagini, fade); precaricamento dei video
+│   ├─ Audio/             NAudio: un bus per route audio, voci con fade sui campioni, test signal, WASAPI/ASIO
+│   ├─ Video/             Decodifica libVLC in memoria e compositore GPU (Direct3D 11): un thread di
+│   │                     render per schermo, geometria delle uscite, edge blend, test pattern
+│   ├─ Views/Setup/       Pagine route audio/video e test, editor di keystone e warp
 │   ├─ Midi/              Uscite MIDI WinMM
 │   ├─ ViewModels/ Views/ Interfaccia (tema scuro ModernWpf)
 │   └─ Settings/          Impostazioni della macchina (%AppData%\NewQ\settings.json)
@@ -101,17 +123,17 @@ Crea `dist\NewQ\NewQ.exe` e `dist\NewQ-win-x64.zip`: una build *self-contained* 
 ## Roadmap suggerita
 
 1. **Passaggio a .NET 8 LTS**: .NET 7 non è più supportato. Basta installare l'SDK 8 e cambiare `net7.0` in `net8.0` nei `.csproj`.
-2. **Patch di uscita audio** multicanale (routing per cue su più uscite ASIO) e preload dei file per un GO ancora più rapido.
+2. Preload dei file audio per un GO ancora più rapido; audio dei video anche su ASIO.
 3. **Group cue** (playlist, start simultaneo) e cue list multiple.
 4. **Patch di rete**: destinazioni con nome (es. "Banco luci") condivise da più cue.
 5. Trigger da **MIDI in** e **hotkey** per singola cue.
-6. Video: crossfade diretto tra due video (oggi il fade passa dal nero), edge-blending, audio dei video sulla scheda scelta in NewQ.
+6. Video: crossfade diretto tra due video (oggi il fade passa dal nero), maschere per uscita, salvataggio e richiamo di preset di geometria.
 7. Installer MSI/MSIX con associazione dei file `.newq`.
 
-TO DO
-1. Pagina nelle impostazioni con "Route video" e "Route audio", e selezione nelle cue solo della route
-2. In "Route video" si impostano le route con le relative uscite, e possibilità di scaling e riposizionamento, warping, keystone correction, edge blending.
-3. In "Route audio" si impostano le route con le relative uscite, e possibilità di modificare
-il gain in uscita verso la route
-4. Pagina per generare e mandare test pattern alle route video. I test pattern devono essere selezionabili tra diversi tipi, ognuno che sia utile al test di certi parametri. Includere anche fluidità in stile Resolume
-5. Pagina per generare e mandare test tones e rumore rosa alle route audio. Test tone anche come frequency sweep. 
+### TO DO (completato nel branch `routes-and-test-signals`)
+
+- [x] Pagina nelle impostazioni con "Route video" e "Route audio"; nelle cue si sceglie solo la route.
+- [x] Route video con uscite, scaling e riposizionamento, warping, keystone correction, edge blending.
+- [x] Route audio con uscite e gain in uscita verso la route.
+- [x] Pagina per generare e mandare test pattern alle route video, di diversi tipi, inclusa la fluidità in stile Resolume.
+- [x] Pagina per generare e mandare test tone, rumore rosa e sweep in frequenza alle route audio.

@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using NewQ.App.Audio;
 using NewQ.App.Settings;
+using NewQ.App.Views.Setup;
 using NewQ.Core;
 using NewQ.Core.Model;
 
@@ -17,9 +18,15 @@ public partial class SettingsWindow : Window
 
     private readonly WorkspaceSettings _workspaceSettings;
 
-    public SettingsWindow(AppSettings settings, WorkspaceSettings workspaceSettings, IReadOnlyList<string> midiDevices)
+    public SettingsWindow(AppSettings settings, WorkspaceSettings workspaceSettings, IReadOnlyList<string> midiDevices,
+        SetupContext setup, int initialTab = 0)
     {
         InitializeComponent();
+        AudioRoutesPage.Initialize(setup);
+        VideoRoutesPage.Initialize(setup);
+        TestVideoPage.Initialize(setup);
+        TestAudioPage.Initialize(setup);
+        Tabs.SelectedIndex = initialTab;
         Result = settings;
         _workspaceSettings = workspaceSettings;
 
