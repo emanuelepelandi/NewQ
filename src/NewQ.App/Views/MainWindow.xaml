@@ -1,4 +1,4 @@
-<Window x:Class="NewQ.App.Views.MainWindow"
+﻿<Window x:Class="NewQ.App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.modernwpf.com/2019"
@@ -66,11 +66,18 @@
             </DockPanel>
         </DataTemplate>
 
-        <DataTemplate x:Key="ScreenPicker">
-            <ComboBox ui:ControlHelper.Header="Uscita"
-                      ItemsSource="{Binding DataContext.Screens, RelativeSource={RelativeSource AncestorType=Window}}"
-                      DisplayMemberPath="Label" SelectedValuePath="Index"
-                      SelectedValue="{Binding ScreenIndex}" />
+        <DataTemplate x:Key="VideoRoutePicker">
+            <ComboBox ui:ControlHelper.Header="Route video"
+                      ItemsSource="{Binding DataContext.Workspace.VideoRoutes, RelativeSource={RelativeSource AncestorType=Window}}"
+                      DisplayMemberPath="Name" SelectedValuePath="Id"
+                      SelectedValue="{Binding VideoRouteId}" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="AudioRoutePicker">
+            <ComboBox ui:ControlHelper.Header="Route audio"
+                      ItemsSource="{Binding DataContext.Workspace.AudioRoutes, RelativeSource={RelativeSource AncestorType=Window}}"
+                      DisplayMemberPath="Name" SelectedValuePath="Id"
+                      SelectedValue="{Binding AudioRouteId}" />
         </DataTemplate>
 
         <!-- ======================= Inspector templates ======================= -->
@@ -79,6 +86,7 @@
             <StackPanel>
                 <TextBlock Text="AUDIO" Style="{StaticResource SectionTitle}" />
                 <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" />
                 <UniformGrid Columns="2">
                     <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
                     <CheckBox Content="Loop" IsChecked="{Binding Loop}" VerticalAlignment="Bottom" />
@@ -97,13 +105,14 @@
             <StackPanel>
                 <TextBlock Text="VIDEO" Style="{StaticResource SectionTitle}" />
                 <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ScreenPicker}" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" />
                 <UniformGrid Columns="2">
                     <TextBox ui:ControlHelper.Header="Layer" Text="{Binding Layer}" />
                     <ComboBox ui:ControlHelper.Header="Adattamento" ItemsSource="{x:Static c:EnumSources.FitModes}"
                               SelectedItem="{Binding FitMode}" ItemTemplate="{StaticResource EnumItem}" />
                     <TextBox ui:ControlHelper.Header="Opacità (0–1)" Text="{Binding Opacity}" />
-                    <TextBox ui:ControlHelper.Header="Volume (dB, max 0)" Text="{Binding VolumeDb}" />
+                    <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
                     <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
                     <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
                     <CheckBox Content="Loop" IsChecked="{Binding Loop}" />
@@ -115,7 +124,7 @@
             <StackPanel>
                 <TextBlock Text="IMMAGINE" Style="{StaticResource SectionTitle}" />
                 <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ScreenPicker}" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" />
                 <UniformGrid Columns="2">
                     <TextBox ui:ControlHelper.Header="Layer" Text="{Binding Layer}" />
                     <ComboBox ui:ControlHelper.Header="Adattamento" ItemsSource="{x:Static c:EnumSources.FitModes}"

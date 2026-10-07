@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -37,7 +37,6 @@ public partial class SettingsWindow : Window
         AsioDriverBox.ItemsSource = asio;
         AsioDriverBox.SelectedItem = asio.FirstOrDefault(d => d == settings.AsioDriverName) ?? asio.FirstOrDefault();
         SampleRateBox.Text = settings.AsioSampleRate.ToString(CultureInfo.CurrentCulture);
-        AsioOffsetBox.Text = (settings.AsioOutputOffset + 1).ToString(CultureInfo.CurrentCulture);
 
         MasterBox.Text = settings.MasterVolumeDb.ToString(CultureInfo.CurrentCulture);
         MidiBox.ItemsSource = midiDevices;
@@ -73,7 +72,6 @@ public partial class SettingsWindow : Window
             Result.WasapiExclusive = ExclusiveBox.IsChecked == true;
             Result.AsioDriverName = AsioDriverBox.SelectedItem as string;
             Result.AsioSampleRate = ParseInt(SampleRateBox, "Frequenza");
-            Result.AsioOutputOffset = Math.Max(0, ParseInt(AsioOffsetBox, "Prima uscita") - 1);
             Result.MasterVolumeDb = Math.Clamp(ParseDouble(MasterBox, "Volume master"), Decibels.Floor, 12);
             Result.DefaultMidiDevice = MidiBox.Text.Trim();
             Result.OscInputEnabled = OscEnabledBox.IsChecked == true;

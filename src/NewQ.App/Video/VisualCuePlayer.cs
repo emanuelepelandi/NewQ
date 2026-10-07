@@ -33,25 +33,26 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
 
     // ------------------------------------------------------------------ preload
 
-    public void Preload(Cue cue, Func<string, string> resolvePath)
+    public void Preload(Cue cue, Workspace workspace)
     {
         var visual = (VisualCue)cue;
-        var path = ResolveExisting(visual, resolvePath);
+        var path = ResolveExisting(visual, workspace.ResolvePath);
+        var screen = ScreenOf(visual, workspace);
 
         switch (visual)
         {
             case VideoCue video:
                 if (_videos.TryGetValue(video.Id, out var prepared))
                 {
-                    if (prepared.IsUsableFor(path, video.ScreenIndex, video.Loop)) return;
+                    if (prepared.IsUsableFor(path, screen, video.Loop)) return;
                     prepared.Dispose();
                 }
-                _videos[video.Id] = new PreparedVideo(path, video.ScreenIndex, _outputs.GetOrCreate(video.ScreenIndex), video.Loop);
+                _videos[video.Id] = new PreparedVideo(path, screen, _outputs.GetOrCreate(screen), video.Loop);
                 break;
 
             case ImageCue:
                 if (!_images.ContainsKey(path)) _images[path] = Task.Run(() => LoadBitmap(path));
-                _outputs.GetOrCreate(visual.ScreenIndex); // have the output window ready before GO
+                _outputs.GetOrCreate(screen); // have the output window ready before GO
                 break;
         }
     }
@@ -75,28 +76,33 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
     {
         var visual = (VisualCue)cue;
         var path = ResolveExisting(visual, context.ResolvePath);
+        var screen = ScreenOf(visual, context.Workspace);
 
         switch (visual)
         {
             case VideoCue video:
-                if (_videos.Remove(video.Id, out var prepared) && !prepared.IsUsableFor(path, video.ScreenIndex, video.Loop))
+                if (_videos.Remove(video.Id, out var prepared) && !prepared.IsUsableFor(path, screen, video.Loop))
                 {
                     prepared.Dispose();
                     prepared = null;
                 }
-                prepared ??= new PreparedVideo(path, video.ScreenIndex, _outputs.GetOrCreate(video.ScreenIndex), video.Loop);
+                prepared ??= new PreparedVideo(path, screen, _outputs.GetOrCreate(screen), video.Loop);
                 return new VideoLayer(video, prepared, context);
 
             case ImageCue image:
                 var bitmap = _images.TryGetValue(path, out var task) && task.IsCompletedSuccessfully
                     ? task.Result
                     : LoadBitmap(path);
-                return new ImageLayer(image, bitmap, _outputs.GetOrCreate(image.ScreenIndex), context);
+                return new ImageLayer(image, bitmap, _outputs.GetOrCreate(screen), context);
 
             default:
                 throw new NotSupportedException();
         }
     }
+
+    /// <summary>Interim (until the route compositor): the monitor of the first output of the cue's route.</summary>
+    private static int ScreenOf(VisualCue cue, Workspace workspace)
+        => workspace.ResolveVideoRoute(cue.VideoRouteId).Outputs.FirstOrDefault()?.ScreenIndex ?? VideoOutput.PreviewWindow;
 
     private static string ResolveExisting(VisualCue cue, Func<string, string> resolvePath)
     {

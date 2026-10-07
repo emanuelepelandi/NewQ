@@ -288,7 +288,7 @@ public class CueEngineTests
         public List<string> Kept { get; private set; } = new();
         public bool CanPlay(Cue cue) => cue is VideoCue;
         public IActiveCue Start(Cue cue, CueContext context) { context.Completed(); return InstantActiveCue.Instance; }
-        public void Preload(Cue cue, Func<string, string> resolvePath) => Preloaded.Add(cue.Number);
+        public void Preload(Cue cue, Workspace workspace) => Preloaded.Add(cue.Number);
         public void ReleasePreloads(IReadOnlyCollection<Cue> keep) => Kept = keep.Select(c => c.Number).ToList();
     }
 

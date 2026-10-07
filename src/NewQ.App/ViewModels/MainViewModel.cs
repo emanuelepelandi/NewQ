@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -330,15 +330,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void LoadWorkspace(Workspace workspace)
     {
+        // Version-1 files (cues targeting a monitor) are converted to routes; new workspaces get default routes.
+        var converted = workspace.FilePath is not null && workspace.FormatVersion < Workspace.CurrentFormatVersion;
+        workspace.EnsureRoutes(System.Windows.Forms.Screen.AllScreens.Length);
+
         UnhookWorkspace(Engine.Workspace);
         Engine.LoadWorkspace(workspace);
         HookWorkspace(workspace);
+        ReconfigureAudio(); // each workspace has its own audio routes
         foreach (var cue in workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
-        IsDirty = false;
+        IsDirty = converted; // the converted file must be saved to keep the routes
         OnPropertyChanged(nameof(Workspace));
         OnPropertyChanged(nameof(SelectedCue));
         OnPropertyChanged(nameof(WindowTitle));
         StatusText = workspace.FilePath is null ? "Nuovo workspace" : $"Aperto {workspace.FilePath}";
+        if (converted)
+            AddLog(EngineLogLevel.Info, "Workspace convertito alle route audio/video: salvalo per mantenere la conversione.");
     }
 
     private void HookWorkspace(Workspace workspace)
@@ -346,6 +353,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         workspace.Cues.CollectionChanged += OnCuesChanged;
         workspace.Settings.PropertyChanged += OnSettingsChanged;
         foreach (var cue in workspace.Cues) cue.PropertyChanged += OnCuePropertyChanged;
+        workspace.AudioRoutes.CollectionChanged += OnAudioRoutesChanged;
+        foreach (var route in workspace.AudioRoutes) route.PropertyChanged += OnAudioRouteChanged;
+        workspace.VideoRoutes.CollectionChanged += OnVideoRoutesChanged;
     }
 
     private void UnhookWorkspace(Workspace workspace)
@@ -353,6 +363,46 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         workspace.Cues.CollectionChanged -= OnCuesChanged;
         workspace.Settings.PropertyChanged -= OnSettingsChanged;
         foreach (var cue in workspace.Cues) cue.PropertyChanged -= OnCuePropertyChanged;
+        workspace.AudioRoutes.CollectionChanged -= OnAudioRoutesChanged;
+        foreach (var route in workspace.AudioRoutes) route.PropertyChanged -= OnAudioRouteChanged;
+        workspace.VideoRoutes.CollectionChanged -= OnVideoRoutesChanged;
+    }
+
+    // ------------------------------------------------------------------ audio routes
+
+    private void OnAudioRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null) foreach (AudioRoute r in e.OldItems) r.PropertyChanged -= OnAudioRouteChanged;
+        if (e.NewItems is not null) foreach (AudioRoute r in e.NewItems) r.PropertyChanged += OnAudioRouteChanged;
+        IsDirty = true;
+        ReconfigureAudio();
+    }
+
+    private void OnAudioRouteChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        IsDirty = true;
+        switch (e.PropertyName)
+        {
+            case nameof(AudioRoute.GainDb) or nameof(AudioRoute.Muted):
+                _audio.UpdateLevels(Workspace.AudioRoutes.ToList(), _settings.MasterVolumeDb); // live, no interruption
+                break;
+            case nameof(AudioRoute.DeviceId) or nameof(AudioRoute.FirstChannel):
+                ReconfigureAudio();
+                break;
+        }
+    }
+
+    private void OnVideoRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e) => IsDirty = true;
+
+    /// <summary>
+    /// Rebuilds the audio graph (sound cards, channel pairs). Everything playing is stopped first, so the engine
+    /// never waits for voices that were dropped with the old graph.
+    /// </summary>
+    private void ReconfigureAudio()
+    {
+        Engine.StopAll(TimeSpan.Zero);
+        _audio.Configure(_settings, Workspace.AudioRoutes.ToList());
+        AudioStatus = _audio.Description;
     }
 
     private void OnCuesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -453,8 +503,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Cue cue = kind switch
         {
             "audio" => new AudioCue(),
-            "video" => new VideoCue { ScreenIndex = DefaultScreen() },
-            "image" => new ImageCue { ScreenIndex = DefaultScreen() },
+            "video" => new VideoCue(),
+            "image" => new ImageCue(),
             "midi" => new MidiCue(),
             "network" => new NetworkCue(),
             "wait" => new WaitCue(),
@@ -466,15 +516,23 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return cue;
     }
 
-    /// <summary>Last connected monitor (usually the projector); preview window with a single monitor.</summary>
-    private static int DefaultScreen()
+    /// <summary>New cues get the first route explicitly, so the inspector shows which one they use.</summary>
+    private void AssignDefaultRoutes(Cue cue)
     {
-        var count = System.Windows.Forms.Screen.AllScreens.Length;
-        return count > 1 ? count - 1 : VisualCue.PreviewWindow;
+        switch (cue)
+        {
+            case AudioCue a: a.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id; break;
+            case VideoCue v:
+                v.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id;
+                v.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id;
+                break;
+            case ImageCue i: i.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id; break;
+        }
     }
 
     private void AddCue(Cue cue)
     {
+        AssignDefaultRoutes(cue);
         if (string.IsNullOrEmpty(cue.Number)) cue.Number = Workspace.NextCueNumber();
         var index = SelectedCue is null ? Workspace.Cues.Count : Workspace.Cues.IndexOf(SelectedCue) + 1;
         Workspace.Cues.Insert(index, cue);
@@ -493,8 +551,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var ext = Path.GetExtension(path).ToLowerInvariant();
             MediaCue? cue =
                 AudioExtensions.Contains(ext) ? new AudioCue() :
-                VideoExtensions.Contains(ext) ? new VideoCue { ScreenIndex = DefaultScreen() } :
-                ImageExtensions.Contains(ext) ? new ImageCue { ScreenIndex = DefaultScreen() } : null;
+                VideoExtensions.Contains(ext) ? new VideoCue() :
+                ImageExtensions.Contains(ext) ? new ImageCue() : null;
             if (cue is null)
             {
                 AddLog(EngineLogLevel.Warning, $"Formato non supportato: {Path.GetFileName(path)}");
@@ -597,7 +655,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     /// <summary>Snapshot of this machine (outputs, devices) for the Show Check.</summary>
     public Core.Check.IShowCheckEnvironment CreateCheckEnvironment()
         => new Check.AppShowCheckEnvironment(System.Windows.Forms.Screen.AllScreens.Length, _audio.IsReady,
-                                             MidiDevices, _settings.DefaultMidiDevice);
+                                             MidiDevices, _settings.DefaultMidiDevice)
+        {
+            AudioRouteProblem = _audio.CheckRoute,
+        };
 
     // ------------------------------------------------------------------ devices / settings
 
@@ -620,8 +681,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void ApplyDeviceSettings()
     {
-        _audio.Initialize(_settings);
-        AudioStatus = _audio.Description;
+        ReconfigureAudio();
 
         _oscListener?.Dispose();
         _oscListener = null;

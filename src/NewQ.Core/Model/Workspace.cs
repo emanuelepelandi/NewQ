@@ -20,9 +20,64 @@ public sealed class Workspace
 {
     public const string FileExtension = ".newq";
 
-    public int FormatVersion { get; set; } = 1;
+    /// <summary>2 = audio/video routes (version 1 files are converted on load).</summary>
+    public const int CurrentFormatVersion = 2;
+
+    public int FormatVersion { get; set; } = CurrentFormatVersion;
     public WorkspaceSettings Settings { get; set; } = new();
+    public ObservableCollection<AudioRoute> AudioRoutes { get; set; } = new();
+    public ObservableCollection<VideoRoute> VideoRoutes { get; set; } = new();
     public ObservableCollection<Cue> Cues { get; set; } = new();
+
+    // ------------------------------------------------------------------ routes
+
+    /// <summary>The route with this id, or the first route when the id is null or unknown.</summary>
+    public AudioRoute ResolveAudioRoute(Guid? id)
+        => AudioRoutes.FirstOrDefault(r => r.Id == id) ?? AudioRoutes.FirstOrDefault()
+           ?? throw new InvalidOperationException("Il workspace non ha route audio.");
+
+    /// <summary>The route with this id, or the first route when the id is null or unknown.</summary>
+    public VideoRoute ResolveVideoRoute(Guid? id)
+        => VideoRoutes.FirstOrDefault(r => r.Id == id) ?? VideoRoutes.FirstOrDefault()
+           ?? throw new InvalidOperationException("Il workspace non ha route video.");
+
+    /// <summary>
+    /// Makes sure the workspace has at least one audio and one video route, and converts version-1 files
+    /// (cues that targeted a monitor index) into routes. Safe to call more than once.
+    /// </summary>
+    /// <param name="screenCount">Monitors connected now, used to pick the default video output.</param>
+    public void EnsureRoutes(int screenCount)
+    {
+        if (AudioRoutes.Count == 0)
+            AudioRoutes.Add(new AudioRoute { Name = "Principale" });
+
+        // Version 1: each distinct monitor used by a cue becomes a route with one output on that monitor.
+        foreach (var cue in Cues.OfType<VisualCue>().Where(c => c.LegacyScreenIndex is not null))
+        {
+            var screen = cue.LegacyScreenIndex!.Value;
+            var route = VideoRoutes.FirstOrDefault(r => r.Outputs.Count == 1 && r.Outputs[0].ScreenIndex == screen);
+            if (route is null)
+            {
+                route = CreateVideoRoute(screen);
+                VideoRoutes.Add(route);
+            }
+            cue.VideoRouteId = route.Id;
+            cue.LegacyScreenIndex = null;
+        }
+
+        if (VideoRoutes.Count == 0)
+            VideoRoutes.Add(CreateVideoRoute(screenCount > 1 ? screenCount - 1 : VideoOutput.PreviewWindow));
+
+        FormatVersion = CurrentFormatVersion;
+    }
+
+    public static VideoRoute CreateVideoRoute(int screenIndex)
+    {
+        var name = screenIndex < 0 ? "Anteprima" : $"Schermo {screenIndex + 1}";
+        var route = new VideoRoute { Name = name };
+        route.Outputs.Add(new VideoOutput { Name = name, ScreenIndex = screenIndex });
+        return route;
+    }
 
     /// <summary>Where the workspace was loaded from / saved to.</summary>
     [JsonIgnore] public string? FilePath { get; set; }

@@ -16,6 +16,8 @@ public class ShowCheckerTests
         public bool AudioOutputReady { get; set; } = true;
         public IReadOnlyList<string> MidiDevices { get; set; } = new[] { "Interfaccia MIDI" };
         public string DefaultMidiDevice { get; set; } = "";
+        public HashSet<string> MissingAudioDevices { get; } = new();
+        public string? CheckAudioRoute(AudioRoute route) => MissingAudioDevices.Contains(route.DeviceId) ? "dispositivo non collegato" : null;
 
         public Task<MediaProbe> ProbeAsync(MediaCue cue, string path, CancellationToken token)
             => Task.FromResult(Probes.TryGetValue(Path.GetFileName(path), out var p) ? p : new MediaProbe(null, 10));
@@ -25,6 +27,7 @@ public class ShowCheckerTests
     {
         var ws = new Workspace { FilePath = Path.Combine(Path.GetTempPath(), "show", "show.newq") };
         foreach (var c in cues) ws.Cues.Add(c);
+        ws.EnsureRoutes(screenCount: 2); // default video route on screen 2
         return ws;
     }
 
@@ -50,7 +53,7 @@ public class ShowCheckerTests
     {
         var env = new FakeEnv { Files = { "rotto.mp4" } };
         env.Probes["rotto.mp4"] = new MediaProbe("formato sconosciuto");
-        var issues = await Run(Show(new VideoCue { Number = "1", FilePath = "rotto.mp4", ScreenIndex = 1 }), env);
+        var issues = await Run(Show(new VideoCue { Number = "1", FilePath = "rotto.mp4" }), env);
         Assert.Contains(issues, i => i.Severity == CheckSeverity.Error && i.Message.Contains("formato sconosciuto"));
     }
 
@@ -108,12 +111,13 @@ public class ShowCheckerTests
             new MidiCue { Number = "1", DeviceName = "Banco luci" },
             new MidiCue { Number = "2", Kind = MidiMessageKind.SysEx, SysExHex = "7E 7F", DeviceName = "Interfaccia MIDI" },
             new NetworkCue { Number = "3", OscAddress = "senza-slash" },
-            new VideoCue { Number = "4", FilePath = "v.mp4", ScreenIndex = 1 }), env);
+            new VideoCue { Number = "4", FilePath = "v.mp4" }), env);
 
         Assert.Contains(issues, i => i.Cue?.Number == "1" && i.Message.Contains("non è collegato"));
         Assert.Contains(issues, i => i.Cue?.Number == "2" && i.Message.Contains("SysEx"));
         Assert.Contains(issues, i => i.Cue?.Number == "3" && i.Severity == CheckSeverity.Error);
-        Assert.Contains(issues, i => i.Cue?.Number == "4" && i.Message.Contains("schermo 2"));
+        Assert.DoesNotContain(issues, i => i.Cue?.Number == "4" && i.Severity == CheckSeverity.Error);
+        Assert.Contains(issues, i => i.Message.Contains("schermo 2 non è collegato"));
     }
 
     [Fact]

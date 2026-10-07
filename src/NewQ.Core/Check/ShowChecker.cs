@@ -31,6 +31,9 @@ public interface IShowCheckEnvironment
     IReadOnlyList<string> MidiDevices { get; }
     string DefaultMidiDevice { get; }
 
+    /// <summary>Why this audio route can't play here (device missing, channels out of range), or null if it can.</summary>
+    string? CheckAudioRoute(AudioRoute route);
+
     /// <summary>Opens the file silently and reports what it found. Thread-safe.</summary>
     Task<MediaProbe> ProbeAsync(MediaCue cue, string path, CancellationToken token);
 }
@@ -55,6 +58,7 @@ public static class ShowChecker
         CheckSequence(cues, issues);
         CheckTargets(cues, issues);
         CheckDevicesAndMessages(cues, env, issues);
+        CheckRoutes(workspace, cues, env, issues);
 
         var media = cues.OfType<MediaCue>().ToList();
         var done = 0;
@@ -179,6 +183,57 @@ public static class ShowChecker
     private static Cue? FindTarget(List<Cue> cues, string number)
         => cues.FirstOrDefault(c => string.Equals(c.Number.Trim(), number.Trim(), StringComparison.OrdinalIgnoreCase));
 
+    private static void CheckRoutes(Workspace workspace, List<Cue> cues, IShowCheckEnvironment env, List<CheckIssue> issues)
+    {
+        foreach (var route in workspace.AudioRoutes)
+        {
+            if (env.CheckAudioRoute(route) is string problem)
+                issues.Add(new(CheckSeverity.Error, null, $"Route audio \"{route.Name}\": {problem}"));
+            if (route.Muted)
+                issues.Add(new(CheckSeverity.Warning, null, $"Route audio \"{route.Name}\" è in muto."));
+        }
+
+        foreach (var route in workspace.VideoRoutes)
+        {
+            if (route.Outputs.Count == 0)
+                issues.Add(new(CheckSeverity.Error, null, $"Route video \"{route.Name}\" senza uscite: le sue cue non saranno visibili."));
+            foreach (var output in route.Outputs)
+            {
+                if (output.ScreenIndex >= env.ScreenCount)
+                    issues.Add(new(CheckSeverity.Warning, null, $"Route video \"{route.Name}\", uscita \"{output.Name}\": lo schermo {output.ScreenIndex + 1} non è collegato, verrà usata la finestra di anteprima."));
+                else if (output.ScreenIndex < 0)
+                    issues.Add(new(CheckSeverity.Info, null, $"Route video \"{route.Name}\", uscita \"{output.Name}\": finestra di anteprima, non un proiettore."));
+            }
+        }
+
+        foreach (var group in workspace.AudioRoutes.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            issues.Add(new(CheckSeverity.Info, null, $"Più route audio si chiamano \"{group.Key}\": nelle cue sono difficili da distinguere."));
+        foreach (var group in workspace.VideoRoutes.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            issues.Add(new(CheckSeverity.Info, null, $"Più route video si chiamano \"{group.Key}\": nelle cue sono difficili da distinguere."));
+
+        void CheckReference(Cue cue, Guid? id, bool video)
+        {
+            if (id is null) return;
+            var exists = video ? workspace.VideoRoutes.Any(r => r.Id == id) : workspace.AudioRoutes.Any(r => r.Id == id);
+            if (exists) return;
+            var fallback = video ? workspace.VideoRoutes.FirstOrDefault()?.Name : workspace.AudioRoutes.FirstOrDefault()?.Name;
+            issues.Add(new(CheckSeverity.Warning, cue, $"La route {(video ? "video" : "audio")} della cue non esiste più: verrà usata \"{fallback}\"."));
+        }
+
+        foreach (var cue in cues)
+        {
+            switch (cue)
+            {
+                case AudioCue audio: CheckReference(audio, audio.AudioRouteId, video: false); break;
+                case VideoCue videoCue:
+                    CheckReference(videoCue, videoCue.VideoRouteId, video: true);
+                    CheckReference(videoCue, videoCue.AudioRouteId, video: false);
+                    break;
+                case ImageCue image: CheckReference(image, image.VideoRouteId, video: true); break;
+            }
+        }
+    }
+
     private static void CheckDevicesAndMessages(List<Cue> cues, IShowCheckEnvironment env, List<CheckIssue> issues)
     {
         foreach (var cue in cues)
@@ -210,12 +265,6 @@ public static class ShowChecker
                     catch (FormatException ex) { issues.Add(new(CheckSeverity.Error, net, ex.Message)); }
                     break;
                 }
-                case VisualCue visual:
-                    if (visual.ScreenIndex >= env.ScreenCount)
-                        issues.Add(new(CheckSeverity.Warning, visual, $"Lo schermo {visual.ScreenIndex + 1} non è collegato: l'uscita andrà nella finestra di anteprima."));
-                    else if (visual.ScreenIndex < 0)
-                        issues.Add(new(CheckSeverity.Info, visual, "Uscita nella finestra di anteprima, non su un proiettore."));
-                    break;
             }
         }
     }

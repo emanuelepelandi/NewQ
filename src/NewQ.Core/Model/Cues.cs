@@ -24,6 +24,7 @@ public abstract class MediaCue : Cue
 
 public sealed class AudioCue : MediaCue
 {
+    private Guid? _audioRouteId;
     private double _volumeDb;
     private double _startTime;
     private double _endTime;
@@ -31,6 +32,9 @@ public sealed class AudioCue : MediaCue
     private double? _mediaDuration;
 
     public override string TypeName => "Audio";
+
+    /// <summary>Audio route the cue plays on; null = the first route of the workspace.</summary>
+    public Guid? AudioRouteId { get => _audioRouteId; set => SetField(ref _audioRouteId, value); }
 
     public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
 
@@ -62,13 +66,21 @@ public abstract class VisualCue : MediaCue
 {
     public const int PreviewWindow = -1;
 
-    private int _screenIndex = PreviewWindow;
+    private Guid? _videoRouteId;
     private int _layer = 1;
     private FitMode _fitMode = FitMode.Fit;
     private double _opacity = 1.0;
 
-    /// <summary>Index of the target monitor, or <see cref="PreviewWindow"/> for a windowed output.</summary>
-    public int ScreenIndex { get => _screenIndex; set => SetField(ref _screenIndex, value); }
+    /// <summary>Video route the cue is drawn on; null = the first route of the workspace.</summary>
+    public Guid? VideoRouteId { get => _videoRouteId; set => SetField(ref _videoRouteId, value); }
+
+    /// <summary>
+    /// Monitor index from workspaces saved before video routes existed (FormatVersion 1).
+    /// Converted to a route by <see cref="Workspace.EnsureRoutes"/> and then no longer written.
+    /// </summary>
+    [JsonPropertyName("ScreenIndex")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LegacyScreenIndex { get; set; }
 
     /// <summary>Higher layers are drawn on top.</summary>
     public int Layer { get => _layer; set => SetField(ref _layer, value); }
@@ -80,12 +92,16 @@ public abstract class VisualCue : MediaCue
 
 public sealed class VideoCue : VisualCue
 {
+    private Guid? _audioRouteId;
     private double _volumeDb;
     private bool _loop;
 
     public override string TypeName => "Video";
 
-    public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 0)); }
+    /// <summary>Audio route for the sound of the video; null = the first route of the workspace.</summary>
+    public Guid? AudioRouteId { get => _audioRouteId; set => SetField(ref _audioRouteId, value); }
+
+    public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
     public bool Loop { get => _loop; set => SetField(ref _loop, value); }
 }
 

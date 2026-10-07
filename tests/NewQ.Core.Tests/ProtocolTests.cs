@@ -170,7 +170,7 @@ public class SerializationTests
         var ws = new Workspace();
         ws.Settings.PanicFadeSeconds = 2.5;
         ws.Cues.Add(new AudioCue { Number = "1", Name = "Intro", FilePath = "audio/intro.wav", VolumeDb = -6, Loop = true, ContinueMode = ContinueMode.AutoContinue, PostWait = 1 });
-        ws.Cues.Add(new VideoCue { Number = "2", FilePath = "v.mp4", ScreenIndex = 1, Layer = 3, FitMode = FitMode.Fill });
+        ws.Cues.Add(new VideoCue { Number = "2", FilePath = "v.mp4", Layer = 3, FitMode = FitMode.Fill });
         ws.Cues.Add(new ImageCue { Number = "3", FilePath = "i.png", HoldDuration = 5 });
         ws.Cues.Add(new MidiCue { Number = "4", Kind = MidiMessageKind.ShowControl, MscCueNumber = "7" });
         ws.Cues.Add(new NetworkCue { Number = "5", Protocol = NetworkProtocol.Tcp, Host = "10.0.0.5", Port = 4352, Payload = @"%1POWR 1\r" });

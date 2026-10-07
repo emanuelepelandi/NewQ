@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -28,8 +28,6 @@ public sealed class AppSettings
 
     public string? AsioDriverName { get; set; }
     public int AsioSampleRate { get; set; } = 48000;
-    /// <summary>First ASIO output channel (0-based) for the stereo bus.</summary>
-    public int AsioOutputOffset { get; set; }
 
     public double MasterVolumeDb { get; set; }
 

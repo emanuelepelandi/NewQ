@@ -64,7 +64,7 @@ public interface ICuePlayer
 public interface IPreloadingCuePlayer : ICuePlayer
 {
     /// <summary>Prepares the cue. Must be cheap to call again for a cue that is already prepared.</summary>
-    void Preload(Cue cue, Func<string, string> resolvePath);
+    void Preload(Cue cue, Workspace workspace);
 
     /// <summary>Releases every prepared cue that is not in <paramref name="keep"/>.</summary>
     void ReleasePreloads(IReadOnlyCollection<Cue> keep);
@@ -75,14 +75,14 @@ public sealed class CueContext
 {
     private readonly Action _completed;
     private readonly Action<string> _error;
-    private readonly Func<string, string> _resolvePath;
+    private readonly Workspace _workspace;
     private int _done;
 
-    public CueContext(Action completed, Action<string> error, Func<string, string> resolvePath)
+    public CueContext(Action completed, Action<string> error, Workspace workspace)
     {
         _completed = completed;
         _error = error;
-        _resolvePath = resolvePath;
+        _workspace = workspace;
     }
 
     /// <summary>Signals the end of the cue. Extra calls are ignored.</summary>
@@ -93,7 +93,10 @@ public sealed class CueContext
 
     public void Error(string message) => _error(message);
 
-    public string ResolvePath(string path) => _resolvePath(path);
+    public string ResolvePath(string path) => _workspace.ResolvePath(path);
+
+    /// <summary>The workspace the cue belongs to (routes, base folder). Read it on the engine thread only.</summary>
+    public Workspace Workspace => _workspace;
 }
 
 /// <summary>Handle for fire-and-forget cues (MIDI, network, stop...).</summary>

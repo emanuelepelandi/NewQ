@@ -119,7 +119,7 @@ public sealed class CueEngine
             player.ReleasePreloads(keep);
             foreach (var cue in keep.Where(player.CanPlay))
             {
-                try { player.Preload(cue, Workspace.ResolvePath); }
+                try { player.Preload(cue, Workspace); }
                 catch (Exception ex) { Warn($"Preload cue {cue.Number}: {ex.Message}"); }
             }
         }
@@ -322,7 +322,7 @@ public sealed class CueEngine
         var context = new CueContext(
             completed: () => _scheduler.Post(() => Complete(rc)),
             error: message => _scheduler.Post(() => ReportError(cue, message)),
-            resolvePath: Workspace.ResolvePath);
+            workspace: Workspace);
 
         if (!cue.Armed)
         {

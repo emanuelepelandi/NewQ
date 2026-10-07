@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -33,6 +33,11 @@ public sealed class AppShowCheckEnvironment : IShowCheckEnvironment
     public bool AudioOutputReady { get; }
     public IReadOnlyList<string> MidiDevices { get; }
     public string DefaultMidiDevice { get; }
+
+    /// <summary>Set by the app: why a route can't play on this machine (device missing, channels out of range).</summary>
+    public Func<AudioRoute, string?> AudioRouteProblem { get; init; } = _ => null;
+
+    public string? CheckAudioRoute(AudioRoute route) => AudioRouteProblem(route);
 
     public bool FileExists(string path) => File.Exists(path);
 
