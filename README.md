@@ -102,3 +102,9 @@ Crea `dist\NewQ\NewQ.exe` e `dist\NewQ-win-x64.zip`: una build *self-contained* 
 5. Trigger da **MIDI in** e **hotkey** per singola cue.
 6. Video: crossfade diretto tra due video (oggi il fade passa dal nero), edge-blending, audio dei video sulla scheda scelta in NewQ.
 7. Installer MSI/MSIX con associazione dei file `.newq`.
+
+TO DO
+1. Pagina nelle impostazioni con "Route video" e "Route audio", e selezione nelle cue solo della route
+2. In "Route video" si impostano le route con le relative uscite, e possibilità di scaling e riposizionamento
+3. In "Route audio" si impostano le route con le relative uscite, e possibilità di modificare
+il gain in uscita verso la route
