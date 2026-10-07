@@ -6,3 +6,5 @@ dist/
 *.suo
 *.newq.tmp
 TestResults/
+docs/
+.claude
