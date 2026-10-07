@@ -1,0 +1,28 @@
+<UserControl x:Class="NewQ.App.Controls.NumericStepper"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:NewQ.App.Controls"
+             x:Name="Root">
+    <!-- Integer/decimal field with −/+ steps: a NewQ text field plus two square buttons, aligned to the field. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <!-- Header over the whole control, sized like the ModernWpf field headers next to it. -->
+        <TextBlock Grid.ColumnSpan="3" Text="{Binding Header, ElementName=Root}" FontSize="{StaticResource FontFieldHeader}"
+                   Margin="0,0,0,4" TextTrimming="CharacterEllipsis" />
+        <!-- Margin set locally: form styles of the hosting page must not move the field inside the stepper. -->
+        <TextBox x:Name="Box" Grid.Row="1" Margin="0" HorizontalContentAlignment="Right" LostFocus="OnBoxLostFocus"
+                 AutomationProperties.Name="{Binding Header, ElementName=Root}" />
+        <Button x:Name="DownButton" Grid.Row="1" Grid.Column="1" Style="{StaticResource SquareButton}" Margin="4,0,0,0"
+                ctl:ButtonIcon.Glyph="{StaticResource IconMinus}" Click="OnDown" Focusable="False" ToolTip="Diminuisci (freccia giù)" />
+        <Button x:Name="UpButton" Grid.Row="1" Grid.Column="2" Style="{StaticResource SquareButton}" Margin="4,0,0,0"
+                ctl:ButtonIcon.Glyph="{StaticResource IconAdd}" Click="OnUp" Focusable="False" ToolTip="Aumenta (freccia su)" />
+    </Grid>
+</UserControl>

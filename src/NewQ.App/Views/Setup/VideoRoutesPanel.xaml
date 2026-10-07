@@ -110,12 +110,12 @@
                         <ctl:GeometryEditor x:Name="Geometry" AutomationProperties.Name="Editor geometria" />
                     </Border>
                     <WrapPanel Margin="0,8,0,0">
-                        <ui:NumberBox x:Name="WarpColumnsBox" Header="Warp colonne" Minimum="0" Maximum="8" SpinButtonPlacementMode="Inline"
-                                      Value="{Binding WarpColumns}" Width="140" Margin="0,0,8,8" />
-                        <ui:NumberBox x:Name="WarpRowsBox" Header="Warp righe" Minimum="0" Maximum="8" SpinButtonPlacementMode="Inline"
-                                      Value="{Binding WarpRows}" Width="140" Margin="0,0,16,8" />
-                        <Button Content="Azzera keystone" Click="OnResetKeystone" VerticalAlignment="Bottom" Margin="0,0,8,8" />
-                        <Button Content="Azzera warp" Click="OnResetWarp" VerticalAlignment="Bottom" Margin="0,0,8,8" />
+                        <ctl:NumericStepper Header="Warp colonne" Minimum="0" Maximum="8" Value="{Binding WarpColumns}"
+                                            Width="168" Margin="0,0,8,12" />
+                        <ctl:NumericStepper Header="Warp righe" Minimum="0" Maximum="8" Value="{Binding WarpRows}"
+                                            Width="168" Margin="0,0,16,12" />
+                        <Button Content="Azzera keystone" Click="OnResetKeystone" VerticalAlignment="Bottom" Margin="0,0,8,12" />
+                        <Button Content="Azzera warp" Click="OnResetWarp" VerticalAlignment="Bottom" Margin="0,0,8,12" />
                     </WrapPanel>
 
                     <TextBlock Text="EDGE BLENDING" Style="{StaticResource SectionHeader}" />

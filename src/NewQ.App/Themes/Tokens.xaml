@@ -105,9 +105,12 @@
     <sys:Double x:Key="FontBody">13</sys:Double>
     <sys:Double x:Key="FontTitle">15</sys:Double>
     <sys:Double x:Key="FontIcon">14</sys:Double>
+    <!-- Same size as the ModernWpf field headers (ControlHelper.Header). -->
+    <sys:Double x:Key="FontFieldHeader">14</sys:Double>
 
     <!-- ============ Icon glyphs ============ -->
     <sys:String x:Key="IconAdd">&#xE710;</sys:String>
+    <sys:String x:Key="IconMinus">&#xE738;</sys:String>
     <sys:String x:Key="IconAudio">&#xE8D6;</sys:String>
     <sys:String x:Key="IconVideo">&#xE714;</sys:String>
     <sys:String x:Key="IconImage">&#xEB9F;</sys:String>
