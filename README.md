@@ -105,6 +105,8 @@ Crea `dist\NewQ\NewQ.exe` e `dist\NewQ-win-x64.zip`: una build *self-contained* 
 
 TO DO
 1. Pagina nelle impostazioni con "Route video" e "Route audio", e selezione nelle cue solo della route
-2. In "Route video" si impostano le route con le relative uscite, e possibilità di scaling e riposizionamento
+2. In "Route video" si impostano le route con le relative uscite, e possibilità di scaling e riposizionamento, warping, keystone correction, edge blending.
 3. In "Route audio" si impostano le route con le relative uscite, e possibilità di modificare
 il gain in uscita verso la route
+4. Pagina per generare e mandare test pattern alle route video. I test pattern devono essere selezionabili tra diversi tipi, ognuno che sia utile al test di certi parametri. Includere anche fluidità in stile Resolume
+5. Pagina per generare e mandare test tones e rumore rosa alle route audio. Test tone anche come frequency sweep. 
