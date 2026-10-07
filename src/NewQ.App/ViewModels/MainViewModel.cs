@@ -15,6 +15,7 @@ using NewQ.App.Infrastructure;
 using NewQ.App.Midi;
 using NewQ.App.Settings;
 using NewQ.App.Video;
+using NewQ.App.Video.Gpu;
 using NewQ.Core;
 using NewQ.Core.Engine;
 using NewQ.Core.Midi;
@@ -39,7 +40,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _progressTimer;
     private readonly AudioEngine _audio = new();
-    private readonly OutputWindowManager _outputs = new();
+    private readonly CompositionHub _hub = new();
+    private readonly OutputWindowManager _outputs;
     private readonly NAudioMidiOutput _midi = new();
     private OscRemoteListener? _oscListener;
     private AppSettings _settings;
@@ -53,13 +55,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _dispatcher = dispatcher;
         _settings = AppSettings.Load();
+        _outputs = new OutputWindowManager(_hub);
 
         Engine = new CueEngine(
             new DispatcherScheduler(dispatcher),
             new ICuePlayer[]
             {
                 new AudioCuePlayer(_audio),
-                new VisualCuePlayer(_outputs),
+                new VisualCuePlayer(_hub, _outputs, ResolveVideoAudio, dispatcher),
                 new MidiCuePlayer(_midi, () => _settings.DefaultMidiDevice),
                 new NetworkCuePlayer(),
             });
@@ -338,6 +341,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Engine.LoadWorkspace(workspace);
         HookWorkspace(workspace);
         ReconfigureAudio(); // each workspace has its own audio routes
+        ApplyVideoRoutes(); // ...and video routes: output windows open now, black, before any GO
         foreach (var cue in workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
         IsDirty = converted; // the converted file must be saved to keep the routes
         OnPropertyChanged(nameof(Workspace));
@@ -356,6 +360,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         workspace.AudioRoutes.CollectionChanged += OnAudioRoutesChanged;
         foreach (var route in workspace.AudioRoutes) route.PropertyChanged += OnAudioRouteChanged;
         workspace.VideoRoutes.CollectionChanged += OnVideoRoutesChanged;
+        HookVideoRoutes(workspace);
     }
 
     private void UnhookWorkspace(Workspace workspace)
@@ -366,6 +371,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         workspace.AudioRoutes.CollectionChanged -= OnAudioRoutesChanged;
         foreach (var route in workspace.AudioRoutes) route.PropertyChanged -= OnAudioRouteChanged;
         workspace.VideoRoutes.CollectionChanged -= OnVideoRoutesChanged;
+        UnhookVideoRoutes();
     }
 
     // ------------------------------------------------------------------ audio routes
@@ -392,7 +398,75 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void OnVideoRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e) => IsDirty = true;
+    private void OnVideoRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        IsDirty = true;
+        HookVideoRoutes(Workspace);
+        ApplyVideoRoutes();
+    }
+
+    // Video route geometry is edited live: any change re-publishes the meshes to the renderers.
+    private readonly HashSet<object> _hookedVideo = new();
+
+    private void HookVideoRoutes(Workspace workspace)
+    {
+        foreach (var route in workspace.VideoRoutes)
+        {
+            if (_hookedVideo.Add(route))
+            {
+                route.PropertyChanged += OnVideoGeometryChanged;
+                route.Outputs.CollectionChanged += OnVideoOutputsChanged;
+            }
+            foreach (var output in route.Outputs)
+                if (_hookedVideo.Add(output)) output.PropertyChanged += OnVideoGeometryChanged;
+        }
+    }
+
+    private void UnhookVideoRoutes()
+    {
+        foreach (var item in _hookedVideo)
+        {
+            if (item is VideoRoute route)
+            {
+                route.PropertyChanged -= OnVideoGeometryChanged;
+                route.Outputs.CollectionChanged -= OnVideoOutputsChanged;
+            }
+            else if (item is VideoOutput output) output.PropertyChanged -= OnVideoGeometryChanged;
+        }
+        _hookedVideo.Clear();
+    }
+
+    private void OnVideoOutputsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        IsDirty = true;
+        HookVideoRoutes(Workspace);
+        ApplyVideoRoutes();
+    }
+
+    private void OnVideoGeometryChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        IsDirty = true;
+        if (sender is VideoRoute && e.PropertyName == nameof(VideoRoute.Outputs)) HookVideoRoutes(Workspace);
+        ApplyVideoRoutes();
+    }
+
+    /// <summary>Publishes the video routes to the compositor and opens/closes the output windows to match.</summary>
+    private void ApplyVideoRoutes()
+    {
+        _hub.SetRoutes(Workspace.VideoRoutes.ToList());
+        _outputs.Sync();
+    }
+
+    /// <summary>Sound card and gain (route gain × master, 0 if muted) for the sound of a video.</summary>
+    private VideoAudioTarget ResolveVideoAudio(Guid? routeId)
+    {
+        var route = Workspace.ResolveAudioRoute(routeId);
+        var device = _settings.AudioDriver == AudioDriver.Wasapi
+            ? (string.IsNullOrEmpty(route.DeviceId) ? _settings.WasapiDeviceId ?? "" : route.DeviceId)
+            : ""; // ASIO: libVLC can't use it, the video sound goes to the Windows default device
+        var gain = route.Muted ? 0 : Decibels.ToGain(route.GainDb) * Decibels.ToGain(_settings.MasterVolumeDb);
+        return new VideoAudioTarget(device, gain);
+    }
 
     /// <summary>
     /// Rebuilds the audio graph (sound cards, channel pairs). Everything playing is stopped first, so the engine

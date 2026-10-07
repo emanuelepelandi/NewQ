@@ -68,6 +68,20 @@ public sealed class Workspace
         if (VideoRoutes.Count == 0)
             VideoRoutes.Add(CreateVideoRoute(screenCount > 1 ? screenCount - 1 : VideoOutput.PreviewWindow));
 
+        // Cues without a route use the first one: make it explicit, so the inspector shows it.
+        foreach (var cue in Cues)
+        {
+            switch (cue)
+            {
+                case AudioCue a: a.AudioRouteId ??= AudioRoutes[0].Id; break;
+                case VideoCue v:
+                    v.VideoRouteId ??= VideoRoutes[0].Id;
+                    v.AudioRouteId ??= AudioRoutes[0].Id;
+                    break;
+                case ImageCue i: i.VideoRouteId ??= VideoRoutes[0].Id; break;
+            }
+        }
+
         FormatVersion = CurrentFormatVersion;
     }
 

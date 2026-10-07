@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using NewQ.App.Infrastructure;
+using NewQ.App.Video.Gpu;
 using NewQ.Core.Model;
 using Forms = System.Windows.Forms;
 
@@ -17,7 +18,7 @@ public sealed record ScreenOption(int Index, string Label)
 {
     public static IReadOnlyList<ScreenOption> All()
     {
-        var list = new List<ScreenOption> { new(VisualCue.PreviewWindow, "Finestra di anteprima") };
+        var list = new List<ScreenOption> { new(VideoOutput.PreviewWindow, "Finestra di anteprima") };
         var screens = Forms.Screen.AllScreens;
         for (var i = 0; i < screens.Length; i++)
         {
@@ -28,34 +29,40 @@ public sealed record ScreenOption(int Index, string Label)
     }
 }
 
+/// <summary>A native child window the GPU renderer presents into.</summary>
+internal sealed class RenderSurface : HwndHost
+{
+    protected override HandleRef BuildWindowCore(HandleRef hwndParent)
+    {
+        var hwnd = NativeMethods.CreateWindowEx(0, NativeMethods.BlackSurfaceClass, "",
+            NativeMethods.WsChild | NativeMethods.WsVisible | NativeMethods.WsClipChildren | NativeMethods.WsClipSiblings,
+            0, 0, 1, 1, hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        if (hwnd == IntPtr.Zero) throw new InvalidOperationException("Impossibile creare la superficie video.");
+        return new HandleRef(this, hwnd);
+    }
+
+    protected override void DestroyWindowCore(HandleRef hwnd) => NativeMethods.DestroyWindow(hwnd.Handle);
+}
+
 /// <summary>
-/// One output (a monitor, borderless and topmost, or a resizable preview window).
-/// <para>
-/// Two planes: videos are rendered by libVLC into native child windows inside <see cref="VideoHost"/>
-/// (smooth, vsync'd to the output monitor, independent of the WPF render thread). WPF content can't be
-/// drawn over native windows, so images and the per-video fade "dimmers" live in a transparent,
-/// click-through <see cref="OverlayWindow"/> that tracks the output. Images are therefore always above videos.
-/// </para>
+/// One physical output: a monitor (borderless, topmost, covering the whole screen) or the resizable preview
+/// window. Everything shown on it is composed by its <see cref="GpuRenderer"/>.
 /// </summary>
 public sealed class OutputWindow : Window
 {
     private readonly System.Drawing.Rectangle? _bounds;
-    private readonly List<IVideoPlane> _videos = new(); // in reveal order, last = on top
+    private readonly CompositionHub _hub;
+    private readonly RenderSurface _surface = new();
+    private GpuRenderer? _renderer;
 
-    public OutputWindow(int screenIndex, System.Drawing.Rectangle? bounds)
+    public OutputWindow(int screenIndex, System.Drawing.Rectangle? bounds, CompositionHub hub)
     {
         ScreenIndex = screenIndex;
         _bounds = bounds;
-        VideoHost = new Grid { Background = Brushes.Black };
-        Content = VideoHost;
+        _hub = hub;
+        Content = _surface;
         Background = Brushes.Black;
         ShowActivated = false;
-        Overlay = new OverlayWindow();
-        // Black cover while no video is revealed: preloaded videos sit visible (first frame already
-        // presented, so GO shows it instantly) underneath it.
-        BaseDimmer = new System.Windows.Shapes.Rectangle { Fill = Brushes.Black, IsHitTestVisible = false };
-        Panel.SetZIndex(BaseDimmer, -1);
-        Overlay.Stage.Children.Add(BaseDimmer);
 
         if (bounds is null)
         {
@@ -76,59 +83,21 @@ public sealed class OutputWindow : Window
             DpiChanged += (_, _) => Dispatcher.BeginInvoke(PlaceOnScreen);
         }
 
-        Loaded += (_, _) =>
+        _surface.Loaded += (_, _) =>
         {
-            Overlay.Owner = this; // owned windows always stay above their owner
-            Overlay.Topmost = Topmost;
-            Overlay.Show();
-            PlaceOverlay();
+            _renderer ??= new GpuRenderer(_surface.Handle, screenIndex, hub);
+            _renderer.Failed += message => RendererFailed?.Invoke(message);
         };
-        LocationChanged += (_, _) => PlaceOverlay();
-        SizeChanged += (_, _) => PlaceOverlay();
-        StateChanged += (_, _) => PlaceOverlay();
-        Closed += (_, _) => Overlay.Close();
     }
 
     public int ScreenIndex { get; }
 
-    /// <summary>Native video surfaces go here.</summary>
-    public Grid VideoHost { get; }
-
-    public OverlayWindow Overlay { get; }
-
-    /// <summary>WPF content shown above the videos (images, fade dimmers).</summary>
-    public Grid Stage => Overlay.Stage;
-
-    private System.Windows.Shapes.Rectangle BaseDimmer { get; }
-
-    /// <summary>When false (default), fullscreen outputs can only be closed by the application.</summary>
+    /// <summary>When false (default), outputs are only hidden or closed by the application.</summary>
     public bool AllowClose { get; set; }
 
-    // ------------------------------------------------------------------ video stacking
+    public event Action<string>? RendererFailed;
 
-    /// <summary>A video becomes visible: it goes on top of the other videos and its dimmer takes over.</summary>
-    internal void BringVideoToTop(IVideoPlane video)
-    {
-        _videos.Remove(video);
-        _videos.Add(video);
-        video.RaiseSurface();
-        UpdateDimmers();
-    }
-
-    internal void RemoveVideo(IVideoPlane video)
-    {
-        if (_videos.Remove(video)) UpdateDimmers();
-    }
-
-    /// <summary>Only the top video is visible, so only its dimmer (fade to/from black) applies.</summary>
-    private void UpdateDimmers()
-    {
-        for (var i = 0; i < _videos.Count; i++)
-            _videos[i].Dimmer.Visibility = i == _videos.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
-        BaseDimmer.Visibility = _videos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    // ------------------------------------------------------------------ placement
+    public long FramesPresented => _renderer?.FramesPresented ?? 0;
 
     private void PlaceOnScreen()
     {
@@ -137,87 +106,81 @@ public sealed class OutputWindow : Window
         // Physical pixels: independent of the per-monitor DPI scaling.
         NativeMethods.SetWindowPos(hwnd, NativeMethods.HwndTopmost, b.X, b.Y, b.Width, b.Height,
             NativeMethods.SwpShowWindow | NativeMethods.SwpNoActivate);
-        PlaceOverlay();
-    }
-
-    private void PlaceOverlay()
-    {
-        var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero || !Overlay.IsLoaded) return;
-        NativeMethods.GetClientRect(hwnd, out var client);
-        var origin = new NativeMethods.Point();
-        NativeMethods.ClientToScreen(hwnd, ref origin);
-        Overlay.PlaceAt(origin.X, origin.Y, client.Right - client.Left, client.Bottom - client.Top);
     }
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        // Alt+F4 on a projector must not reveal the desktop during a show.
-        if (_bounds is not null && !AllowClose) e.Cancel = true;
+        if (!AllowClose)
+        {
+            // Alt+F4 on a projector must not reveal the desktop; the preview window just hides.
+            e.Cancel = true;
+            if (_bounds is null) Hide();
+        }
         base.OnClosing(e);
     }
-}
 
-/// <summary>Transparent, click-through window drawn above an output's videos.</summary>
-public sealed class OverlayWindow : Window
-{
-    public OverlayWindow()
+    protected override void OnClosed(EventArgs e)
     {
-        WindowStyle = WindowStyle.None;
-        AllowsTransparency = true;
-        Background = Brushes.Transparent;
-        ResizeMode = ResizeMode.NoResize;
-        ShowInTaskbar = false;
-        ShowActivated = false;
-        Focusable = false;
-        IsHitTestVisible = false;
-        Stage = new Grid { ClipToBounds = true };
-        Content = Stage;
-        Width = Height = 1;
-        SourceInitialized += (_, _) =>
-        {
-            var hwnd = new WindowInteropHelper(this).Handle;
-            var ex = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
-            ex |= NativeMethods.WsExTransparent | NativeMethods.WsExNoActivate | NativeMethods.WsExToolWindow;
-            NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GwlExStyle, new IntPtr(ex));
-        };
-    }
-
-    public Grid Stage { get; }
-
-    public void PlaceAt(int x, int y, int width, int height)
-    {
-        var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero) return;
-        NativeMethods.SetWindowPos(hwnd, IntPtr.Zero, x, y, Math.Max(1, width), Math.Max(1, height),
-            NativeMethods.SwpNoActivate | NativeMethods.SwpNoZOrder);
+        _renderer?.Dispose();
+        _renderer = null;
+        base.OnClosed(e);
     }
 }
 
+/// <summary>Keeps one output window open for every screen used by a video route.</summary>
 public sealed class OutputWindowManager : IDisposable
 {
     private readonly Dictionary<int, OutputWindow> _windows = new();
 
+    public OutputWindowManager(CompositionHub hub)
+    {
+        Hub = hub;
+    }
+
+    public CompositionHub Hub { get; }
+
     public event Action<string>? Warning;
 
-    public OutputWindow GetOrCreate(int screenIndex)
+    public IReadOnlyCollection<OutputWindow> Windows => _windows.Values;
+
+    /// <summary>Opens/closes output windows to match the screens the routes use. UI thread.</summary>
+    public void Sync()
     {
         var screens = Forms.Screen.AllScreens;
-        if (screenIndex >= screens.Length)
+        var wanted = new HashSet<int>();
+        foreach (var screen in Hub.UsedScreens())
         {
-            Warning?.Invoke($"Lo schermo {screenIndex + 1} non è collegato: uso la finestra di anteprima.");
-            screenIndex = VisualCue.PreviewWindow;
+            if (screen >= screens.Length)
+            {
+                Warning?.Invoke($"Lo schermo {screen + 1} non è collegato: le sue uscite non sono visibili.");
+                continue;
+            }
+            wanted.Add(screen);
         }
-        if (screenIndex < 0) screenIndex = VisualCue.PreviewWindow;
 
-        if (_windows.TryGetValue(screenIndex, out var existing) && existing.IsVisible)
-            return existing;
+        foreach (var index in _windows.Keys.Where(k => !wanted.Contains(k)).ToList())
+        {
+            _windows[index].AllowClose = true;
+            _windows[index].Close();
+            _windows.Remove(index);
+        }
 
-        var window = new OutputWindow(screenIndex, screenIndex >= 0 ? screens[screenIndex].Bounds : null);
-        window.Closed += (_, _) => _windows.Remove(screenIndex);
-        _windows[screenIndex] = window;
-        window.Show();
-        return window;
+        foreach (var index in wanted.Where(i => !_windows.ContainsKey(i)))
+        {
+            var window = new OutputWindow(index, index >= 0 ? screens[index].Bounds : null, Hub);
+            window.RendererFailed += message => window.Dispatcher.BeginInvoke(() => Warning?.Invoke(message));
+            _windows[index] = window;
+            window.Show();
+        }
+    }
+
+    /// <summary>Shows the preview window again if the user hid it and something is now played there.</summary>
+    public void EnsureVisible(Guid routeId)
+    {
+        if (_windows.Count == 0) Sync(); // reopened after "Chiudi uscite video"
+        foreach (var (route, output) in Hub.UsedScreens().SelectMany(s => Hub.SnapshotFor(s)))
+            if (route.RouteId == routeId && _windows.TryGetValue(output.ScreenIndex, out var window) && !window.IsVisible)
+                window.Show();
     }
 
     public void CloseAll()
