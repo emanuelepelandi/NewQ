@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using NAudio.Wave;
 using NewQ.Core;
 
@@ -115,7 +115,7 @@ internal sealed class AudioVoice : ISampleProvider, IDisposable
             }
             else if (_paused)
             {
-                Array.Clear(buffer, offset, count);
+                AudioBuffers.Clear(buffer, offset, count);
                 return count;
             }
             else

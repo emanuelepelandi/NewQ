@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -330,6 +330,19 @@ internal sealed class RouteBus : ISampleProvider
     }
 }
 
+internal static class AudioBuffers
+{
+    /// <summary>
+    /// Zeroes samples. Never use <c>Array.Clear</c> on buffers that come from the sound card: NAudio hands out a
+    /// byte[] disguised as float[] (WaveBuffer), so Array.Clear would clear only a quarter of the samples and the
+    /// old audio would stay in the buffer, summing on itself.
+    /// </summary>
+    public static void Clear(float[] buffer, int offset, int count)
+    {
+        for (var i = offset; i < offset + count; i++) buffer[i] = 0;
+    }
+}
+
 /// <summary>One sound card output: sums its route buses into their channel pairs.</summary>
 internal sealed class DeviceOutput : ISampleProvider, IDisposable
 {
@@ -409,7 +422,7 @@ internal sealed class DeviceOutput : ISampleProvider, IDisposable
     /// <summary>Audio thread: mixes each route bus into its channel pair.</summary>
     public int Read(float[] buffer, int offset, int count)
     {
-        Array.Clear(buffer, offset, count);
+        AudioBuffers.Clear(buffer, offset, count);
         var channels = _format.Channels;
         var frames = count / channels;
         if (_scratch.Length < frames * 2) _scratch = new float[frames * 2];
