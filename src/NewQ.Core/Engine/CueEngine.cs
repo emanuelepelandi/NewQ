@@ -51,6 +51,9 @@ public sealed class CueEngine
     }
 
     public Workspace Workspace { get; private set; }
+
+    /// <summary>The engine's clock (the time base of <see cref="RunningCue.FiredAt"/>).</summary>
+    public TimeSpan Now => _scheduler.Now;
     public Cue? Playhead { get; private set; }
     public IReadOnlyList<RunningCue> Running => _running;
     public bool IsPaused { get; private set; }

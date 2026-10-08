@@ -23,6 +23,7 @@ using NewQ.Core.Midi;
 using NewQ.Core.Model;
 using NewQ.Core.Network;
 using NewQ.Core.Serialization;
+using NewQ.Core.Timeline;
 
 namespace NewQ.App.ViewModels;
 
@@ -60,6 +61,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Columns = new CueColumns(_settings.CueColumns);
         Columns.Changed += () => { _settings.CueColumns = Columns.Visible; TrySaveSettings(); };
         _inspectorCollapsed = _settings.InspectorCollapsed;
+        _timelineVisible = _settings.TimelineVisible;
+        _timelineDebounce = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromMilliseconds(250) };
+        _timelineDebounce.Tick += (_, _) => { _timelineDebounce.Stop(); RebuildTimeline(); };
+        Thumbnails = new MediaThumbnails(dispatcher, () => Engine is not null && Engine.Running.Count > 0);
+        Thumbnails.Updated += ScheduleTimeline;
         ShortcutText = new ShortcutTexts(_shortcuts);
         ShortcutHint = new ShortcutTexts(_shortcuts, asHint: true);
         _outputs = new OutputWindowManager(_hub);
@@ -131,6 +137,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ResetClipsCommand = new RelayCommand(ResetClips);
         ShowCheckCommand = new RelayCommand(OpenShowCheck);
         ToggleInspectorCommand = new RelayCommand(() => IsInspectorCollapsed = !IsInspectorCollapsed);
+        ToggleTimelineCommand = new RelayCommand(() => IsTimelineVisible = !IsTimelineVisible);
         ResetColumnsCommand = new RelayCommand(() => Columns.ResetToDefaults());
 
         VlcRuntime.WarmUp(); // libVLC loads its plugins in background (~1 s)
@@ -374,6 +381,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         foreach (var cue in workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
         IsDirty = converted; // the converted file must be saved to keep the routes
         OnPropertyChanged(nameof(Workspace));
+        ScheduleTimeline();
         OnPropertyChanged(nameof(SelectedCue));
         OnPropertyChanged(nameof(WindowTitle));
         StatusText = workspace.FilePath is null ? "Nuovo workspace" : $"Aperto {workspace.FilePath}";
@@ -408,6 +416,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void OnAudioRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RoutesVersion++;
+        ScheduleTimeline();
         if (e.OldItems is not null) foreach (AudioRoute r in e.OldItems) r.PropertyChanged -= OnAudioRouteChanged;
         if (e.NewItems is not null) foreach (AudioRoute r in e.NewItems) r.PropertyChanged += OnAudioRouteChanged;
         IsDirty = true;
@@ -432,6 +441,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void OnVideoRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RoutesVersion++;
+        ScheduleTimeline();
         IsDirty = true;
         HookVideoRoutes(Workspace);
         ApplyVideoRoutes();
@@ -521,6 +531,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (e.NewItems is not null) foreach (Cue c in e.NewItems) c.PropertyChanged += OnCuePropertyChanged;
         IsDirty = true;
         Engine.SchedulePreload(); // reordering can change what the next GO fires
+        ScheduleTimeline();
     }
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e) => IsDirty = true;
@@ -529,6 +540,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (!Cue.IsPersistentProperty(e.PropertyName)) return;
         IsDirty = true;
+        ScheduleTimeline();
         Engine.SchedulePreload(); // file, output or continue mode may have changed
         if (sender is AudioCue audio && e.PropertyName == nameof(MediaCue.FilePath)) ProbeDuration(audio);
     }
@@ -834,6 +846,89 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         TrySaveSettings();
     }
 
+    // ------------------------------------------------------------------ timeline
+
+    private readonly DispatcherTimer _timelineDebounce;
+    private ShowTimeline _timeline = ShowTimeline.Empty;
+    private bool _timelineVisible;
+
+    public ICommand ToggleTimelineCommand { get; }
+
+    /// <summary>First frames of videos, image previews and video lengths for the timeline.</summary>
+    public MediaThumbnails Thumbnails { get; }
+
+    /// <summary>The predicted course of the show (rebuilt shortly after any change to the cues).</summary>
+    public ShowTimeline Timeline { get => _timeline; private set => SetField(ref _timeline, value); }
+
+    public bool IsTimelineVisible
+    {
+        get => _timelineVisible;
+        set
+        {
+            if (!SetField(ref _timelineVisible, value)) return;
+            _settings.TimelineVisible = value;
+            TrySaveSettings();
+            if (value) ScheduleTimeline();
+        }
+    }
+
+    /// <summary>Saves a timeline preference (lanes, zoom, follow, height).</summary>
+    public void SaveTimelineSettings(Action<AppSettings> change)
+    {
+        change(_settings);
+        TrySaveSettings();
+    }
+
+    /// <summary>Rebuilds the timeline after a short pause, so typing in a field doesn't rebuild at every key.</summary>
+    public void ScheduleTimeline()
+    {
+        _timelineDebounce.Stop();
+        _timelineDebounce.Start();
+    }
+
+    private void RebuildTimeline()
+    {
+        if (!_timelineVisible) return;
+        var cues = Workspace.Cues.ToList();
+        foreach (var cue in cues)
+        {
+            if (cue is VideoCue or ImageCue && cue is MediaCue media && !string.IsNullOrWhiteSpace(media.FilePath))
+                Thumbnails.Request(Workspace.ResolvePath(media.FilePath), cue is VideoCue);
+        }
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        Timeline = TimelineBuilder.Build(cues, LengthOf);
+        VlcRuntime.Debug($"timeline: {cues.Count} cues, {Timeline.Blocks.Count} blocks built and shown in {clock.Elapsed.TotalMilliseconds:F1} ms");
+    }
+
+    /// <summary>Cue lengths for the timeline: the model's, plus the probed length of video files.</summary>
+    private double? LengthOf(Cue cue) => cue switch
+    {
+        VideoCue { Loop: true } => null,
+        VideoCue video when !string.IsNullOrWhiteSpace(video.FilePath) => Thumbnails.VideoLength(Workspace.ResolvePath(video.FilePath)),
+        _ => cue.Duration,
+    };
+
+    /// <summary>Preview of a visual cue's file, if ready.</summary>
+    public System.Windows.Media.ImageSource? ThumbnailOf(Cue cue)
+        => cue is VideoCue or ImageCue && cue is MediaCue media && !string.IsNullOrWhiteSpace(media.FilePath)
+            ? Thumbnails.Thumbnail(Workspace.ResolvePath(media.FilePath)) : null;
+
+    /// <summary>
+    /// Where the show is now on the timeline: the block of the last fired cue still running, and the seconds since
+    /// that block's GO (its fire time minus where it sits in the block). False when nothing is running.
+    /// </summary>
+    public bool TryGetTimelineNow(out TimelinePoint now)
+    {
+        now = default;
+        var latest = Engine.Running.Where(r => !r.IsFinished).OrderByDescending(r => r.FiredAt).FirstOrDefault();
+        if (latest is null) return false;
+        var item = Timeline.Items.FirstOrDefault(i => ReferenceEquals(i.Cue, latest.Cue));
+        if (item is null) return false;
+        var firedInBlock = item.Start.Time - Math.Max(0, latest.Cue.PreWait);
+        now = new TimelinePoint(item.Start.Block, firedInBlock + (Engine.Now - latest.FiredAt).TotalSeconds);
+        return true;
+    }
+
     private int _routesVersion;
 
     /// <summary>Changes whenever a route is added, removed or renamed: the list's route columns refresh on it.</summary>
@@ -876,6 +971,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ShortcutAction.ShowCheck => ShowCheckCommand,
         ShortcutAction.ToggleSafe => ToggleSafeModeCommand,
         ShortcutAction.ToggleInspector => ToggleInspectorCommand,
+        ShortcutAction.ToggleTimeline => ToggleTimelineCommand,
         _ => throw new ArgumentOutOfRangeException(nameof(action)),
     };
 

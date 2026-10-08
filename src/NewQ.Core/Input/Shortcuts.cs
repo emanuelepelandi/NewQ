@@ -6,7 +6,7 @@ public enum ShortcutAction
     Go, PauseResume, StopAll, Panic, FadeSelected, FireSelected, PlayheadPrevious, PlayheadNext,
     New, Open, Save, SaveAs,
     Duplicate, MoveUp, MoveDown, Delete,
-    ShowCheck, ToggleSafe, ToggleInspector,
+    ShowCheck, ToggleSafe, ToggleInspector, ToggleTimeline,
 }
 
 /// <param name="Group">Section in the editor.</param>
@@ -40,6 +40,7 @@ public sealed class ShortcutMap
         new(ShortcutAction.ShowCheck, "Show Check", "Strumenti", "Ctrl+K"),
         new(ShortcutAction.ToggleSafe, "Modalità Safe on/off", "Strumenti", "Ctrl+Shift+L"),
         new(ShortcutAction.ToggleInspector, "Mostra / comprimi il pannello Proprietà cue", "Visualizza", "Ctrl+I"),
+        new(ShortcutAction.ToggleTimeline, "Mostra / nascondi la timeline", "Visualizza", "Ctrl+T"),
     };
 
     private static readonly string[] ModifierOrder = { "Ctrl", "Alt", "Shift" };

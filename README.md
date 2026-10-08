@@ -63,6 +63,8 @@ I test non sopravvivono mai allo spettacolo: **Panic**, l'attivazione di **Safe*
 
 **Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Generale → Fade cue*. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade.
 
+**Timeline** (Visualizza → Timeline, Ctrl+T): sotto la lista, a tutta larghezza, lo show previsto GO per GO. Ogni GO apre un blocco con le cue che lancia (pre-wait, auto-continue, auto-follow); tra un blocco e l'altro una fascia scura indica l'attesa del GO dell'operatore. Ogni cue è una barra la cui forma è il suo livello nel tempo: fade in, fade out, cue Fade che la abbassano, Stop che la chiudono. Le cue senza fine (loop, live, immagini fisse) proseguono tratteggiate nei blocchi successivi finché qualcosa non le ferma. Video e immagini mostrano il primo fotogramma; la durata dei video viene letta dal file. Corsie per route o per tipo di cue; zoom (Ctrl+rotella), "Adatta", "Segui il playhead"; durante lo show una linea verde indica il punto attuale. Un clic su una cue la seleziona. Le anteprime si generano in background e mai mentre lo show è in riproduzione.
+
 **Visualizza**: il pannello *Proprietà cue* si comprime in una striscia a destra (freccia nell'intestazione, Ctrl+I) per dare spazio alla lista; *Colonne della lista* sceglie quali proprietà mostrare: destinazione, route video e audio, volume, opacità, layer, pre/post-wait, durata, fade in/out, loop, continua, armata, note, stato. Le cue senza quella proprietà lasciano la cella vuota. Scelte e larghezza del pannello sono salvate per macchina.
 
 **Scorciatoie da tastiera** (Strumenti → Scorciatoie da tastiera): ogni comando si può riassegnare o lasciare senza tasto; un tasto appartiene a una sola funzione. Mentre si scrive in un campo funzionano solo le combinazioni con Ctrl/Alt e il Panic. Le scorciatoie sono salvate per macchina e i menu mostrano sempre quelle attuali.
@@ -92,6 +94,7 @@ NewQ.sln
 │   ├─ Engine/            CueEngine: playhead, GO, pre/post-wait, continue, fade, stop, panic
 │   ├─ Signals/           Generatori di toni, rumore rosa/bianco e sweep
 │   ├─ Video/             Geometria delle uscite: omografia (keystone), warp, mesh
+│   ├─ Timeline/          Previsione dello show GO per GO (blocchi, inviluppi dei fade) per la timeline
 │   ├─ Network/           OSC (encoder/decoder, bundle, SLIP), player UDP/TCP, listener remoto
 │   └─ Midi/              Costruzione messaggi MIDI/MSC/SysEx, player astratto
 ├─ src/NewQ.App           (WPF, Windows)

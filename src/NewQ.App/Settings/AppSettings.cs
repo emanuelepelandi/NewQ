@@ -51,6 +51,19 @@ public sealed class AppSettings
     /// <summary>Width of the cue properties panel when open.</summary>
     public double InspectorWidth { get; set; } = 400;
 
+    /// <summary>Timeline panel under the cue list.</summary>
+    public bool TimelineVisible { get; set; } = true;
+    public double TimelineHeight { get; set; } = 240;
+
+    /// <summary>Timeline lanes: one per route (true) or one per cue type (false).</summary>
+    public bool TimelineLanesByRoute { get; set; } = true;
+
+    /// <summary>Timeline zoom in pixels per second.</summary>
+    public double TimelineZoom { get; set; } = 24;
+
+    /// <summary>The timeline scrolls to the next GO when the playhead moves.</summary>
+    public bool TimelineFollow { get; set; } = true;
+
     public static AppSettings Load()
     {
         try

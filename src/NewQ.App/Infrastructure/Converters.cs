@@ -88,6 +88,14 @@ public sealed class CueTypeBrushConverter : IValueConverter
 
     private readonly Dictionary<string, System.Windows.Media.SolidColorBrush> _cache = new();
 
+    /// <summary>Colour of a cue type (design token), for code that draws by hand (timeline).</summary>
+    public static System.Windows.Media.Color ColorOf(string typeName)
+    {
+        var token = TokenKeys.TryGetValue(typeName, out var k) ? k : "CueWaitColor";
+        return System.Windows.Application.Current?.TryFindResource(token) is System.Windows.Media.Color c
+            ? c : System.Windows.Media.Color.FromRgb(0x9A, 0x9F, 0xA8);
+    }
+
     /// <summary>255 = solid text colour; lower values give a translucent background tint.</summary>
     public byte Alpha { get; set; } = 255;
 

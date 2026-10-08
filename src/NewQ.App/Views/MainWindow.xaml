@@ -5,6 +5,7 @@
         xmlns:m="clr-namespace:NewQ.Core.Model;assembly=NewQ.Core"
         xmlns:c="clr-namespace:NewQ.App.Infrastructure"
         xmlns:ctl="clr-namespace:NewQ.App.Controls"
+        xmlns:views="clr-namespace:NewQ.App.Views"
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="{Binding WindowTitle}"
         Width="1440" Height="880" MinWidth="1000" MinHeight="620"
@@ -283,6 +284,8 @@
             <MenuItem Header="_Visualizza">
                 <MenuItem Header="Mostra / comprimi Proprietà cue" Command="{Binding ToggleInspectorCommand}"
                           InputGestureText="{Binding ShortcutText[ToggleInspector]}" />
+                <MenuItem Header="Timeline" IsCheckable="True" IsChecked="{Binding IsTimelineVisible, Mode=TwoWay}"
+                          InputGestureText="{Binding ShortcutText[ToggleTimeline]}" />
                 <Separator />
                 <MenuItem Header="Colonne della lista">
                     <MenuItem Header="Destinazione" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[target], Mode=TwoWay}" />
@@ -537,7 +540,13 @@
             </DockPanel>
         </Border>
 
-        <!-- ======================= Main area: list | inspector, one connected surface ======================= -->
+        <!-- ======================= Main area: list | inspector, timeline below (full width) ======================= -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="240" />
+                <RowDefinition x:Name="TimelineSplitterRow" Height="5" />
+                <RowDefinition x:Name="TimelineRow" Height="240" MinHeight="140" />
+            </Grid.RowDefinitions>
         <Grid Background="{StaticResource PanelBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="500" />
@@ -907,6 +916,11 @@
                     </TextBlock>
                 </StackPanel>
             </Border>
+        </Grid>
+
+        <GridSplitter x:Name="TimelineSplitter" Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                      Background="{StaticResource PanelBrush}" DragCompleted="OnTimelineResized" />
+        <views:TimelinePanel x:Name="TimelineArea" Grid.Row="2" />
         </Grid>
     </DockPanel>
 

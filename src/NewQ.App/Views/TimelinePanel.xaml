@@ -1,0 +1,48 @@
+<UserControl x:Class="NewQ.App.Views.TimelinePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:NewQ.App.Controls">
+    <DockPanel>
+        <!-- Header: what the lanes are, zoom, follow. -->
+        <Border DockPanel.Dock="Top" Height="37" Padding="16,0,4,0" Background="{StaticResource RaisedBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE70D;"
+                        Click="OnHide" ToolTip="Nascondi la timeline (Visualizza → Timeline)" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="TIMELINE" Style="{StaticResource SectionHeaderFirst}" Margin="0,0,16,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Corsie" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSmall}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ToggleButton x:Name="ByRoute" Content="Route" Style="{StaticResource SubtleToggle}" MinHeight="28" Height="28"
+                                  Checked="OnLanesByRoute" Unchecked="OnLaneUnchecked" ToolTip="Una corsia per ogni route video e audio" />
+                    <ToggleButton x:Name="ByType" Content="Tipo" Style="{StaticResource SubtleToggle}" MinHeight="28" Height="28" Margin="4,0,0,0"
+                                  Checked="OnLanesByType" Unchecked="OnLaneUnchecked" ToolTip="Una corsia per ogni tipo di cue" />
+                    <Rectangle Style="{StaticResource ToolbarDivider}" Height="20" />
+                    <Button Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE71F;" Click="OnZoomOut" Width="28" Height="28"
+                            ToolTip="Riduci (Ctrl + rotella)" />
+                    <Button Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE8A3;" Click="OnZoomIn" Width="28" Height="28"
+                            ToolTip="Ingrandisci (Ctrl + rotella)" />
+                    <Button Style="{StaticResource SubtleButton}" Content="Adatta" Click="OnFit" MinHeight="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Tutto lo show nella vista" />
+                    <ToggleButton x:Name="Follow" Content="Segui il playhead" Style="{StaticResource SubtleToggle}" MinHeight="28" Height="28"
+                                  Margin="4,0,0,0" Checked="OnFollow" Unchecked="OnFollow" ToolTip="Quando il playhead si sposta, la timeline mostra il prossimo GO" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ctl:TimelineView x:Name="View" AutomationProperties.Name="Timeline dello show" />
+            <ctl:TimelineNowLine x:Name="NowLine" />
+            <ScrollBar x:Name="VScroll" Grid.Column="1" Orientation="Vertical" Scroll="OnVScroll" />
+            <ScrollBar x:Name="HScroll" Grid.Row="1" Orientation="Horizontal" Scroll="OnHScroll" />
+        </Grid>
+    </DockPanel>
+</UserControl>

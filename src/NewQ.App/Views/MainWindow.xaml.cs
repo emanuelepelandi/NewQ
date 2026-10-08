@@ -50,9 +50,12 @@ public partial class MainWindow : Window
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.IsInspectorCollapsed)) ApplyInspector();
+            if (e.PropertyName == nameof(MainViewModel.IsTimelineVisible)) ApplyTimeline();
         };
         ApplyColumns();
         ApplyInspector();
+        TimelineArea.Initialize(ViewModel);
+        ApplyTimeline();
     }
 
     private void ApplyColumns()
@@ -81,6 +84,22 @@ public partial class MainWindow : Window
         InspectorStrip.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
         InspectorSplitter.IsEnabled = !collapsed;
         InspectorSplitter.Cursor = collapsed ? Cursors.Arrow : null;
+    }
+
+    /// <summary>Shows the timeline under the list (at its saved height) or hides it completely.</summary>
+    private void ApplyTimeline()
+    {
+        var visible = ViewModel.IsTimelineVisible;
+        TimelineRow.MinHeight = visible ? 140 : 0;
+        TimelineRow.Height = visible ? new GridLength(Math.Max(140, ViewModel.Settings.TimelineHeight)) : new GridLength(0);
+        TimelineSplitterRow.Height = new GridLength(visible ? 5 : 0);
+        TimelineArea.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        TimelineSplitter.Visibility = TimelineArea.Visibility;
+    }
+
+    private void OnTimelineResized(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (ViewModel.IsTimelineVisible) ViewModel.SaveTimelineSettings(s => s.TimelineHeight = TimelineRow.ActualHeight);
     }
 
     private void OnInspectorResized(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
