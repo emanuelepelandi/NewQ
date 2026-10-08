@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +20,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         // Inspector fields confirm on Enter / click outside and give the keyboard back to the cue list (Space = GO).
         _fields = FieldCommit.Attach(this, field => !CueGrid.IsKeyboardFocusWithin, () => CueGrid.Focus());
+        Loaded += (_, _) => HookView();
         // Always open on the primary monitor: "CenterScreen" follows the mouse, and the control window could
         // end up on the projector, hidden behind a fullscreen (topmost) video output.
         var area = SystemParameters.WorkArea;
@@ -29,6 +31,62 @@ public partial class MainWindow : Window
     }
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
+
+    // ------------------------------------------------------------------ view: list columns, properties panel
+
+    private const double InspectorStripWidth = 36;
+
+    private Dictionary<string, DataGridColumn> OptionalColumns() => new()
+    {
+        ["target"] = ColTarget, ["videoRoute"] = ColVideoRoute, ["audioRoute"] = ColAudioRoute, ["volume"] = ColVolume,
+        ["opacity"] = ColOpacity, ["layer"] = ColLayer, ["prewait"] = ColPrewait, ["duration"] = ColDuration,
+        ["postwait"] = ColPostwait, ["fadeIn"] = ColFadeIn, ["fadeOut"] = ColFadeOut, ["loop"] = ColLoop,
+        ["continue"] = ColContinue, ["armed"] = ColArmed, ["notes"] = ColNotes, ["state"] = ColState,
+    };
+
+    private void HookView()
+    {
+        ViewModel.Columns.PropertyChanged += (_, _) => ApplyColumns();
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.IsInspectorCollapsed)) ApplyInspector();
+        };
+        ApplyColumns();
+        ApplyInspector();
+    }
+
+    private void ApplyColumns()
+    {
+        foreach (var (key, column) in OptionalColumns())
+            column.Visibility = ViewModel.Columns[key] ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Folds the properties panel to a strip on the right (the list gets the space), or opens it again.</summary>
+    private void ApplyInspector()
+    {
+        var collapsed = ViewModel.IsInspectorCollapsed;
+        if (collapsed)
+        {
+            if (InspectorPanel.IsKeyboardFocusWithin) CueGrid.Focus(); // never leave the focus in a hidden field
+            if (InspectorColumn.ActualWidth > InspectorStripWidth) ViewModel.SaveInspectorWidth(InspectorColumn.ActualWidth);
+            InspectorColumn.MinWidth = 0;
+            InspectorColumn.Width = new GridLength(InspectorStripWidth);
+        }
+        else
+        {
+            InspectorColumn.MinWidth = 320;
+            InspectorColumn.Width = new GridLength(Math.Max(320, ViewModel.Settings.InspectorWidth));
+        }
+        InspectorPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        InspectorStrip.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+        InspectorSplitter.IsEnabled = !collapsed;
+        InspectorSplitter.Cursor = collapsed ? Cursors.Arrow : null;
+    }
+
+    private void OnInspectorResized(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (!ViewModel.IsInspectorCollapsed) ViewModel.SaveInspectorWidth(InspectorColumn.ActualWidth);
+    }
 
     /// <summary>True while the user is typing somewhere, so show shortcuts must not fire.</summary>
     private static bool IsEditingText()

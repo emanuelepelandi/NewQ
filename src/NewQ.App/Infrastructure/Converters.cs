@@ -119,6 +119,34 @@ public sealed class FormatConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+/// <summary>
+/// Name of a route from its id. MultiBinding: [route id, the workspace's route collection, RoutesVersion].
+/// The version only forces a refresh when routes are renamed or removed.
+/// </summary>
+public sealed class RouteNameConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values.Length < 2 || values[0] is not Guid id || values[1] is not System.Collections.IEnumerable routes) return "";
+        foreach (var route in routes)
+            switch (route)
+            {
+                case NewQ.Core.Model.AudioRoute a when a.Id == id: return a.Name;
+                case NewQ.Core.Model.VideoRoute v when v.Id == id: return v.Name;
+            }
+        return "(route rimossa)";
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>true → a check mark (list columns such as Loop and Armata); false → nothing.</summary>
+public sealed class CheckMarkConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is true ? "✓" : "";
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
 public static class EnumSources
 {
     public static Array ContinueModes { get; } = Enum.GetValues(typeof(ContinueMode));

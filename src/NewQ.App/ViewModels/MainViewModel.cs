@@ -57,6 +57,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _dispatcher = dispatcher;
         _settings = AppSettings.Load();
         _shortcuts = ShortcutMap.FromSettings(_settings.Shortcuts);
+        Columns = new CueColumns(_settings.CueColumns);
+        Columns.Changed += () => { _settings.CueColumns = Columns.Visible; TrySaveSettings(); };
+        _inspectorCollapsed = _settings.InspectorCollapsed;
         ShortcutText = new ShortcutTexts(_shortcuts);
         ShortcutHint = new ShortcutTexts(_shortcuts, asHint: true);
         _outputs = new OutputWindowManager(_hub);
@@ -127,6 +130,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ToggleSafeModeCommand = new RelayCommand(() => IsSafeMode = !IsSafeMode);
         ResetClipsCommand = new RelayCommand(ResetClips);
         ShowCheckCommand = new RelayCommand(OpenShowCheck);
+        ToggleInspectorCommand = new RelayCommand(() => IsInspectorCollapsed = !IsInspectorCollapsed);
+        ResetColumnsCommand = new RelayCommand(() => Columns.ResetToDefaults());
 
         VlcRuntime.WarmUp(); // libVLC loads its plugins in background (~1 s)
         RefreshDevices();
@@ -402,6 +407,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnAudioRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        RoutesVersion++;
         if (e.OldItems is not null) foreach (AudioRoute r in e.OldItems) r.PropertyChanged -= OnAudioRouteChanged;
         if (e.NewItems is not null) foreach (AudioRoute r in e.NewItems) r.PropertyChanged += OnAudioRouteChanged;
         IsDirty = true;
@@ -410,6 +416,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnAudioRouteChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(AudioRoute.Name)) RoutesVersion++;
         IsDirty = true;
         switch (e.PropertyName)
         {
@@ -424,6 +431,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnVideoRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        RoutesVersion++;
         IsDirty = true;
         HookVideoRoutes(Workspace);
         ApplyVideoRoutes();
@@ -469,6 +477,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnVideoGeometryChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (sender is VideoRoute && e.PropertyName == nameof(VideoRoute.Name)) RoutesVersion++;
         IsDirty = true;
         if (sender is VideoRoute && e.PropertyName == nameof(VideoRoute.Outputs)) HookVideoRoutes(Workspace);
         ApplyVideoRoutes();
@@ -795,6 +804,41 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         RefreshCaptureDevices();
     }
 
+    // ------------------------------------------------------------------ view (Visualizza)
+
+    /// <summary>Optional columns of the cue list.</summary>
+    public CueColumns Columns { get; }
+
+    public ICommand ResetColumnsCommand { get; }
+    public ICommand ToggleInspectorCommand { get; }
+
+    private bool _inspectorCollapsed;
+
+    /// <summary>The cue properties panel is folded to a strip on the right (saved per machine).</summary>
+    public bool IsInspectorCollapsed
+    {
+        get => _inspectorCollapsed;
+        set
+        {
+            if (!SetField(ref _inspectorCollapsed, value)) return;
+            _settings.InspectorCollapsed = value;
+            TrySaveSettings();
+        }
+    }
+
+    /// <summary>Remembers the width of the open properties panel (the window calls it after a resize).</summary>
+    public void SaveInspectorWidth(double width)
+    {
+        if (Math.Abs(_settings.InspectorWidth - width) < 1) return;
+        _settings.InspectorWidth = width;
+        TrySaveSettings();
+    }
+
+    private int _routesVersion;
+
+    /// <summary>Changes whenever a route is added, removed or renamed: the list's route columns refresh on it.</summary>
+    public int RoutesVersion { get => _routesVersion; private set => SetField(ref _routesVersion, value); }
+
     // ------------------------------------------------------------------ keyboard shortcuts
 
     private ShortcutMap _shortcuts;
@@ -831,6 +875,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ShortcutAction.Delete => DeleteCueCommand,
         ShortcutAction.ShowCheck => ShowCheckCommand,
         ShortcutAction.ToggleSafe => ToggleSafeModeCommand,
+        ShortcutAction.ToggleInspector => ToggleInspectorCommand,
         _ => throw new ArgumentOutOfRangeException(nameof(action)),
     };
 

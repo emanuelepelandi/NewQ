@@ -42,6 +42,15 @@ public sealed class AppSettings
     /// <summary>Keyboard shortcuts that differ from the defaults: action name → gesture ("" = none).</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = new();
 
+    /// <summary>Optional columns shown in the cue list (menu Visualizza); null = the default set.</summary>
+    public List<string>? CueColumns { get; set; }
+
+    /// <summary>Cue properties panel folded to a strip on the right.</summary>
+    public bool InspectorCollapsed { get; set; }
+
+    /// <summary>Width of the cue properties panel when open.</summary>
+    public double InspectorWidth { get; set; } = 400;
+
     public static AppSettings Load()
     {
         try
