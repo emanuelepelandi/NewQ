@@ -41,13 +41,6 @@ public partial class TestAudioPanel : UserControl
     public TestAudioPanel()
     {
         InitializeComponent();
-        SetupHelpers.CommitOnEnter(this);
-        // Enter in a plain text field (not bound): apply it like a focus loss.
-        AddHandler(PreviewKeyDownEvent, new System.Windows.Input.KeyEventHandler((_, e) =>
-        {
-            if (e.Key == System.Windows.Input.Key.Enter && e.OriginalSource is TextBox box)
-                box.RaiseEvent(new RoutedEventArgs(LostFocusEvent, box));
-        }), handledEventsToo: true);
         _timer = new DispatcherTimer(TimeSpan.FromSeconds(MeterInterval), DispatcherPriority.Render, (_, _) => Tick(), Dispatcher);
         _timer.Stop();
         Loaded += (_, _) => _timer.Start();

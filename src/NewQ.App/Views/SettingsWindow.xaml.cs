@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using NewQ.App.Audio;
+using NewQ.App.Infrastructure;
 using NewQ.App.Settings;
 using NewQ.App.Views.Setup;
 using NewQ.Core;
@@ -22,6 +23,8 @@ public partial class SettingsWindow : Window
         SetupContext setup, int initialTab = 0)
     {
         InitializeComponent();
+        // Fields confirm and lose focus on Enter or a click outside, like the inspector of the main window.
+        FieldCommit.Attach(this);
         AudioRoutesPage.Initialize(setup);
         VideoRoutesPage.Initialize(setup);
         TestVideoPage.Initialize(setup);

@@ -16,7 +16,6 @@ public partial class VideoRoutesPanel : UserControl
     public VideoRoutesPanel()
     {
         InitializeComponent();
-        SetupHelpers.CommitOnEnter(this);
     }
 
     public void Initialize(SetupContext context)

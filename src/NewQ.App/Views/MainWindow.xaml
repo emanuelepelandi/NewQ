@@ -13,7 +13,6 @@
         Foreground="{StaticResource TextPrimaryBrush}"
         FontFamily="{StaticResource UiFont}"
         PreviewKeyDown="OnPreviewKeyDown"
-        PreviewMouseDown="OnPreviewMouseDown"
         Closing="OnClosing">
 
     <Window.InputBindings>

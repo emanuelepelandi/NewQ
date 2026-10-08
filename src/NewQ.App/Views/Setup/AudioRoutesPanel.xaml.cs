@@ -22,7 +22,6 @@ public partial class AudioRoutesPanel : UserControl
     public AudioRoutesPanel()
     {
         InitializeComponent();
-        SetupHelpers.CommitOnEnter(this);
         _meterTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(50), DispatcherPriority.Render, (_, _) => UpdateMeter(), Dispatcher);
         _meterTimer.Stop();
         Unloaded += (_, _) => _meterTimer.Stop();

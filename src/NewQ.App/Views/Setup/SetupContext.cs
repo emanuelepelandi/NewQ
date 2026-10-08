@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Input;
 using NewQ.App.Audio;
 using NewQ.App.Settings;
 using NewQ.App.Video;
@@ -40,16 +38,6 @@ public sealed class PercentConverter : IValueConverter
 /// <summary>Small helpers shared by the setup pages.</summary>
 public static class SetupHelpers
 {
-    /// <summary>Text fields inside <paramref name="root"/> commit their value on Enter (they also commit on focus loss).</summary>
-    public static void CommitOnEnter(UIElement root)
-        => root.PreviewKeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter || e.OriginalSource is not TextBox box) return;
-            box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-            box.SelectAll();
-            e.Handled = true;
-        };
-
     /// <summary>"Base", "Base 2", "Base 3"... the first one not already used.</summary>
     public static string UniqueName(string baseName, IEnumerable<string> existing)
     {

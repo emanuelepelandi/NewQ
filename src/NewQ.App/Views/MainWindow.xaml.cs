@@ -4,15 +4,20 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using NewQ.App.Infrastructure;
 using NewQ.App.ViewModels;
 
 namespace NewQ.App.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly FieldCommit _fields;
+
     public MainWindow()
     {
         InitializeComponent();
+        // Inspector fields confirm on Enter / click outside and give the keyboard back to the cue list (Space = GO).
+        _fields = FieldCommit.Attach(this, field => !CueGrid.IsKeyboardFocusWithin, () => CueGrid.Focus());
         // Always open on the primary monitor: "CenterScreen" follows the mouse, and the control window could
         // end up on the projector, hidden behind a fullscreen (topmost) video output.
         var area = SystemParameters.WorkArea;
@@ -29,57 +34,11 @@ public partial class MainWindow : Window
         => Keyboard.FocusedElement is TextBoxBase or PasswordBox
            || Keyboard.FocusedElement is ComboBox { IsEditable: true };
 
-    // ------------------------------------------------------------------ editing fields (inspector)
-
-    /// <summary>The text field being edited outside the cue list (inspector), if any.</summary>
-    private TextBox? EditedField()
-        => Keyboard.FocusedElement is TextBox tb && !CueGrid.IsKeyboardFocusWithin ? tb : null;
-
-    /// <summary>Pushes the text being typed into the cue (bindings normally update only on focus loss).</summary>
-    private static void CommitField(TextBox field)
-    {
-        field.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-        if (ParentComboBox(field) is ComboBox combo)
-            combo.GetBindingExpression(ComboBox.TextProperty)?.UpdateSource();
-    }
-
-    private static ComboBox? ParentComboBox(DependencyObject element)
-        => element is FrameworkElement { TemplatedParent: ComboBox combo } ? combo : null;
-
-    /// <summary>Confirms the field and gives the keyboard back to the cue list, so Space = GO works again.</summary>
-    private void LeaveField(TextBox field)
-    {
-        CommitField(field);
-        CueGrid.Focus();
-    }
-
-    /// <summary>A click outside the field being edited confirms it, even on areas that can't take focus.</summary>
-    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (EditedField() is not TextBox field || field.IsMouseOver) return;
-        if (ParentComboBox(field) is ComboBox { IsMouseOver: true } or ComboBox { IsDropDownOpen: true }) return;
-
-        // If the click moves the focus somewhere else (another field, a button...) let it; otherwise leave the field.
-        Dispatcher.BeginInvoke(() =>
-        {
-            if (ReferenceEquals(Keyboard.FocusedElement, field)) LeaveField(field);
-        }, System.Windows.Threading.DispatcherPriority.Input);
-    }
-
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (EditedField() is TextBox field)
-        {
-            // Enter confirms the field (Shift+Enter still adds a new line in multi-line fields like the notes).
-            if (e.Key == Key.Enter && !(field.AcceptsReturn && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)))
-            {
-                LeaveField(field);
-                e.Handled = true;
-                return;
-            }
-            // Ctrl+S and other shortcuts must see the value being typed.
-            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) CommitField(field);
-        }
+        // Ctrl+S and other shortcuts must see the value being typed (Enter / click outside: FieldCommit).
+        if (_fields.EditedField() is TextBox field && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            FieldCommit.Commit(field);
 
         // PANIC must work everywhere, even while editing.
         if (e.Key == Key.Escape)
