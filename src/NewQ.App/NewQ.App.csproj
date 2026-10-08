@@ -31,6 +31,15 @@
     <PackageReference Include="Vortice.D3DCompiler" Version="2.4.2" />
   </ItemGroup>
 
+  <!-- libVLC's DirectShow input (Live cues), missing from the NuGet package: see ThirdParty/libvlc/README.md. -->
+  <ItemGroup>
+    <None Include="ThirdParty\libvlc\win-x64\plugins\access\libdshow_plugin.dll"
+          Link="libvlc\win-x64\plugins\access\libdshow_plugin.dll"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="ThirdParty\libvlc\COPYING-VLC.txt" Link="libvlc\COPYING-VLC.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\NewQ.Core\NewQ.Core.csproj" />
   </ItemGroup>

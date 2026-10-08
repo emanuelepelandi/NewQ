@@ -9,7 +9,7 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | **Audio** | WAV, MP3, AIFF, FLAC, M4A/AAC, WMA. Volume in dB, inizio/fine (trim), loop, fade in, fade out finale. Mixer sempre attivo per una latenza di GO minima. Suona su una **route audio**. Uscita **WASAPI** (condivisa o esclusiva) o **ASIO**. |
 | **Video** | Motore **libVLC** (lo stesso di VLC): H.264, HEVC, VP9, AV1, ProRes, HAP, DNxHD; contenitori MP4/MOV/MKV/AVI/WMV…, con decodifica hardware. Precaricamento automatico: il primo fotogramma appare circa 70 ms dopo il GO, poi la riproduzione è fluida a 60 fps anche con monitor a frequenze diverse. Composizione su **GPU** (Direct3D 11) verso le **route video**. Fade da e verso il nero, volume, loop senza stacchi; l'audio del video esce sulla scheda della sua route audio. |
 | **Immagine** | PNG/JPG/BMP/GIF/TIFF sulle stesse route dei video (sempre sopra ai video), con layer, fade e durata. Decodificate in anticipo in background. |
-| **Live** | Una sorgente dal vivo (videocamera, sorgente HDMI/SDI tramite scheda di acquisizione) sulle route video, come un video senza fine: layer, opacità, fade, audio della sorgente sulla sua route. La sorgente si apre in anticipo quando la cue diventa la prossima; più cue sulla stessa sorgente la condividono. In pausa l'immagine si congela. *Richiede il modulo DirectShow di libVLC, vedi sotto.* |
+| **Live** | Una sorgente dal vivo (videocamera, sorgente HDMI/SDI tramite scheda di acquisizione) sulle route video, come un video senza fine: layer, opacità, fade, audio della sorgente sulla sua route. La sorgente si apre in anticipo quando la cue diventa la prossima; più cue sulla stessa sorgente la condividono. In pausa l'immagine si congela. Usa il modulo DirectShow di libVLC, vedi sotto. |
 | **MIDI** | Note On/Off, Control Change, Program Change, Pitch Bend, **MIDI Show Control** (GO/STOP/RESUME… per mixer luci e audio), **SysEx** raw. |
 | **Rete** | **OSC su UDP**, **OSC su TCP** (framing SLIP, OSC 1.1), **testo/byte su UDP o TCP** con escape (`\r`, `\n`, `\xHH`), per esempio per proiettori PJLink o media server. |
 | **Attesa** | Pausa temporizzata nella sequenza. |
@@ -121,7 +121,9 @@ dotnet run --project src\NewQ.App -- samples\Demo.newq
 
 ## Sorgenti live: modulo DirectShow
 
-Le cue Live aprono la sorgente con l'ingresso DirectShow di libVLC (`dshow://`), che vede webcam, schede di acquisizione UVC (Elgato, Magewell...) e schede con driver DirectShow (Blackmagic DeckLink, AJA). Il pacchetto NuGet `VideoLAN.LibVLC.Windows` **non include** questo modulo (`plugins/access/libdshow_plugin.dll`): finché non viene aggiunto, una cue Live va in errore con un messaggio chiaro e non blocca lo show.
+Le cue Live aprono la sorgente con l'ingresso DirectShow di libVLC (`dshow://`), che vede webcam, schede di acquisizione UVC (Elgato, Magewell...) e schede con driver DirectShow (Blackmagic DeckLink, AJA). Il pacchetto NuGet `VideoLAN.LibVLC.Windows` non include questo modulo: è preso dalla build ufficiale di VLC 3.0.21 (firmato VideoLAN, checksum verificato) ed è in `src/NewQ.App/ThirdParty/libvlc`, copiato automaticamente nei plugin di libVLC a ogni build. Vedi il README di quella cartella per provenienza e licenza (LGPL).
+
+Nota: quando una cue Live è la prossima del GO la sorgente resta aperta (precaricata), quindi una webcam mostra la sua spia accesa anche prima del GO.
 
 ## Distribuzione
 
