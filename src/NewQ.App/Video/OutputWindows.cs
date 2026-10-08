@@ -67,6 +67,7 @@ public sealed class OutputWindow : Window
         if (bounds is null)
         {
             Title = "NewQ – Anteprima uscita video";
+            Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/NewQ.ico"));
             Width = 960;
             Height = 540;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;

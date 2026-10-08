@@ -10,6 +10,8 @@
     <RootNamespace>NewQ.App</RootNamespace>
     <AssemblyName>NewQ</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Icon of NewQ.exe (Explorer, shortcuts); the windows use the same file as a resource. -->
+    <ApplicationIcon>Assets\NewQ.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- WinForms analyzer: DPI awareness for a WPF app is correctly declared in app.manifest. -->
@@ -29,6 +31,10 @@
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
     <PackageReference Include="Vortice.Direct3D11" Version="2.4.2" />
     <PackageReference Include="Vortice.D3DCompiler" Version="2.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\NewQ.ico" />
   </ItemGroup>
 
   <!-- libVLC's DirectShow input (Live cues), missing from the NuGet package: see ThirdParty/libvlc/README.md. -->

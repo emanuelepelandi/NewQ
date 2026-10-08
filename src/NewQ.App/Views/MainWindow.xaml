@@ -7,6 +7,7 @@
         xmlns:ctl="clr-namespace:NewQ.App.Controls"
         xmlns:views="clr-namespace:NewQ.App.Views"
         ui:WindowHelper.UseModernWindowStyle="True"
+        Icon="/Assets/NewQ.ico"
         Title="{Binding WindowTitle}"
         Width="1440" Height="880" MinWidth="1000" MinHeight="620"
         WindowStartupLocation="Manual"

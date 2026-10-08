@@ -4,6 +4,7 @@
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:setup="clr-namespace:NewQ.App.Views.Setup"
         ui:WindowHelper.UseModernWindowStyle="True"
+        Icon="/Assets/NewQ.ico"
         Title="Impostazioni" Width="1100" Height="780" MinWidth="900" MinHeight="560"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextPrimaryBrush}"
