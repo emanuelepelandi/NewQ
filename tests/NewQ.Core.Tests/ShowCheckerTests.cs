@@ -18,6 +18,8 @@ public class ShowCheckerTests
         public string DefaultMidiDevice { get; set; } = "";
         public HashSet<string> MissingAudioDevices { get; } = new();
         public string? CheckAudioRoute(AudioRoute route) => MissingAudioDevices.Contains(route.DeviceId) ? "dispositivo non collegato" : null;
+        public IReadOnlyList<string> VideoCaptureDevices { get; set; } = new[] { "USB Video", "Capture HDMI" };
+        public IReadOnlyList<string> AudioCaptureDevices { get; set; } = new[] { "HDMI Audio" };
 
         public Task<MediaProbe> ProbeAsync(MediaCue cue, string path, CancellationToken token)
             => Task.FromResult(Probes.TryGetValue(Path.GetFileName(path), out var p) ? p : new MediaProbe(null, 10));
@@ -138,5 +140,23 @@ public class ShowCheckerTests
             new AudioCue { Number = "2", FilePath = "manca.wav" }), env);
         Assert.Equal(CheckSeverity.Error, issues[0].Severity);
         Assert.Equal(CheckSeverity.Info, issues[^1].Severity);
+    }
+
+    [Fact]
+    public async Task Live_source_is_checked_as_a_device_not_a_file()
+    {
+        var env = new FakeEnv();
+        var ok = new LiveCue { Number = "1", DeviceName = "Capture HDMI", AudioDeviceName = "HDMI Audio" };
+        var missing = new LiveCue { Number = "2", DeviceName = "Camera spenta" };
+        var none = new LiveCue { Number = "3" };
+        var noAudio = new LiveCue { Number = "4", DeviceName = "USB Video", AudioDeviceName = "Mic scollegato" };
+
+        var issues = await Run(Show(ok, missing, none, noAudio), env);
+
+        Assert.DoesNotContain(issues, i => i.Cue == ok && i.Severity >= CheckSeverity.Warning);
+        Assert.Contains(issues, i => i.Cue == missing && i.Severity == CheckSeverity.Error && i.Message.Contains("non è collegata"));
+        Assert.Contains(issues, i => i.Cue == none && i.Severity == CheckSeverity.Error);
+        Assert.Contains(issues, i => i.Cue == noAudio && i.Severity == CheckSeverity.Warning);
+        Assert.DoesNotContain(issues, i => i.Message.Contains("File", StringComparison.OrdinalIgnoreCase) && i.Cue is LiveCue);
     }
 }

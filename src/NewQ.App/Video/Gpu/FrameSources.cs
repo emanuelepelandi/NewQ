@@ -80,6 +80,9 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
     public int Height { get; private set; }
     public long FrameNumber => Interlocked.Read(ref _frameNumber);
 
+    /// <summary>While true, new frames are dropped and the current one stays (pausing a live source).</summary>
+    public bool Frozen { get; set; }
+
     /// <summary>Raised (on a libVLC thread) for the first displayed frame.</summary>
     public event Action? FirstFrame;
 
@@ -162,6 +165,11 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
         {
             var index = picture.ToInt32() - 1;
             if (index < 0 || index >= BufferCount || _disposed) return;
+            if (Frozen && _front >= 0)
+            {
+                if (index != _front) _states[index] = State.Free; // drop the new frame, keep showing the old one
+                return;
+            }
             if (_front >= 0 && _front != index) _states[_front] = State.Free;
             _states[index] = State.Front;
             _front = index;

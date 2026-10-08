@@ -18,6 +18,7 @@ public enum CueRunState { Idle, PreWait, Running, Paused, Error }
 [JsonDerivedType(typeof(AudioCue), "audio")]
 [JsonDerivedType(typeof(VideoCue), "video")]
 [JsonDerivedType(typeof(ImageCue), "image")]
+[JsonDerivedType(typeof(LiveCue), "live")]
 [JsonDerivedType(typeof(MidiCue), "midi")]
 [JsonDerivedType(typeof(NetworkCue), "network")]
 [JsonDerivedType(typeof(WaitCue), "wait")]

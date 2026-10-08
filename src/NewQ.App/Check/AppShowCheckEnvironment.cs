@@ -34,6 +34,10 @@ public sealed class AppShowCheckEnvironment : IShowCheckEnvironment
     public IReadOnlyList<string> MidiDevices { get; }
     public string DefaultMidiDevice { get; }
 
+    /// <summary>Capture devices connected now (set by the app).</summary>
+    public IReadOnlyList<string> VideoCaptureDevices { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> AudioCaptureDevices { get; init; } = Array.Empty<string>();
+
     /// <summary>Set by the app: why a route can't play on this machine (device missing, channels out of range).</summary>
     public Func<AudioRoute, string?> AudioRouteProblem { get; init; } = _ => null;
 

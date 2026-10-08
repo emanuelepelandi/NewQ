@@ -1,0 +1,51 @@
+<UserControl x:Class="NewQ.App.Views.Setup.ShortcutsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:NewQ.App.Controls">
+    <Grid Margin="24,16,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right" Content="Ripristina tutti i predefiniti" Click="OnResetAll" VerticalAlignment="Top" />
+            <TextBlock Style="{StaticResource Hint}" Margin="0,0,24,0"
+                       Text="Clicca su un campo e premi la combinazione. Ogni tasto può avere una sola funzione: se è già usato, viene tolto dall'altra. Una funzione può restare senza tasto. Mentre scrivi in un campo funzionano solo le combinazioni con Ctrl o Alt, e il Panic." />
+        </DockPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource Panel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="Rows" Margin="16,4,16,12" KeyboardNavigation.TabNavigation="Continue">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding GroupHeader}" Style="{StaticResource SectionHeader}" Margin="0,12,0,4"
+                                           Visibility="{Binding GroupHeaderVisibility}" />
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <ctl:KeyCaptureBox Grid.Column="1" Gesture="{Binding Gesture}" GestureCaptured="OnCaptured"
+                                                       AutomationProperties.Name="{Binding Label}" />
+                                    <Button Grid.Column="2" Style="{StaticResource SquareButton}" Margin="8,0,0,0"
+                                            ctl:ButtonIcon.Glyph="&#xE711;" Click="OnClear" ToolTip="Nessun tasto per questa funzione" />
+                                    <Button Grid.Column="3" Style="{StaticResource SquareButton}" Margin="4,0,0,0"
+                                            ctl:ButtonIcon.Glyph="&#xE7A7;" Click="OnResetOne" ToolTip="Tasto predefinito" />
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <TextBlock x:Name="Notice" Grid.Row="2" Margin="0,12,0,0" FontSize="{StaticResource FontSmall}"
+                   Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" />
+    </Grid>
+</UserControl>

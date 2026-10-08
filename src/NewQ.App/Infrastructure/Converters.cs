@@ -78,6 +78,7 @@ public sealed class CueTypeBrushConverter : IValueConverter
         ["Audio"] = "CueAudioColor",
         ["Video"] = "CueVideoColor",
         ["Immagine"] = "CueImageColor",
+        ["Live"] = "CueLiveColor",
         ["MIDI"] = "CueMidiColor",
         ["Rete"] = "CueNetworkColor",
         ["Attesa"] = "CueWaitColor",
@@ -103,6 +104,17 @@ public sealed class CueTypeBrushConverter : IValueConverter
         _cache[key] = brush;
         return brush;
     }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+/// <summary>
+/// string.Format(parameter, value): for targets of type object (ToolTip, Content), where StringFormat is ignored.
+/// </summary>
+public sealed class FormatConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => parameter is string format ? string.Format(culture, format, value) : value?.ToString() ?? "";
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }

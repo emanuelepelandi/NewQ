@@ -14,8 +14,9 @@ using NewQ.Core.Model;
 namespace NewQ.App.Video;
 
 /// <summary>
-/// Plays video and image cues on their video route through the GPU compositor. UI thread only.
-/// Videos are preloaded paused on their first frame when they become the next GO; images are decoded in background.
+/// Plays video, image and live-source cues on their video route through the GPU compositor. UI thread only.
+/// Videos are preloaded paused on their first frame when they become the next GO; images are decoded in background;
+/// live sources are opened in advance and shared by every cue that uses the same device with the same settings.
 /// </summary>
 public sealed class VisualCuePlayer : IPreloadingCuePlayer
 {
@@ -25,6 +26,8 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
     private readonly Dispatcher _dispatcher;
     private readonly Dictionary<Guid, PreparedVideo> _videos = new();
     private readonly Dictionary<string, Task<ImageFrameSource>> _images = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<LiveSession> _liveSessions = new();
+    private readonly Dictionary<Guid, LiveSession> _livePreloads = new();
 
     /// <param name="audioTarget">Resolves a cue's audio route to a sound card and gain (route gain × master).</param>
     public VisualCuePlayer(CompositionHub hub, OutputWindowManager outputs, Func<Guid?, VideoAudioTarget> audioTarget, Dispatcher dispatcher)
@@ -35,12 +38,24 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
         _dispatcher = dispatcher;
     }
 
-    public bool CanPlay(Cue cue) => cue is VideoCue or ImageCue;
+    public bool CanPlay(Cue cue) => cue is VideoCue or ImageCue or LiveCue;
 
     // ------------------------------------------------------------------ preload
 
     public void Preload(Cue cue, Workspace workspace)
     {
+        if (cue is LiveCue live)
+        {
+            if (_livePreloads.TryGetValue(live.Id, out var session))
+            {
+                if (session.IsUsableFor(LiveSource(live), _audioTarget(live.AudioRouteId).DeviceId)) return;
+                _livePreloads.Remove(live.Id);
+                ReleaseLive(session);
+            }
+            _livePreloads[live.Id] = AcquireLive(live);
+            return;
+        }
+
         var visual = (VisualCue)cue;
         var path = ResolveExisting(visual, workspace.ResolvePath);
 
@@ -71,12 +86,75 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
             _videos.Remove(id);
         }
         if (_images.Count > 16) _images.Clear(); // paths can't be resolved here: keep the cache small
+        foreach (var id in _livePreloads.Keys.Where(id => !keepIds.Contains(id)).ToList())
+        {
+            ReleaseLive(_livePreloads[id]);
+            _livePreloads.Remove(id);
+        }
     }
+
+    // ------------------------------------------------------------------ live sources
+
+    /// <summary>One open capture device, shared by the preload and every live cue showing it.</summary>
+    internal sealed class LiveSession
+    {
+        public LiveSession(PreparedVideo video) => Video = video;
+        public PreparedVideo Video { get; }
+        public int References { get; set; }
+        public bool IsUsableFor(VideoSource source, string audioDevice) => Video.IsUsableFor(source, audioDevice);
+    }
+
+    private static VideoSource LiveSource(LiveCue live)
+    {
+        if (string.IsNullOrWhiteSpace(live.DeviceName)) throw new InvalidOperationException("Nessuna sorgente live selezionata.");
+        return VideoSource.Capture(live.DeviceName, live.AudioDeviceName, live.Resolution, live.FrameRate);
+    }
+
+    private LiveSession AcquireLive(LiveCue live)
+    {
+        var source = LiveSource(live);
+        var audioDevice = _audioTarget(live.AudioRouteId).DeviceId;
+        var session = _liveSessions.FirstOrDefault(s => s.IsUsableFor(source, audioDevice));
+        if (session is null)
+        {
+            session = new LiveSession(new PreparedVideo(source, audioDevice, _dispatcher));
+            _liveSessions.Add(session);
+        }
+        session.References++;
+        return session;
+    }
+
+    private void ReleaseLive(LiveSession session)
+    {
+        if (--session.References > 0) return;
+        _liveSessions.Remove(session);
+        session.Video.Dispose(); // closes the device
+    }
+
+    /// <summary>Open capture devices (diagnostics).</summary>
+    public int LiveSessionCount => _liveSessions.Count;
 
     // ------------------------------------------------------------------ start
 
     public IActiveCue Start(Cue cue, CueContext context)
     {
+        if (cue is LiveCue live)
+        {
+            var liveRoute = context.Workspace.ResolveVideoRoute(live.VideoRouteId).Id;
+            var target = _audioTarget(live.AudioRouteId);
+            var source = LiveSource(live);
+            var session = _livePreloads.Remove(live.Id, out var preloaded) ? preloaded : AcquireLive(live);
+            if (!session.IsUsableFor(source, target.DeviceId))
+            {
+                // Edited (or failed) since the preload: open it again.
+                ReleaseLive(session);
+                session = AcquireLive(live);
+            }
+            _outputs.EnsureVisible(liveRoute);
+            var acquired = session;
+            return new LiveLayer(live, acquired, _hub, liveRoute, target.Gain, context, () => ReleaseLive(acquired));
+        }
+
         var visual = (VisualCue)cue;
         var path = ResolveExisting(visual, context.ResolvePath);
         var routeId = context.Workspace.ResolveVideoRoute(visual.VideoRouteId).Id;
@@ -350,5 +428,87 @@ internal sealed class VideoLayer : VisualLayer
         _prepared.Failed -= OnFailed;
         _volume.Stop();
         _prepared.Dispose();
+    }
+}
+
+/// <summary>
+/// A live source on screen. It has no length and never ends by itself; pausing freezes the picture (and mutes),
+/// because a live device can't pause.
+/// </summary>
+internal sealed class LiveLayer : VisualLayer
+{
+    private readonly LiveCue _cue;
+    private readonly PreparedVideo _video;
+    private readonly VolumeRamp _volume;
+    private readonly double _routeGain;
+    private readonly Action _release;
+    private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private bool _paused;
+
+    public LiveLayer(LiveCue cue, VisualCuePlayer.LiveSession session, CompositionHub hub, Guid routeId, double routeGain,
+        CueContext context, Action release)
+        : base(cue, hub, routeId, session.Video.Frames, context)
+    {
+        _cue = cue;
+        _video = session.Video;
+        _routeGain = routeGain;
+        _release = release;
+        _volume = new VolumeRamp(_video.Player, Dispatcher.CurrentDispatcher);
+
+        _video.Ended += OnEnded;
+        _video.Failed += OnFailed;
+        _video.Claim();
+        if (_video.Error is string error)
+        {
+            // The device failed while preloading: report it after Start has returned.
+            Dispatcher.CurrentDispatcher.BeginInvoke(() => OnFailed(error));
+        }
+
+        AnimateOpacity(cue.Opacity, cue.FadeIn);
+        _volume.RampTo(Decibels.ToGain(cue.VolumeDb) * routeGain, cue.FadeIn);
+    }
+
+    public override TimeSpan Elapsed => _clock.Elapsed;
+    public override TimeSpan? Duration => null;
+
+    public override void Pause()
+    {
+        if (_paused) return;
+        _paused = true;
+        _clock.Stop();
+        _video.Frames.Frozen = true;
+        _volume.RampTo(0, 0);
+    }
+
+    public override void Resume()
+    {
+        if (!_paused) return;
+        _paused = false;
+        _clock.Start();
+        _video.Frames.Frozen = false;
+        if (!FadingOut) _volume.RampTo(Decibels.ToGain(_cue.VolumeDb) * _routeGain, 0);
+    }
+
+    protected override void AnimateVolume(double gain, double seconds) => _volume.RampTo(gain * _routeGain, seconds);
+
+    private void OnEnded()
+    {
+        Context.Error("la sorgente live si è interrotta (scollegata?)");
+        Finish();
+    }
+
+    private void OnFailed(string message)
+    {
+        Context.Error($"sorgente live \"{_cue.DeviceName}\": {message}");
+        Finish();
+    }
+
+    protected override void OnFinish()
+    {
+        _video.Ended -= OnEnded;
+        _video.Failed -= OnFailed;
+        _volume.Stop();
+        _video.Frames.Frozen = false;
+        _release();
     }
 }

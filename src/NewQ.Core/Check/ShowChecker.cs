@@ -34,6 +34,12 @@ public interface IShowCheckEnvironment
     /// <summary>Why this audio route can't play here (device missing, channels out of range), or null if it can.</summary>
     string? CheckAudioRoute(AudioRoute route);
 
+    /// <summary>Video capture devices connected now (cameras, HDMI capture cards), by name.</summary>
+    IReadOnlyList<string> VideoCaptureDevices { get; }
+
+    /// <summary>Audio capture devices connected now, by name.</summary>
+    IReadOnlyList<string> AudioCaptureDevices { get; }
+
     /// <summary>Opens the file silently and reports what it found. Thread-safe.</summary>
     Task<MediaProbe> ProbeAsync(MediaCue cue, string path, CancellationToken token);
 }
@@ -60,7 +66,7 @@ public static class ShowChecker
         CheckDevicesAndMessages(cues, env, issues);
         CheckRoutes(workspace, cues, env, issues);
 
-        var media = cues.OfType<MediaCue>().ToList();
+        var media = cues.OfType<MediaCue>().Where(c => c is not LiveCue).ToList(); // live sources have no file
         var done = 0;
         var probeIssues = new System.Collections.Concurrent.ConcurrentBag<CheckIssue>();
         await Parallel.ForEachAsync(media, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelProbes, CancellationToken = token },
@@ -230,8 +236,24 @@ public static class ShowChecker
                     CheckReference(videoCue, videoCue.AudioRouteId, video: false);
                     break;
                 case ImageCue image: CheckReference(image, image.VideoRouteId, video: true); break;
+                case LiveCue live:
+                    CheckReference(live, live.VideoRouteId, video: true);
+                    CheckReference(live, live.AudioRouteId, video: false);
+                    break;
             }
         }
+    }
+
+    private static void CheckLiveSource(LiveCue live, IShowCheckEnvironment env, List<CheckIssue> issues)
+    {
+        if (string.IsNullOrWhiteSpace(live.DeviceName))
+            issues.Add(new(CheckSeverity.Error, live, "Nessuna sorgente live selezionata."));
+        else if (!env.VideoCaptureDevices.Contains(live.DeviceName, StringComparer.OrdinalIgnoreCase))
+            issues.Add(new(CheckSeverity.Error, live, $"La sorgente \"{live.DeviceName}\" non è collegata."));
+
+        if (!string.IsNullOrWhiteSpace(live.AudioDeviceName)
+            && !env.AudioCaptureDevices.Contains(live.AudioDeviceName, StringComparer.OrdinalIgnoreCase))
+            issues.Add(new(CheckSeverity.Warning, live, $"L'ingresso audio \"{live.AudioDeviceName}\" non è collegato: la sorgente andrà in onda senza suono."));
     }
 
     private static void CheckDevicesAndMessages(List<Cue> cues, IShowCheckEnvironment env, List<CheckIssue> issues)
@@ -240,6 +262,10 @@ public static class ShowChecker
         {
             switch (cue)
             {
+                case LiveCue live:
+                    CheckLiveSource(live, env, issues);
+                    break;
+
                 case MidiCue midi:
                 {
                     try { MidiMessageBuilder.Build(midi); }

@@ -29,6 +29,7 @@ public partial class SettingsWindow : Window
         VideoRoutesPage.Initialize(setup);
         TestVideoPage.Initialize(setup);
         TestAudioPage.Initialize(setup);
+        ShortcutsPage.Initialize(Core.Input.ShortcutMap.FromSettings(settings.Shortcuts));
         Tabs.SelectedIndex = initialTab;
         Result = settings;
         _workspaceSettings = workspaceSettings;
@@ -56,6 +57,7 @@ public partial class SettingsWindow : Window
 
         PanicFadeBox.Text = workspaceSettings.PanicFadeSeconds.ToString(CultureInfo.CurrentCulture);
         LockoutBox.Text = workspaceSettings.GoLockoutMs.ToString(CultureInfo.CurrentCulture);
+        CueFadeBox.Text = workspaceSettings.CueFadeSeconds.ToString(CultureInfo.CurrentCulture);
 
         UpdatePanels();
     }
@@ -90,8 +92,11 @@ public partial class SettingsWindow : Window
             // Parse both before touching the (live) workspace settings.
             var panicFade = ParseDouble(PanicFadeBox, "Fade del Panic");
             var lockout = ParseInt(LockoutBox, "Blocco doppio GO");
+            var cueFade = ParseDouble(CueFadeBox, "Fade cue");
+            Result.Shortcuts = ShortcutsPage.Map.ToSettings();
             _workspaceSettings.PanicFadeSeconds = panicFade;
             _workspaceSettings.GoLockoutMs = lockout;
+            _workspaceSettings.CueFadeSeconds = cueFade;
         }
         catch (FormatException ex)
         {

@@ -9,6 +9,7 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | **Audio** | WAV, MP3, AIFF, FLAC, M4A/AAC, WMA. Volume in dB, inizio/fine (trim), loop, fade in, fade out finale. Mixer sempre attivo per una latenza di GO minima. Suona su una **route audio**. Uscita **WASAPI** (condivisa o esclusiva) o **ASIO**. |
 | **Video** | Motore **libVLC** (lo stesso di VLC): H.264, HEVC, VP9, AV1, ProRes, HAP, DNxHD; contenitori MP4/MOV/MKV/AVI/WMV…, con decodifica hardware. Precaricamento automatico: il primo fotogramma appare circa 70 ms dopo il GO, poi la riproduzione è fluida a 60 fps anche con monitor a frequenze diverse. Composizione su **GPU** (Direct3D 11) verso le **route video**. Fade da e verso il nero, volume, loop senza stacchi; l'audio del video esce sulla scheda della sua route audio. |
 | **Immagine** | PNG/JPG/BMP/GIF/TIFF sulle stesse route dei video (sempre sopra ai video), con layer, fade e durata. Decodificate in anticipo in background. |
+| **Live** | Una sorgente dal vivo (videocamera, sorgente HDMI/SDI tramite scheda di acquisizione) sulle route video, come un video senza fine: layer, opacità, fade, audio della sorgente sulla sua route. La sorgente si apre in anticipo quando la cue diventa la prossima; più cue sulla stessa sorgente la condividono. In pausa l'immagine si congela. *Richiede il modulo DirectShow di libVLC, vedi sotto.* |
 | **MIDI** | Note On/Off, Control Change, Program Change, Pitch Bend, **MIDI Show Control** (GO/STOP/RESUME… per mixer luci e audio), **SysEx** raw. |
 | **Rete** | **OSC su UDP**, **OSC su TCP** (framing SLIP, OSC 1.1), **testo/byte su UDP o TCP** con escape (`\r`, `\n`, `\xHH`), per esempio per proiettori PJLink o media server. |
 | **Attesa** | Pausa temporizzata nella sequenza. |
@@ -60,12 +61,17 @@ Le cue non scelgono più un monitor o una scheda audio: scelgono una **route**. 
 
 I test non sopravvivono mai allo spettacolo: **Panic**, l'attivazione di **Safe** e la chiusura della finestra li spengono tutti. Lo **Show Check** segnala route audio su schede non collegate o canali inesistenti, route mute, route video senza uscite o su schermi non collegati, nomi duplicati e cue che puntano a route rimosse.
 
-### Comandi da tastiera
+**Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Generale → Fade cue*. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade.
+
+**Scorciatoie da tastiera** (Strumenti → Scorciatoie da tastiera): ogni comando si può riassegnare o lasciare senza tasto; un tasto appartiene a una sola funzione. Mentre si scrive in un campo funzionano solo le combinazioni con Ctrl/Alt e il Panic. Le scorciatoie sono salvate per macchina e i menu mostrano sempre quelle attuali.
+
+### Comandi da tastiera (predefiniti)
 
 | Tasto | Azione |
 |---|---|
 | Spazio | GO |
 | Esc | PANIC (fade out di tutto; premuto di nuovo entro 1,5 s = stop immediato) |
+| F | Fade out della cue selezionata |
 | S | Stop tutto |
 | P | Pausa / Riprendi |
 | Ctrl+Invio | Avvia la cue selezionata senza spostare il playhead |
@@ -112,6 +118,10 @@ dotnet build
 dotnet test tests\NewQ.Core.Tests
 dotnet run --project src\NewQ.App -- samples\Demo.newq
 ```
+
+## Sorgenti live: modulo DirectShow
+
+Le cue Live aprono la sorgente con l'ingresso DirectShow di libVLC (`dshow://`), che vede webcam, schede di acquisizione UVC (Elgato, Magewell...) e schede con driver DirectShow (Blackmagic DeckLink, AJA). Il pacchetto NuGet `VideoLAN.LibVLC.Windows` **non include** questo modulo (`plugins/access/libdshow_plugin.dll`): finché non viene aggiunto, una cue Live va in errore con un messaggio chiaro e non blocca lo show.
 
 ## Distribuzione
 

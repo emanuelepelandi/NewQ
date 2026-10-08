@@ -71,6 +71,7 @@
     <Color x:Key="CueAudioColor">#6FA3E0</Color>
     <Color x:Key="CueVideoColor">#A98FDB</Color>
     <Color x:Key="CueImageColor">#6CC2B4</Color>
+    <Color x:Key="CueLiveColor">#8FC77A</Color>
     <Color x:Key="CueMidiColor">#D9AE6E</Color>
     <Color x:Key="CueNetworkColor">#6FBFD9</Color>
     <Color x:Key="CueWaitColor">#9A9FA8</Color>
@@ -114,6 +115,8 @@
     <sys:String x:Key="IconAudio">&#xE8D6;</sys:String>
     <sys:String x:Key="IconVideo">&#xE714;</sys:String>
     <sys:String x:Key="IconImage">&#xEB9F;</sys:String>
+    <sys:String x:Key="IconLive">&#xE960;</sys:String>
+    <sys:String x:Key="IconKeyboard">&#xE765;</sys:String>
     <sys:String x:Key="IconMidi">&#xEC4F;</sys:String>
     <sys:String x:Key="IconNetwork">&#xE968;</sys:String>
     <sys:String x:Key="IconWait">&#xE916;</sys:String>

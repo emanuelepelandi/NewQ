@@ -18,6 +18,7 @@ using NewQ.App.Video;
 using NewQ.App.Video.Gpu;
 using NewQ.Core;
 using NewQ.Core.Engine;
+using NewQ.Core.Input;
 using NewQ.Core.Midi;
 using NewQ.Core.Model;
 using NewQ.Core.Network;
@@ -55,6 +56,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _dispatcher = dispatcher;
         _settings = AppSettings.Load();
+        _shortcuts = ShortcutMap.FromSettings(_settings.Shortcuts);
+        ShortcutText = new ShortcutTexts(_shortcuts);
+        ShortcutHint = new ShortcutTexts(_shortcuts, asHint: true);
         _outputs = new OutputWindowManager(_hub);
 
         Engine = new CueEngine(
@@ -94,6 +98,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         PanicCommand = new RelayCommand(() => { Engine.Panic(); StopTestSignals(); });
         TogglePauseCommand = new RelayCommand(TogglePause);
         StopCueCommand = new RelayCommand(p => { if (p is Cue c) Engine.Stop(c, TimeSpan.Zero); });
+        FadeCueCommand = new RelayCommand(p => { if (p is Cue c) FadeOut(c); });
+        FadeSelectedCommand = new RelayCommand(FadeSelected);
         TogglePauseCueCommand = new RelayCommand(p => { if (p is Cue c) { Engine.TogglePause(c); OnPropertyChanged(nameof(IsPaused)); } });
         FireSelectedCommand = new RelayCommand(() => { if (SelectedCue is Cue c) Engine.Fire(c); }, () => SelectedCue is not null);
         PlayheadUpCommand = new RelayCommand(() => Engine.MovePlayhead(-1));
@@ -108,6 +114,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             var kind = p as string ?? "audio";
             if (kind is "audio" or "video" or "image") AddMediaCues(kind);
+            else if (kind == "live") AddLiveCue();
             else AddCue(CreateCue(kind));
         }, _ => CanEdit);
         DeleteCueCommand = new RelayCommand(DeleteSelected, () => CanEdit && SelectedCue is not null);
@@ -181,6 +188,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand PanicCommand { get; }
     public ICommand TogglePauseCommand { get; }
     public ICommand StopCueCommand { get; }
+
+    /// <summary>Fades sound and picture of one running cue (parameter) to nothing, then stops it.</summary>
+    public ICommand FadeCueCommand { get; }
+
+    /// <summary>Same, for the selected cue.</summary>
+    public ICommand FadeSelectedCommand { get; }
     public ICommand TogglePauseCueCommand { get; }
 
     /// <summary>Scrubs a paused cue to a fraction (0–1) of its length.</summary>
@@ -593,6 +606,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             "audio" => new AudioCue(),
             "video" => new VideoCue(),
             "image" => new ImageCue(),
+            "live" => new LiveCue(),
             "midi" => new MidiCue(),
             "network" => new NetworkCue(),
             "wait" => new WaitCue(),
@@ -615,6 +629,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 v.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id;
                 break;
             case ImageCue i: i.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id; break;
+            case LiveCue l:
+                l.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id;
+                l.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id;
+                break;
         }
     }
 
@@ -762,6 +780,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                                              MidiDevices, _settings.DefaultMidiDevice)
         {
             AudioRouteProblem = _audio.CheckRoute,
+            VideoCaptureDevices = CaptureDevices.Video(),
+            AudioCaptureDevices = CaptureDevices.Audio(),
         };
 
     // ------------------------------------------------------------------ devices / settings
@@ -772,12 +792,101 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex) { AddLog(EngineLogLevel.Warning, $"MIDI: {ex.Message}"); }
         _midi.Reset();
         Screens = ScreenOption.All();
+        RefreshCaptureDevices();
+    }
+
+    // ------------------------------------------------------------------ keyboard shortcuts
+
+    private ShortcutMap _shortcuts;
+
+    /// <summary>The shortcuts of this machine (a copy is edited in the settings).</summary>
+    public ShortcutMap Shortcuts => _shortcuts;
+
+    /// <summary>Labels for the menus: <c>{Binding ShortcutText[Go]}</c>.</summary>
+    public ShortcutTexts ShortcutText { get; }
+
+    /// <summary>"tasto Spazio" / "nessun tasto", for tooltips: <c>{Binding ShortcutHint[Go]}</c>.</summary>
+    public ShortcutTexts ShortcutHint { get; }
+
+    /// <summary>The action bound to a key press, if any.</summary>
+    public ShortcutAction? FindShortcut(string gesture) => _shortcuts.Find(gesture);
+
+    public ICommand CommandFor(ShortcutAction action) => action switch
+    {
+        ShortcutAction.Go => GoCommand,
+        ShortcutAction.PauseResume => TogglePauseCommand,
+        ShortcutAction.StopAll => StopAllCommand,
+        ShortcutAction.Panic => PanicCommand,
+        ShortcutAction.FadeSelected => FadeSelectedCommand,
+        ShortcutAction.FireSelected => FireSelectedCommand,
+        ShortcutAction.PlayheadPrevious => PlayheadUpCommand,
+        ShortcutAction.PlayheadNext => PlayheadDownCommand,
+        ShortcutAction.New => NewCommand,
+        ShortcutAction.Open => OpenCommand,
+        ShortcutAction.Save => SaveCommand,
+        ShortcutAction.SaveAs => SaveAsCommand,
+        ShortcutAction.Duplicate => DuplicateCueCommand,
+        ShortcutAction.MoveUp => MoveUpCommand,
+        ShortcutAction.MoveDown => MoveDownCommand,
+        ShortcutAction.Delete => DeleteCueCommand,
+        ShortcutAction.ShowCheck => ShowCheckCommand,
+        ShortcutAction.ToggleSafe => ToggleSafeModeCommand,
+        _ => throw new ArgumentOutOfRangeException(nameof(action)),
+    };
+
+    // ------------------------------------------------------------------ live sources, fades
+
+    private IReadOnlyList<string> _videoCaptureDevices = Array.Empty<string>();
+    private IReadOnlyList<string> _audioCaptureDevices = Array.Empty<string>();
+
+    /// <summary>Cameras and capture cards connected now (inspector of live cues).</summary>
+    public IReadOnlyList<string> VideoCaptureDevices { get => _videoCaptureDevices; private set => SetField(ref _videoCaptureDevices, value); }
+
+    /// <summary>Audio inputs connected now, with "" = no sound first.</summary>
+    public IReadOnlyList<string> AudioCaptureDevices { get => _audioCaptureDevices; private set => SetField(ref _audioCaptureDevices, value); }
+
+    private void RefreshCaptureDevices()
+    {
+        VideoCaptureDevices = CaptureDevices.Video();
+        AudioCaptureDevices = new[] { "" }.Concat(CaptureDevices.Audio()).ToList();
+    }
+
+    private void AddLiveCue()
+    {
+        RefreshCaptureDevices();
+        var cue = (LiveCue)CreateCue("live");
+        cue.DeviceName = VideoCaptureDevices.FirstOrDefault() ?? "";
+        AddCue(cue);
+        if (VideoCaptureDevices.Count == 0)
+            AddLog(EngineLogLevel.Warning, "Nessuna videocamera o scheda di acquisizione trovata: collegala e usa Strumenti → Aggiorna dispositivi.");
+    }
+
+    private void FadeOut(Cue cue)
+    {
+        var seconds = Workspace.Settings.CueFadeSeconds;
+        Engine.Stop(cue, TimeSpan.FromSeconds(seconds));
+        StatusText = $"Fade out di {cue.Number} {cue.Name}: {seconds:0.##} s";
+    }
+
+    /// <summary>The selected cue fades out, if it is running (the selection is the next GO, not necessarily a running cue).</summary>
+    private void FadeSelected()
+    {
+        if (SelectedCue is not Cue cue) return;
+        if (!Engine.Running.Any(r => ReferenceEquals(r.Cue, cue) && !r.IsFinished))
+        {
+            StatusText = $"La cue {cue.Number} {cue.Name} non è in esecuzione: niente da sfumare.";
+            return;
+        }
+        FadeOut(cue);
     }
 
     public void ApplySettings(AppSettings settings)
     {
         Engine.StopAll(TimeSpan.Zero);
         _settings = settings;
+        _shortcuts = ShortcutMap.FromSettings(settings.Shortcuts);
+        ShortcutText.Update(_shortcuts);
+        ShortcutHint.Update(_shortcuts);
         TrySaveSettings();
         ApplyDeviceSettings();
         OnPropertyChanged(nameof(Settings));

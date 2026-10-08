@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using NewQ.App.Infrastructure;
 using NewQ.App.ViewModels;
+using NewQ.Core.Input;
 
 namespace NewQ.App.Views;
 
@@ -34,46 +35,33 @@ public partial class MainWindow : Window
         => Keyboard.FocusedElement is TextBoxBase or PasswordBox
            || Keyboard.FocusedElement is ComboBox { IsEditable: true };
 
+    /// <summary>
+    /// Keyboard shortcuts come from the editable map (Strumenti → Scorciatoie). While typing in a field only
+    /// gestures with Ctrl/Alt and Esc work, so typing never fires GO or Stop.
+    /// </summary>
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (ShortcutKeys.FromEvent(e) is not string gesture) return;
+
         // Ctrl+S and other shortcuts must see the value being typed (Enter / click outside: FieldCommit).
         if (_fields.EditedField() is TextBox field && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             FieldCommit.Commit(field);
 
-        // PANIC must work everywhere, even while editing.
-        if (e.Key == Key.Escape)
+        // Esc first cancels an edit in the cue list.
+        if (gesture == "Escape" && CueGrid.IsKeyboardFocusWithin && IsEditingText())
         {
-            if (CueGrid.IsKeyboardFocusWithin && IsEditingText())
-            {
-                CueGrid.CancelEdit();
-                return;
-            }
-            ViewModel.PanicCommand.Execute(null);
-            e.Handled = true;
+            CueGrid.CancelEdit();
             return;
         }
 
-        if (IsEditingText() || Keyboard.Modifiers != ModifierKeys.None) return;
+        if (ViewModel.FindShortcut(gesture) is not ShortcutAction action) return;
+        var whileTyping = ShortcutMap.HasCommandModifier(gesture) || action == ShortcutAction.Panic; // PANIC works everywhere
+        if (IsEditingText() && !whileTyping) return;
+        if (action == ShortcutAction.Delete && !CueGrid.IsKeyboardFocusWithin) return; // never delete from another control
 
-        switch (e.Key)
-        {
-            case Key.Space:
-                ViewModel.GoCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.P:
-                ViewModel.TogglePauseCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.S:
-                ViewModel.StopAllCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.Delete when CueGrid.IsKeyboardFocusWithin:
-                ViewModel.DeleteCueCommand.Execute(null);
-                e.Handled = true;
-                break;
-        }
+        var command = ViewModel.CommandFor(action);
+        if (command.CanExecute(null)) command.Execute(null);
+        e.Handled = true;
     }
 
     // ------------------------------------------------------------------ timeline scrubbing

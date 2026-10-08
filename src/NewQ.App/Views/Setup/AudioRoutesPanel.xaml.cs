@@ -119,7 +119,8 @@ public partial class AudioRoutesPanel : UserControl
             return;
         }
 
-        var users = ws.Cues.Where(c => c is AudioCue a && a.AudioRouteId == route.Id || c is VideoCue v && v.AudioRouteId == route.Id).ToList();
+        var users = ws.Cues.Where(c => c is AudioCue a && a.AudioRouteId == route.Id || c is VideoCue v && v.AudioRouteId == route.Id
+                                       || c is LiveCue l && l.AudioRouteId == route.Id).ToList();
         var replacement = ws.AudioRoutes.First(r => r != route);
         if (users.Count > 0 && MessageBox.Show(
                 $"{users.Count} cue usano \"{route.Name}\": passeranno a \"{replacement.Name}\". Continuare?",
@@ -130,6 +131,7 @@ public partial class AudioRoutesPanel : UserControl
         {
             if (cue is AudioCue a) a.AudioRouteId = replacement.Id;
             if (cue is VideoCue v) v.AudioRouteId = replacement.Id;
+            if (cue is LiveCue l) l.AudioRouteId = replacement.Id;
         }
         ws.AudioRoutes.Remove(route);
         RouteList.SelectedItem = replacement;

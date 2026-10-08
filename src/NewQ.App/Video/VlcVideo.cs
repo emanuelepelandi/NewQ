@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -37,16 +38,41 @@ public static class VlcRuntime
 /// <summary>Where the sound of a video goes: a WASAPI endpoint (empty = Windows default) and a linear gain.</summary>
 public readonly record struct VideoAudioTarget(string DeviceId, double Gain);
 
+/// <summary>What libVLC opens: a file, or a live capture device (DirectShow).</summary>
+/// <param name="Key">Identity of the source with all its options: two cues with the same key can share it.</param>
+internal sealed record VideoSource(string Location, FromType Type, bool Loop, bool IsLive, string Key, IReadOnlyList<string> Options)
+{
+    public static VideoSource File(string path, bool loop)
+        => new(path, FromType.FromPath, loop, false, $"file|{path.ToLowerInvariant()}|{loop}",
+            loop ? new[] { ":input-repeat=65535" } : Array.Empty<string>()); // seamless loop handled by libVLC
+
+    /// <summary>A DirectShow capture device (camera, HDMI capture card) with optional size, rate and audio input.</summary>
+    public static VideoSource Capture(string device, string audioDevice, string resolution, double frameRate)
+    {
+        var options = new List<string>
+        {
+            ":dshow-vdev=" + device,
+            ":dshow-adev=" + (string.IsNullOrWhiteSpace(audioDevice) ? "none" : audioDevice),
+            ":live-caching=40", // ms of buffering: low latency for a live picture
+        };
+        if (resolution.Length > 0) options.Add(":dshow-size=" + resolution);
+        if (frameRate > 0) options.Add(":dshow-fps=" + frameRate.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return new("dshow://", FromType.FromLocation, false, true,
+            $"live|{device}|{audioDevice}|{resolution}|{frameRate}".ToLowerInvariant(), options);
+    }
+}
+
 /// <summary>
 /// A video opened by libVLC, decoding into a <see cref="VideoFrameSource"/>. Preloading plays it muted until the
-/// first frame is decoded, then pauses on frame 0, so GO starts it instantly.
+/// first frame is decoded, then pauses on frame 0, so GO starts it instantly. A live source can't pause: preloaded,
+/// it keeps running muted and unseen, so GO shows the current picture at once.
 /// </summary>
 internal sealed class PreparedVideo : IDisposable
 {
     /// <summary>libVLC players currently alive (playing or preloaded); diagnostics.</summary>
     public static int LiveCount;
 
-    private readonly string _path;
+    private readonly VideoSource _source;
     private readonly string _audioDevice;
     private readonly Dispatcher _dispatcher;
     private readonly Media _media;
@@ -54,22 +80,27 @@ internal sealed class PreparedVideo : IDisposable
     private bool _deviceSet;
 
     public PreparedVideo(string path, bool loop, string audioDevice, Dispatcher dispatcher)
+        : this(VideoSource.File(path, loop), audioDevice, dispatcher) { }
+
+    public PreparedVideo(VideoSource source, string audioDevice, Dispatcher dispatcher)
     {
         Interlocked.Increment(ref LiveCount);
-        _path = path;
+        _source = source;
         _audioDevice = audioDevice;
         _dispatcher = dispatcher;
-        Loop = loop;
+        Loop = source.Loop;
 
         Player = new MediaPlayer(VlcRuntime.LibVlc) { EnableKeyInput = false, EnableMouseInput = false, Volume = 0 };
         Frames = new VideoFrameSource(Player);
         Frames.FirstFrame += () => Post(OnFirstFrame);
         Player.Playing += (_, _) => Post(SetAudioDevice);
-        Player.EncounteredError += (_, _) => Post(() => Fail("libVLC non riesce a riprodurre il file"));
+        Player.EncounteredError += (_, _) => Post(() => Fail(source.IsLive
+            ? "libVLC non riesce ad aprire la sorgente (scollegata o già in uso da un altro programma?)"
+            : "libVLC non riesce a riprodurre il file"));
         Player.EndReached += (_, _) => Post(() => Ended?.Invoke());
 
-        _media = new Media(VlcRuntime.LibVlc, path, FromType.FromPath);
-        if (loop) _media.AddOption(":input-repeat=65535"); // seamless loop handled by libVLC
+        _media = new Media(VlcRuntime.LibVlc, source.Location, source.Type);
+        foreach (var option in source.Options) _media.AddOption(option);
         Player.Play(_media);
     }
 
@@ -83,9 +114,12 @@ internal sealed class PreparedVideo : IDisposable
     public event Action? Ended;
     public event Action<string>? Failed;
 
-    public bool IsUsableFor(string path, bool loop, string audioDevice)
-        => !_disposed && Error is null && Loop == loop && _audioDevice == audioDevice
-           && string.Equals(_path, path, StringComparison.OrdinalIgnoreCase);
+    public bool IsLive => _source.IsLive;
+
+    public bool IsUsableFor(string path, bool loop, string audioDevice) => IsUsableFor(VideoSource.File(path, loop), audioDevice);
+
+    public bool IsUsableFor(VideoSource source, string audioDevice)
+        => !_disposed && Error is null && _audioDevice == audioDevice && _source.Key == source.Key;
 
     /// <summary>Starts playback (now if ready, otherwise as soon as the first frame is decoded).</summary>
     public void Claim()
@@ -98,7 +132,7 @@ internal sealed class PreparedVideo : IDisposable
     {
         if (_disposed || IsReady) return;
         IsReady = true;
-        if (IsClaimed) return; // GO came while preloading: keep playing
+        if (IsClaimed || IsLive) return; // GO came while preloading, or a live source: keep playing
         Player.SetPause(true);
         Player.Time = 0; // libVLC decodes and displays frame 0 again
     }

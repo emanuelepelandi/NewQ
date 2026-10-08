@@ -117,6 +117,53 @@ public sealed class ImageCue : VisualCue
     public override double? Duration => HoldDuration > 0 ? HoldDuration : null;
 }
 
+/// <summary>
+/// A live source (camera, HDMI capture card...) shown on a video route like a video, until stopped or faded.
+/// Uses the capture device instead of a file: <see cref="MediaCue.FilePath"/> is not used.
+/// </summary>
+public sealed class LiveCue : VisualCue
+{
+    private string _deviceName = "";
+    private string _audioDeviceName = "";
+    private string _resolution = "";
+    private double _frameRate;
+    private Guid? _audioRouteId;
+    private double _volumeDb;
+
+    public override string TypeName => "Live";
+
+    /// <summary>Video capture device, by its Windows name (as listed by DirectShow).</summary>
+    public string DeviceName { get => _deviceName; set => SetField(ref _deviceName, value?.Trim() ?? ""); }
+
+    /// <summary>Audio capture device for the source's sound (e.g. the HDMI audio of a capture card); empty = no sound.</summary>
+    public string AudioDeviceName { get => _audioDeviceName; set => SetField(ref _audioDeviceName, value?.Trim() ?? ""); }
+
+    /// <summary>Requested capture size as "1920x1080"; empty = the device's default.</summary>
+    public string Resolution { get => _resolution; set => SetField(ref _resolution, NormalizeResolution(value)); }
+
+    /// <summary>Requested capture frame rate; 0 = the device's default.</summary>
+    public double FrameRate { get => _frameRate; set => SetField(ref _frameRate, Math.Clamp(value, 0, 240)); }
+
+    /// <summary>Audio route for the source's sound; null = the first route of the workspace.</summary>
+    public Guid? AudioRouteId { get => _audioRouteId; set => SetField(ref _audioRouteId, value); }
+
+    public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
+
+    /// <summary>A live source never ends by itself.</summary>
+    public override double? Duration => null;
+
+    public override string Summary => string.IsNullOrWhiteSpace(DeviceName) ? "(nessuna sorgente)" : DeviceName;
+
+    /// <summary>"1920 x 1080", "1920×1080" → "1920x1080"; anything unreadable → empty (device default).</summary>
+    public static string NormalizeResolution(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "";
+        var parts = value.Replace('×', 'x').Replace('X', 'x').Split('x', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 2 && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var h) && w is > 0 and <= 8192 && h is > 0 and <= 8192
+            ? $"{w}x{h}" : "";
+    }
+}
+
 // ======================= MIDI =======================
 
 public enum MidiMessageKind { NoteOn, NoteOff, ControlChange, ProgramChange, PitchBend, ShowControl, SysEx }

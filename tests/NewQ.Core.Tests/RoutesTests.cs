@@ -129,6 +129,8 @@ public class RoutesTests
         public bool AudioOutputReady => true;
         public IReadOnlyList<string> MidiDevices => Array.Empty<string>();
         public string DefaultMidiDevice => "";
+        public IReadOnlyList<string> VideoCaptureDevices => Array.Empty<string>();
+        public IReadOnlyList<string> AudioCaptureDevices => Array.Empty<string>();
         public string? CheckAudioRoute(AudioRoute route) => route.DeviceId == "{missing}" ? "dispositivo non collegato" : null;
         public Task<MediaProbe> ProbeAsync(MediaCue cue, string path, CancellationToken token) => Task.FromResult(new MediaProbe(null, 10));
     }

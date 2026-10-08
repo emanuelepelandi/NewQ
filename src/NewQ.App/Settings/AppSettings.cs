@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -37,6 +38,9 @@ public sealed class AppSettings
     public int OscInputPort { get; set; } = 53000;
 
     public string? LastWorkspace { get; set; }
+
+    /// <summary>Keyboard shortcuts that differ from the defaults: action name → gesture ("" = none).</summary>
+    public Dictionary<string, string> Shortcuts { get; set; } = new();
 
     public static AppSettings Load()
     {

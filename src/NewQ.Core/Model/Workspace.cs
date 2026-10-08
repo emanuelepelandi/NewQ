@@ -8,12 +8,16 @@ public sealed class WorkspaceSettings : ObservableObject
 {
     private double _panicFadeSeconds = 1.0;
     private int _goLockoutMs = 200;
+    private double _cueFadeSeconds = 3.0;
 
     /// <summary>Fade time used by PANIC. Pressing PANIC twice stops immediately.</summary>
     public double PanicFadeSeconds { get => _panicFadeSeconds; set => SetField(ref _panicFadeSeconds, Math.Max(0, value)); }
 
     /// <summary>GO presses closer than this are ignored (protects against double triggers).</summary>
     public int GoLockoutMs { get => _goLockoutMs; set => SetField(ref _goLockoutMs, Math.Clamp(value, 0, 5000)); }
+
+    /// <summary>Fade time of the "Fade cue" command (sound and picture of one running cue, then stop).</summary>
+    public double CueFadeSeconds { get => _cueFadeSeconds; set => SetField(ref _cueFadeSeconds, Math.Clamp(value, 0, 600)); }
 }
 
 public sealed class Workspace
@@ -79,6 +83,10 @@ public sealed class Workspace
                     v.AudioRouteId ??= AudioRoutes[0].Id;
                     break;
                 case ImageCue i: i.VideoRouteId ??= VideoRoutes[0].Id; break;
+                case LiveCue l:
+                    l.VideoRouteId ??= VideoRoutes[0].Id;
+                    l.AudioRouteId ??= AudioRoutes[0].Id;
+                    break;
             }
         }
 
