@@ -480,13 +480,12 @@ public sealed class TimelineView : FrameworkElement
             dc.DrawLine(hatch, new Point(left + d, top + height), new Point(left + d + height, top));
         dc.Pop();
 
-        var accent = next ? B("AccentBrush") : B("GoBrush");
-        var center = new Pen(accent, next ? 2 : 1.5) { DashStyle = next ? DashStyles.Solid : DashStyles.Dash };
+        var center = new Pen(B("GoBrush"), next ? 2 : 1.5) { DashStyle = next ? DashStyles.Solid : DashStyles.Dash };
         dc.DrawLine(center, new Point(left + GapWidth / 2, top), new Point(left + GapWidth / 2, top + height));
         dc.DrawLine(new Pen(B("BorderStrongBrush"), 1), new Point(right + 0.5, top), new Point(right + 0.5, top + height));
     }
 
-    /// <summary>"GO n" pill in the ruler, over the gap (solid accent for the next GO).</summary>
+    /// <summary>"GO n" pill in the ruler, over the gap (the next GO is solid green, the others tinted).</summary>
     private void DrawGoBadge(DrawingContext dc, int block, bool next)
     {
         var center = GutterWidth + _blockX[block] - GapWidth / 2 - _horizontalOffset;
@@ -494,8 +493,8 @@ public sealed class TimelineView : FrameworkElement
         var text = Text($"GO {block + 1}", 11, next ? B("TextOnAccentBrush") : B("TextPrimaryBrush"), FontWeights.SemiBold);
         var width = Math.Max(text.Width + 14, 40);
         var pill = new Rect(center - width / 2, 3, width, RulerHeight - 7);
-        var fill = next ? B("AccentBrush") : TintOf("GoBrush", 0x4D);
-        dc.DrawRoundedRectangle(fill, new Pen(next ? B("AccentBrush") : B("GoBrush"), 1), pill, pill.Height / 2, pill.Height / 2);
+        var fill = next ? B("GoBrush") : TintOf("GoBrush", 0x4D);
+        dc.DrawRoundedRectangle(fill, new Pen(B("GoBrush"), 1), pill, pill.Height / 2, pill.Height / 2);
         dc.DrawText(text, new Point(center - text.Width / 2, pill.Y + (pill.Height - text.Height) / 2));
     }
 
@@ -618,7 +617,7 @@ public sealed class TimelineView : FrameworkElement
 
 /// <summary>
 /// The current position of the show over the timeline: a thin line redrawn alone while cues run. While the show
-/// waits for the operator, it stands in the middle of the next GO gap, amber, with "In attesa del GO n".
+/// waits for the operator, it stands, amber, in the middle of the next GO gap.
 /// </summary>
 public sealed class TimelineNowLine : FrameworkElement
 {
@@ -652,13 +651,5 @@ public sealed class TimelineNowLine : FrameworkElement
         head.Freeze();
         dc.DrawGeometry(brush, null, head);
 
-        if (_waitingFor is int go)
-        {
-            var text = new FormattedText($"In attesa del GO {go}", System.Globalization.CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 11, brush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            var box = new Rect(x + 6, TimelineView.RulerHeight + 4, text.Width + 12, text.Height + 4);
-            dc.DrawRoundedRectangle((Brush)FindResource("RaisedBrush"), new Pen(brush, 1), box, 3, 3);
-            dc.DrawText(text, new Point(box.X + 6, box.Y + 2));
-        }
     }
 }
