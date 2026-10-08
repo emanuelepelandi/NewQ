@@ -22,7 +22,7 @@ public sealed class TimelineView : FrameworkElement
 {
     public const double GutterWidth = 132;
     public const double RulerHeight = 24;
-    private const double GapWidth = 40;
+    public const double GapWidth = 56;
     private const double TrackHeight = 30;
     private const double VisualTrackHeight = 42;
     private const double OpenTail = 120;
@@ -139,10 +139,11 @@ public sealed class TimelineView : FrameworkElement
         var x = 0.0;
         for (var b = 0; b < _timeline.Blocks.Count; b++)
         {
+            x += GapWidth; // the GO that opens the block
             _blockX[b] = x;
-            x += BlockWidth(b) + GapWidth;
+            x += BlockWidth(b);
         }
-        _contentWidth = Math.Max(0, x - GapWidth) + OpenTail;
+        _contentWidth = x + OpenTail;
 
         var y = 0.0;
         foreach (var lane in _lanes)
@@ -173,6 +174,16 @@ public sealed class TimelineView : FrameworkElement
     public double XOf(TimelinePoint p)
         => p.Block < 0 || p.Block >= _blockX.Length ? 0 : _blockX[p.Block] + Math.Max(0, p.Time) * _pixelsPerSecond;
 
+    /// <summary>Screen X of the middle of the GO gap before a block (a block past the last one = after the show).</summary>
+    public double ScreenXOfGo(int block)
+    {
+        double contentX;
+        if (block >= 0 && block < _blockX.Length) contentX = _blockX[block] - GapWidth / 2;
+        else if (_blockX.Length > 0) contentX = _blockX[^1] + BlockWidth(_blockX.Length - 1) + GapWidth / 2;
+        else contentX = GapWidth / 2;
+        return GutterWidth + contentX - _horizontalOffset;
+    }
+
     /// <summary>X of a moment on screen (control coordinates).</summary>
     public double ScreenXOf(TimelinePoint p) => GutterWidth + XOf(p) - _horizontalOffset;
 
@@ -188,7 +199,7 @@ public sealed class TimelineView : FrameworkElement
     public void ScrollToBlock(int block)
     {
         if (block < 0 || block >= _blockX.Length) return;
-        HorizontalOffset = _blockX[block] - ViewportWidth / 4;
+        HorizontalOffset = _blockX[block] - GapWidth - ViewportWidth / 4;
     }
 
     /// <summary>Zoom keeping the moment under <paramref name="screenX"/> where it is.</summary>
@@ -204,7 +215,7 @@ public sealed class TimelineView : FrameworkElement
     public void ZoomToFit()
     {
         var seconds = _timeline.Blocks.Sum(b => Math.Max(MinBlockSeconds, b.Length));
-        var room = ViewportWidth - Math.Max(0, _timeline.Blocks.Count - 1) * GapWidth - OpenTail;
+        var room = ViewportWidth - _timeline.Blocks.Count * GapWidth - OpenTail;
         if (seconds <= 0 || room <= 50) return;
         PixelsPerSecond = room / seconds;
         HorizontalOffset = 0;
@@ -291,13 +302,30 @@ public sealed class TimelineView : FrameworkElement
 
     private Placed? _hover;
 
+    private int _hoverGap = -1;
+
     protected override void OnMouseMove(MouseEventArgs e)
     {
-        var hit = HitTest(e.GetPosition(this));
-        if (ReferenceEquals(hit, _hover)) return;
+        var point = e.GetPosition(this);
+        var hit = HitTest(point);
+        var gap = hit is null ? GapAt(point) : -1;
+        if (ReferenceEquals(hit, _hover) && gap == _hoverGap) return;
         _hover = hit;
-        ToolTip = hit is null ? null : Describe(hit.Item);
+        _hoverGap = gap;
+        ToolTip = hit is not null ? Describe(hit.Item)
+            : gap >= 0 ? $"GO {gap + 1}: qui l'operatore preme GO e parte la cue {_timeline.Blocks[gap].FirstCue.Number} {_timeline.Blocks[gap].FirstCue.Name}.\nIl tempo di attesa dipende dall'operatore: la timeline non lo conta."
+            : null;
         Cursor = hit is null ? null : Cursors.Hand;
+    }
+
+    /// <summary>The block whose GO gap is under the point, or -1.</summary>
+    private int GapAt(Point p)
+    {
+        if (p.X < GutterWidth) return -1;
+        var x = p.X - GutterWidth + _horizontalOffset;
+        for (var b = 0; b < _blockX.Length; b++)
+            if (x >= _blockX[b] - GapWidth && x < _blockX[b]) return b;
+        return -1;
     }
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)
@@ -386,16 +414,10 @@ public sealed class TimelineView : FrameworkElement
 
         foreach (var p in _placed) DrawItem(dc, p);
 
-        // Gaps between blocks: the wait for the operator's GO (drawn over the cues that run through them).
-        var gapFill = new SolidColorBrush(Color.FromArgb(0xB0, 0x0D, 0x0F, 0x12));
-        gapFill.Freeze();
+        // GO gaps: the wait for the operator's GO, hatched, with the GO line in the middle
+        // (drawn over the cues that keep running through them, which look dimmed there).
         for (var b = 0; b < _blockX.Length; b++)
-        {
-            var x = _blockX[b];
-            if (b > 0) dc.DrawRectangle(gapFill, null, new Rect(x - GapWidth, _verticalOffset, GapWidth, h));
-            var pen = new Pen(b == playheadBlock ? B("AccentBrush") : B("BorderStrongBrush"), b == playheadBlock ? 2 : 1);
-            dc.DrawLine(pen, new Point(x + 0.5, _verticalOffset), new Point(x + 0.5, _verticalOffset + h));
-        }
+            DrawGoGap(dc, b, b == playheadBlock, h);
         dc.Pop();
         dc.Pop();
 
@@ -408,16 +430,14 @@ public sealed class TimelineView : FrameworkElement
         {
             var x0 = GutterWidth + _blockX[b] - _horizontalOffset;
             var width = BlockWidth(b);
-            if (x0 > w || x0 + width + GapWidth < GutterWidth) continue;
-            var go = b == playheadBlock ? $"▶ GO {b + 1} · prossimo" : $"GO {b + 1}";
-            dc.DrawText(Text(go, 11, b == playheadBlock ? B("AccentBrush") : B("TextSecondaryBrush"), FontWeights.SemiBold), new Point(x0 + 4, 4));
+            DrawGoBadge(dc, b, b == playheadBlock);
+            if (x0 > w || x0 + width < GutterWidth) continue;
             for (var t = step; t * _pixelsPerSecond < width - 10; t += step)
             {
                 var x = x0 + t * _pixelsPerSecond;
                 if (x < GutterWidth || x > w) continue;
                 dc.DrawLine(line, new Point(x + 0.5, RulerHeight - 6), new Point(x + 0.5, RulerHeight));
-                if (t * _pixelsPerSecond > 70) // keep the GO label readable
-                    dc.DrawText(Text(FormatTime(t), 10, B("TextMutedBrush")), new Point(x + 3, 6));
+                dc.DrawText(Text(FormatTime(t), 10, B("TextMutedBrush")), new Point(x + 3, 6));
             }
         }
         dc.Pop();
@@ -438,6 +458,51 @@ public sealed class TimelineView : FrameworkElement
             dc.DrawLine(line, new Point(0, y + lane.Height - 0.5), new Point(GutterWidth, y + lane.Height - 0.5));
         }
         dc.Pop();
+    }
+
+    private static readonly Brush GapFill = Freeze(new SolidColorBrush(Color.FromArgb(0xC8, 0x0D, 0x0F, 0x12)));
+
+    private static T Freeze<T>(T f) where T : Freezable { f.Freeze(); return f; }
+
+    private void DrawGoGap(DrawingContext dc, int block, bool next, double height)
+    {
+        var right = _blockX[block];
+        var left = right - GapWidth;
+        if (right < _horizontalOffset || left > _horizontalOffset + ActualWidth) return;
+        var top = _verticalOffset;
+        var area = new Rect(left, top, GapWidth, height);
+        dc.DrawRectangle(GapFill, null, area);
+
+        // Diagonal hatching: "waiting".
+        dc.PushClip(new RectangleGeometry(area));
+        var hatch = new Pen(B("BorderSubtleBrush"), 1);
+        for (var d = -height; d < GapWidth; d += 10)
+            dc.DrawLine(hatch, new Point(left + d, top + height), new Point(left + d + height, top));
+        dc.Pop();
+
+        var accent = next ? B("AccentBrush") : B("GoBrush");
+        var center = new Pen(accent, next ? 2 : 1.5) { DashStyle = next ? DashStyles.Solid : DashStyles.Dash };
+        dc.DrawLine(center, new Point(left + GapWidth / 2, top), new Point(left + GapWidth / 2, top + height));
+        dc.DrawLine(new Pen(B("BorderStrongBrush"), 1), new Point(right + 0.5, top), new Point(right + 0.5, top + height));
+    }
+
+    /// <summary>"GO n" pill in the ruler, over the gap (solid accent for the next GO).</summary>
+    private void DrawGoBadge(DrawingContext dc, int block, bool next)
+    {
+        var center = GutterWidth + _blockX[block] - GapWidth / 2 - _horizontalOffset;
+        if (center < GutterWidth - GapWidth || center > ActualWidth + GapWidth) return;
+        var text = Text($"GO {block + 1}", 11, next ? B("TextOnAccentBrush") : B("TextPrimaryBrush"), FontWeights.SemiBold);
+        var width = Math.Max(text.Width + 14, 40);
+        var pill = new Rect(center - width / 2, 3, width, RulerHeight - 7);
+        var fill = next ? B("AccentBrush") : TintOf("GoBrush", 0x4D);
+        dc.DrawRoundedRectangle(fill, new Pen(next ? B("AccentBrush") : B("GoBrush"), 1), pill, pill.Height / 2, pill.Height / 2);
+        dc.DrawText(text, new Point(center - text.Width / 2, pill.Y + (pill.Height - text.Height) / 2));
+    }
+
+    private Brush TintOf(string key, byte alpha)
+    {
+        var c = ((SolidColorBrush)B(key)).Color;
+        return Freeze(new SolidColorBrush(Color.FromArgb(alpha, c.R, c.G, c.B)));
     }
 
     private void DrawItem(DrawingContext dc, Placed p)
@@ -551,34 +616,49 @@ public sealed class TimelineView : FrameworkElement
         => seconds < 60 ? seconds.ToString("0.#", CultureInfo.CurrentCulture) + " s" : TimeSpan.FromSeconds(seconds).ToString(@"m\:ss");
 }
 
-/// <summary>The current position of the show over the timeline: a thin line, redrawn alone while cues run.</summary>
+/// <summary>
+/// The current position of the show over the timeline: a thin line redrawn alone while cues run. While the show
+/// waits for the operator, it stands in the middle of the next GO gap, amber, with "In attesa del GO n".
+/// </summary>
 public sealed class TimelineNowLine : FrameworkElement
 {
     private double? _x;
+    private int? _waitingFor;
 
     public TimelineNowLine() => IsHitTestVisible = false;
 
-    /// <summary>Screen X of "now", or null to hide.</summary>
-    public void SetX(double? x)
+    /// <summary>Screen X of "now" (null = hide); <paramref name="waitingForGo"/> = number of the awaited GO.</summary>
+    public void Set(double? x, int? waitingForGo)
     {
-        if (Nullable.Equals(x, _x)) return;
+        if (Nullable.Equals(x, _x) && waitingForGo == _waitingFor) return;
         _x = x;
+        _waitingFor = waitingForGo;
         InvalidateVisual();
     }
 
     protected override void OnRender(DrawingContext dc)
     {
-        if (_x is not double x || x < TimelineView.GutterWidth || x > ActualWidth) return;
-        var pen = new Pen((Brush)FindResource("SuccessBrush"), 2);
-        dc.DrawLine(pen, new Point(x, TimelineView.RulerHeight - 6), new Point(x, ActualHeight));
+        if (_x is not double x || x < TimelineView.GutterWidth - TimelineView.GapWidth / 2 || x > ActualWidth) return;
+        var brush = (Brush)FindResource(_waitingFor is null ? "SuccessBrush" : "WarningBrush");
+        var pen = new Pen(brush, 2);
+        dc.DrawLine(pen, new Point(x, TimelineView.RulerHeight), new Point(x, ActualHeight));
         var head = new StreamGeometry();
         using (var g = head.Open())
         {
-            g.BeginFigure(new Point(x - 5, TimelineView.RulerHeight - 10), true, true);
-            g.LineTo(new Point(x + 5, TimelineView.RulerHeight - 10), true, false);
-            g.LineTo(new Point(x, TimelineView.RulerHeight - 3), true, false);
+            g.BeginFigure(new Point(x - 5, TimelineView.RulerHeight), true, true);
+            g.LineTo(new Point(x + 5, TimelineView.RulerHeight), true, false);
+            g.LineTo(new Point(x, TimelineView.RulerHeight + 7), true, false);
         }
         head.Freeze();
-        dc.DrawGeometry(pen.Brush, null, head);
+        dc.DrawGeometry(brush, null, head);
+
+        if (_waitingFor is int go)
+        {
+            var text = new FormattedText($"In attesa del GO {go}", System.Globalization.CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight, new Typeface("Segoe UI"), 11, brush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            var box = new Rect(x + 6, TimelineView.RulerHeight + 4, text.Width + 12, text.Height + 4);
+            dc.DrawRoundedRectangle((Brush)FindResource("RaisedBrush"), new Pen(brush, 1), box, 3, 3);
+            dc.DrawText(text, new Point(box.X + 6, box.Y + 2));
+        }
     }
 }

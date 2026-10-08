@@ -913,19 +913,67 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         => cue is VideoCue or ImageCue && cue is MediaCue media && !string.IsNullOrWhiteSpace(media.FilePath)
             ? Thumbnails.Thumbnail(Workspace.ResolvePath(media.FilePath)) : null;
 
-    /// <summary>
-    /// Where the show is now on the timeline: the block of the last fired cue still running, and the seconds since
-    /// that block's GO (its fire time minus where it sits in the block). False when nothing is running.
-    /// </summary>
-    public bool TryGetTimelineNow(out TimelinePoint now)
+    // ---- where the show really is (the timeline's "now" line) ----
+    // Anchored to the last fired cue; the position comes from the real playback time of the newest running cue of
+    // that block (pause and scrubbing included), otherwise from a clock that stops while the show is paused. At the
+    // end of the block it waits for the operator's GO instead of running on.
+
+    private RunningCue? _anchorRun;
+    private int _anchorBlock = -1;
+    private double _anchorPosition;      // position in the block when the anchor cue was fired
+    private TimeSpan _anchorTime;        // engine time of that fire
+    private TimeSpan _pausedTotal;       // time spent paused since then
+    private TimeSpan _lastNowTick;
+
+    /// <summary>Where the show is on the timeline; false when nothing has been played (or it was stopped mid-block).</summary>
+    public bool TryGetTimelineNow(out TimelineNow now)
     {
         now = default;
-        var latest = Engine.Running.Where(r => !r.IsFinished).OrderByDescending(r => r.FiredAt).FirstOrDefault();
-        if (latest is null) return false;
-        var item = Timeline.Items.FirstOrDefault(i => ReferenceEquals(i.Cue, latest.Cue));
-        if (item is null) return false;
-        var firedInBlock = item.Start.Time - Math.Max(0, latest.Cue.PreWait);
-        now = new TimelinePoint(item.Start.Block, firedInBlock + (Engine.Now - latest.FiredAt).TotalSeconds);
+        var engineNow = Engine.Now;
+        var tick = engineNow - _lastNowTick;
+        _lastNowTick = engineNow;
+
+        // A newer fire (GO, continue, Fire): re-anchor to where that cue sits in the timeline.
+        var newest = Engine.Running.Where(r => !r.IsFinished).OrderByDescending(r => r.FiredAt).FirstOrDefault();
+        if (newest is not null && !ReferenceEquals(newest, _anchorRun) && (_anchorRun is null || newest.FiredAt > _anchorTime)
+            && Timeline.Items.FirstOrDefault(i => ReferenceEquals(i.Cue, newest.Cue)) is TimelineItem fired)
+        {
+            _anchorRun = newest;
+            _anchorBlock = fired.Start.Block;
+            _anchorPosition = fired.Start.Time - Math.Max(0, newest.Cue.PreWait);
+            _anchorTime = newest.FiredAt;
+            _pausedTotal = TimeSpan.Zero;
+        }
+        if (_anchorBlock < 0 || _anchorBlock >= Timeline.Blocks.Count) return false;
+
+        var running = Engine.Running.Where(r => !r.IsFinished).ToList();
+        var paused = Engine.IsPaused || running.Count > 0 && running.All(r => r.IsPaused || r.IsInPreWait && Engine.IsPaused);
+        if (paused) _pausedTotal += tick;
+
+        // Best source: the real playback position of the newest cue of this block that is playing.
+        double position;
+        var reference = running
+            .Where(r => r.Handle is not null && !r.IsInPreWait)
+            .Select(r => (Run: r, Item: Timeline.Items.FirstOrDefault(i => ReferenceEquals(i.Cue, r.Cue))))
+            .Where(x => x.Item is not null && x.Item.Start.Block == _anchorBlock && x.Item.Kind != TimelineItemKind.Instant)
+            .OrderByDescending(x => x.Run.FiredAt)
+            .FirstOrDefault();
+        if (reference.Item is not null)
+            position = reference.Item.Start.Time + reference.Run.Cue.ElapsedSeconds;
+        else
+            position = _anchorPosition + (engineNow - _anchorTime - _pausedTotal).TotalSeconds;
+
+        var length = Timeline.Blocks[_anchorBlock].Length;
+        if (position >= length - 0.05 || running.Count == 0 && position >= length - 0.5)
+        {
+            // Block over: wait for the next GO (as long as the playhead is still on it).
+            var playheadBlock = SelectedCue is Cue next ? Timeline.BlockOf(next) : -1;
+            if (running.Count == 0 && playheadBlock != _anchorBlock + 1) return false;
+            now = new TimelineNow(new TimelinePoint(_anchorBlock, length), WaitingForGo: true);
+            return true;
+        }
+        if (running.Count == 0) return false; // stopped mid-block (Stop tutto, Panic)
+        now = new TimelineNow(new TimelinePoint(_anchorBlock, Math.Max(0, position)), WaitingForGo: false);
         return true;
     }
 

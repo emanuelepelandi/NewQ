@@ -5,6 +5,9 @@ namespace NewQ.Core.Timeline;
 /// <summary>A moment of the show: seconds from the start of a GO block.</summary>
 public readonly record struct TimelinePoint(int Block, double Time);
 
+/// <summary>Where the show is: a moment of a block, or the end of a block while the operator's GO is awaited.</summary>
+public readonly record struct TimelineNow(TimelinePoint At, bool WaitingForGo);
+
 /// <summary>Level of a cue (fraction of its own volume/opacity, 1 = as programmed) at a moment.</summary>
 public readonly record struct EnvelopePoint(TimelinePoint At, double Level);
 

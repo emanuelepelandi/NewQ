@@ -72,8 +72,12 @@ public partial class TimelinePanel : UserControl
     /// <summary>The "now" line follows the show while cues run (only this thin layer is redrawn).</summary>
     private void UpdateNow()
     {
-        if (_vm is not null && _vm.TryGetTimelineNow(out var now)) NowLine.SetX(View.ScreenXOf(now));
-        else NowLine.SetX(null);
+        if (_vm is not null && _vm.TryGetTimelineNow(out var now))
+        {
+            if (now.WaitingForGo) NowLine.Set(View.ScreenXOfGo(now.At.Block + 1), now.At.Block + 2);
+            else NowLine.Set(View.ScreenXOf(now.At), null);
+        }
+        else NowLine.Set(null, null);
     }
 
     private void UpdateScrollBars()
