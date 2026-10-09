@@ -33,7 +33,7 @@
                           SelectedValuePath="Id" SelectedValue="{Binding DeviceId}" HorizontalAlignment="Stretch"
                           SelectionChanged="OnDeviceChanged" Margin="0,0,0,4" />
                 <TextBlock x:Name="AsioNote" TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"
-                           Text="ASIO: driver della scheda Generale, qui solo i canali." />
+                           Text="ASIO: qui solo i canali." />
 
                 <ComboBox x:Name="PairBox" ui:ControlHelper.Header="Canali di uscita" DisplayMemberPath="Label"
                           SelectedValuePath="First" SelectedValue="{Binding FirstChannel}" Width="200" HorizontalAlignment="Left"

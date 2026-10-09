@@ -128,11 +128,11 @@
                     <Button DockPanel.Dock="Right" Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="&#xE72C;"
                             VerticalAlignment="Bottom" Margin="0,0,8,12" ToolTip="Aggiorna sorgenti"
                             Command="{Binding DataContext.RefreshDevicesCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                    <ComboBox ui:ControlHelper.Header="Videocamera / scheda di acquisizione" IsEditable="True"
+                    <ComboBox ui:ControlHelper.Header="Sorgente" IsEditable="True"
                               ItemsSource="{Binding DataContext.VideoCaptureDevices, RelativeSource={RelativeSource AncestorType=Window}}"
                               Text="{Binding DeviceName, UpdateSourceTrigger=LostFocus}" />
                 </DockPanel>
-                <ComboBox ui:ControlHelper.Header="Audio della sorgente (vuoto = senza suono)" IsEditable="True"
+                <ComboBox ui:ControlHelper.Header="Audio (vuoto = nessuno)" IsEditable="True"
                           ItemsSource="{Binding DataContext.AudioCaptureDevices, RelativeSource={RelativeSource AncestorType=Window}}"
                           Text="{Binding AudioDeviceName, UpdateSourceTrigger=LostFocus}" />
                 <UniformGrid Columns="2">
@@ -229,7 +229,7 @@
                     <CheckBox Content="Fade opacità (video/immagini)" IsChecked="{Binding FadeOpacity}" VerticalAlignment="Bottom" />
                     <TextBox ui:ControlHelper.Header="Opacità finale (0–1)" Text="{Binding TargetOpacity}" />
                 </UniformGrid>
-                <CheckBox Content="Ferma il target alla fine del fade" IsChecked="{Binding StopWhenDone}" />
+                <CheckBox Content="Stop a fine fade" IsChecked="{Binding StopWhenDone}" />
             </StackPanel>
         </DataTemplate>
 
@@ -379,7 +379,7 @@
                             <TextBlock Style="{StaticResource Icon}" FontSize="{StaticResource FontCaption}" Text="{StaticResource IconWarning}"
                                        Foreground="{StaticResource WarningBrush}" Margin="0,0,4,0" />
                             <TextBlock Style="{StaticResource BadgeText}" Foreground="{StaticResource WarningBrush}"
-                                       Text="FINESTRA NON ATTIVA · tastiera disattivata" />
+                                       Text="TASTIERA NON ATTIVA" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -637,7 +637,7 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IconPlayhead}" HorizontalAlignment="Center"
-                                               Foreground="{StaticResource PlayheadBrush}" ToolTip="Playhead: la cue del prossimo GO"
+                                               Foreground="{StaticResource PlayheadBrush}" ToolTip="Playhead"
                                                Visibility="{Binding IsPlayhead, Converter={StaticResource BoolToVis}}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -946,7 +946,7 @@
                 </Border.InputBindings>
                 <StackPanel>
                     <Button Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE76B;" Command="{Binding ToggleInspectorCommand}"
-                            Margin="0,2,0,12" HorizontalAlignment="Center" ToolTip="Mostra il pannello Proprietà cue" />
+                            Margin="0,2,0,12" HorizontalAlignment="Center" ToolTip="Mostra Proprietà cue" />
                     <TextBlock Text="PROPRIETÀ CUE" Style="{StaticResource SectionHeaderFirst}" Margin="0" HorizontalAlignment="Center">
                         <TextBlock.LayoutTransform>
                             <RotateTransform Angle="90" />

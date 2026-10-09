@@ -61,7 +61,7 @@ public partial class ShortcutsPanel : UserControl
     {
         var lost = _map.Assign(row.Info.Action, gesture);
         Notice.Text = lost is ShortcutAction other
-            ? $"{ShortcutKeys.Display(gesture)} era assegnato a «{ShortcutMap.Catalog.First(i => i.Action == other).Label}», che ora non ha tasto."
+            ? $"{ShortcutKeys.Display(gesture)} tolto da «{ShortcutMap.Catalog.First(i => i.Action == other).Label}»."
             : "";
         Refresh();
     }

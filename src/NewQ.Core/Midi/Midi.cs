@@ -71,7 +71,7 @@ public static class MidiMessageBuilder
     {
         var clean = new string(hex.Where(Uri.IsHexDigit).ToArray());
         if (clean.Length == 0 || clean.Length % 2 != 0)
-            throw new FormatException("SysEx: inserisci coppie di cifre esadecimali (es. F0 7E 7F 06 01 F7).");
+            throw new FormatException("SysEx: solo byte esadecimali (F0 … F7).");
 
         var bytes = new byte[clean.Length / 2];
         for (var i = 0; i < bytes.Length; i++)

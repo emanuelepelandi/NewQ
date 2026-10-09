@@ -493,7 +493,7 @@ internal sealed class LiveLayer : VisualLayer
 
     private void OnEnded()
     {
-        Context.Error("la sorgente live si è interrotta (scollegata?)");
+        Context.Error("sorgente live interrotta");
         Finish();
     }
 

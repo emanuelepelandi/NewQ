@@ -24,9 +24,9 @@ public sealed class ShortcutMap
         new(ShortcutAction.Go, "GO", "Show", "Space"),
         new(ShortcutAction.PauseResume, "Pausa / riprendi tutto", "Show", "P"),
         new(ShortcutAction.FadeSelected, "Fade out della cue selezionata", "Show", "F"),
-        new(ShortcutAction.StopAll, "Stop tutto (immediato)", "Show", "S"),
-        new(ShortcutAction.Panic, "Panic (fade out di tutto; due volte = stop)", "Show", "Escape"),
-        new(ShortcutAction.FireSelected, "Avvia la cue selezionata senza spostare il playhead", "Show", "Ctrl+Return"),
+        new(ShortcutAction.StopAll, "Stop tutto", "Show", "S"),
+        new(ShortcutAction.Panic, "Panic", "Show", "Escape"),
+        new(ShortcutAction.FireSelected, "Avvia cue selezionata", "Show", "Ctrl+Return"),
         new(ShortcutAction.PlayheadPrevious, "Playhead alla cue precedente", "Show", ""),
         new(ShortcutAction.PlayheadNext, "Playhead alla cue successiva", "Show", ""),
         new(ShortcutAction.New, "Nuovo workspace", "File", "Ctrl+N"),
@@ -39,7 +39,7 @@ public sealed class ShortcutMap
         new(ShortcutAction.Delete, "Elimina la cue", "Cue", "Delete"),
         new(ShortcutAction.ShowCheck, "Show Check", "Strumenti", "Ctrl+K"),
         new(ShortcutAction.ToggleSafe, "Modalità Safe on/off", "Strumenti", "Ctrl+Shift+L"),
-        new(ShortcutAction.ToggleInspector, "Mostra / comprimi il pannello Proprietà cue", "Visualizza", "Ctrl+I"),
+        new(ShortcutAction.ToggleInspector, "Mostra / comprimi Proprietà cue", "Visualizza", "Ctrl+I"),
         new(ShortcutAction.ToggleTimeline, "Mostra / nascondi la timeline", "Visualizza", "Ctrl+T"),
     };
 

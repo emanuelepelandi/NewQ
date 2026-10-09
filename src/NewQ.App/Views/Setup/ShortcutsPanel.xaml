@@ -12,7 +12,7 @@
         <DockPanel Margin="0,0,0,12">
             <Button DockPanel.Dock="Right" Content="Ripristina tutti i predefiniti" Click="OnResetAll" VerticalAlignment="Top" />
             <TextBlock Style="{StaticResource Hint}" Margin="0,0,24,0"
-                       Text="Clicca su un campo e premi la combinazione." />
+                       Text="Clicca e premi la combinazione." />
         </DockPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Panel}">

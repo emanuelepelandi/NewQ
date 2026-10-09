@@ -118,7 +118,7 @@ public class RoutesTests
 
         Assert.Contains(issues, i => i.Severity == CheckSeverity.Error && i.Message.Contains("\"Monitor\""));
         Assert.Contains(issues, i => i.Severity == CheckSeverity.Error && i.Message.Contains("\"Vuota\" senza uscite"));
-        Assert.Contains(issues, i => i.Cue?.Number == "1" && i.Message.Contains("non esiste più"));
+        Assert.Contains(issues, i => i.Cue?.Number == "1" && i.Message.Contains("inesistente"));
     }
 
     private sealed class RouteEnv : IShowCheckEnvironment

@@ -119,7 +119,7 @@ public class ShowCheckerTests
         Assert.Contains(issues, i => i.Cue?.Number == "2" && i.Message.Contains("SysEx"));
         Assert.Contains(issues, i => i.Cue?.Number == "3" && i.Severity == CheckSeverity.Error);
         Assert.DoesNotContain(issues, i => i.Cue?.Number == "4" && i.Severity == CheckSeverity.Error);
-        Assert.Contains(issues, i => i.Message.Contains("schermo 2 non è collegato"));
+        Assert.Contains(issues, i => i.Message.Contains("schermo 2 non collegato"));
     }
 
     [Fact]

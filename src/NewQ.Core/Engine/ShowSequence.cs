@@ -82,8 +82,8 @@ public static class ShowSequence
         return null;
     }
 
-    /// <summary>"1 → 2 → 1", for messages.</summary>
-    public static string Describe(IReadOnlyList<Cue> loop) => string.Join(" → ", loop.Select(c => c.Number));
+    /// <summary>"1 -> 2 -> 1", for messages.</summary>
+    public static string Describe(IReadOnlyList<Cue> loop) => string.Join(" -> ", loop.Select(c => c.Number));
 
     public static Cue? NextInList(IReadOnlyList<Cue> cues, Cue cue)
     {

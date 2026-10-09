@@ -153,7 +153,7 @@ public sealed class OutputWindowManager : IDisposable
         {
             if (screen >= screens.Length)
             {
-                Warning?.Invoke($"Lo schermo {screen + 1} non è collegato: le sue uscite non sono visibili.");
+                Warning?.Invoke($"Schermo {screen + 1} non collegato.");
                 continue;
             }
             wanted.Add(screen);

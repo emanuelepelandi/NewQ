@@ -125,7 +125,7 @@ public class FollowLinkTests
     public void Start_link_loops_are_found_however_long()
     {
         var cues = new Cue[] { Link(Audio("1", 5), LinkAction.Start, "2"), Link(Audio("2", 5), LinkAction.Start, "3"), Link(Audio("3", 5), LinkAction.Start, "1"), Audio("4", 5) };
-        Assert.Equal("1 → 2 → 3 → 1", ShowSequence.Describe(ShowSequence.StartLinkLoop(cues, cues[0])!));
+        Assert.Equal("1 -> 2 -> 3 -> 1", ShowSequence.Describe(ShowSequence.StartLinkLoop(cues, cues[0])!));
         Assert.NotNull(ShowSequence.StartLinkLoop(cues, cues[2]));
         Assert.Null(ShowSequence.StartLinkLoop(cues, cues[3]));
         Assert.NotNull(ShowSequence.FindStartLinkLoop(cues));
@@ -162,7 +162,7 @@ public class FollowLinkTests
         scheduler.Advance(0.1);
 
         Assert.Empty(engine.Running);
-        Assert.Contains("ciclo", error);
+        Assert.Contains("loop", error);
     }
 
     [Fact]

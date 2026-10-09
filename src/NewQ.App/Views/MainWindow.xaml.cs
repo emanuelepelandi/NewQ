@@ -225,7 +225,7 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         // During the show, closing NewQ must be a deliberate choice.
-        if (ViewModel.IsSafeMode && MessageBox.Show("Modalità Safe attiva: vuoi davvero chiudere NewQ?\nTutte le cue in esecuzione verranno fermate.",
+        if (ViewModel.IsSafeMode && MessageBox.Show("Modalità Safe attiva: chiudere NewQ?",
                 "NewQ", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
         {
             e.Cancel = true;

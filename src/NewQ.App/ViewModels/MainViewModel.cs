@@ -288,8 +288,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (value) StopTestSignals(); // nothing from the setup tools may stay on during the show
             CommandManager.InvalidateRequerySuggested();
             AddLog(EngineLogLevel.Info, value
-                ? "Modalità Safe attivata: modifiche bloccate."
-                : "Modalità Safe disattivata: modifiche consentite.");
+                ? "Modalità Safe attivata."
+                : "Modalità Safe disattivata.");
         }
     }
 
@@ -329,7 +329,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (output.Clip && !OutputClip)
         {
             OutputClip = true;
-            AddLog(EngineLogLevel.Warning, "Uscita audio in clip (0 dBFS): abbassa il volume delle cue o il master.");
+            AddLog(EngineLogLevel.Warning, "Uscita audio in clip.");
         }
 
         // Each playing audio cue (several instances of the same cue are combined).
@@ -348,7 +348,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (reading.Clip && !cue.Clipped)
             {
                 cue.Clipped = true;
-                AddLog(EngineLogLevel.Warning, $"Cue {cue.Number} in clip (0 dBFS): abbassa il suo volume.");
+                AddLog(EngineLogLevel.Warning, $"Cue {cue.Number} in clip.");
             }
         }
     }
@@ -389,7 +389,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(WindowTitle));
         StatusText = workspace.FilePath is null ? "Nuovo workspace" : $"Aperto {workspace.FilePath}";
         if (converted)
-            AddLog(EngineLogLevel.Info, "Workspace di una versione precedente convertito: salvalo per mantenere la conversione.");
+            AddLog(EngineLogLevel.Info, "Workspace convertito: da salvare.");
     }
 
     private void HookWorkspace(Workspace workspace)
@@ -400,7 +400,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _validLinks.Clear();
         RememberLinks(workspace.Cues);
         if (ShowSequence.FindStartLinkLoop(workspace.Cues) is { } loop)
-            AddLog(EngineLogLevel.Warning, $"Ciclo di link nel workspace: {ShowSequence.Describe(loop)}. Si avvia solo il primo giro: correggi uno dei link.");
+            AddLog(EngineLogLevel.Warning, $"Link non consentito: loop {ShowSequence.Describe(loop)} infinito");
         workspace.AudioRoutes.CollectionChanged += OnAudioRoutesChanged;
         foreach (var route in workspace.AudioRoutes) route.PropertyChanged += OnAudioRouteChanged;
         workspace.VideoRoutes.CollectionChanged += OnVideoRoutesChanged;
@@ -586,7 +586,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return true;
         }
 
-        var message = $"Link non consentito: creerebbe il ciclo {ShowSequence.Describe(loop)}, che farebbe ripartire le cue all'infinito.";
+        var message = $"Link non consentito: loop {ShowSequence.Describe(loop)} infinito";
         AddLog(EngineLogLevel.Warning, message);
         StatusText = message;
         var (action, target, number) = _validLinks.TryGetValue(cue, out var valid) ? valid : (LinkAction.None, "", cue.Number);
@@ -1150,7 +1150,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         cue.DeviceName = VideoCaptureDevices.FirstOrDefault() ?? "";
         AddCue(cue);
         if (VideoCaptureDevices.Count == 0)
-            AddLog(EngineLogLevel.Warning, "Nessuna videocamera o scheda di acquisizione trovata: collegala e usa Strumenti → Aggiorna dispositivi.");
+            AddLog(EngineLogLevel.Warning, "Nessuna sorgente live trovata.");
     }
 
     private void FadeOut(Cue cue)
@@ -1166,7 +1166,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (SelectedCue is not Cue cue) return;
         if (!Engine.Running.Any(r => ReferenceEquals(r.Cue, cue) && !r.IsFinished))
         {
-            StatusText = $"La cue {cue.Number} {cue.Name} non è in esecuzione: niente da sfumare.";
+            StatusText = $"Cue {cue.Number} non in esecuzione.";
             return;
         }
         FadeOut(cue);

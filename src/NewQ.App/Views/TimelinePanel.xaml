@@ -14,9 +14,9 @@
                     <TextBlock Text="Corsie" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSmall}"
                                VerticalAlignment="Center" Margin="0,0,8,0" />
                     <ToggleButton x:Name="ByRoute" Content="Route" Style="{StaticResource SubtleToggle}" MinHeight="28" Height="28"
-                                  Checked="OnLanesByRoute" Unchecked="OnLaneUnchecked" ToolTip="Una corsia per ogni route video e audio" />
+                                  Checked="OnLanesByRoute" Unchecked="OnLaneUnchecked" ToolTip="Corsie per route" />
                     <ToggleButton x:Name="ByType" Content="Tipo" Style="{StaticResource SubtleToggle}" MinHeight="28" Height="28" Margin="4,0,0,0"
-                                  Checked="OnLanesByType" Unchecked="OnLaneUnchecked" ToolTip="Una corsia per ogni tipo di cue" />
+                                  Checked="OnLanesByType" Unchecked="OnLaneUnchecked" ToolTip="Corsie per tipo" />
                     <Rectangle Style="{StaticResource ToolbarDivider}" Height="20" />
                     <Button Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE71F;" Click="OnZoomOut" Width="28" Height="28"
                             ToolTip="Riduci (Ctrl + rotella)" />

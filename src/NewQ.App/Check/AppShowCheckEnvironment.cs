@@ -108,7 +108,7 @@ public sealed class AppShowCheckEnvironment : IShowCheckEnvironment
         // violation). Move to a pool thread first.
         await Task.Yield();
         if (status != MediaParsedStatus.Done)
-            return new MediaProbe($"libVLC non riesce ad analizzare il file ({status}).");
+            return new MediaProbe($"File non analizzabile ({status}).");
 
         var tracks = media.Tracks;
         var video = tracks.FirstOrDefault(t => t.TrackType == TrackType.Video);

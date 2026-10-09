@@ -93,9 +93,9 @@ public static class ShowChecker
         if (cues.Count == 0)
             issues.Add(new(CheckSeverity.Warning, null, "Il workspace non contiene cue."));
         if (workspace.FilePath is null)
-            issues.Add(new(CheckSeverity.Warning, null, "Workspace mai salvato: i percorsi dei file non possono essere relativi alla cartella dello show."));
+            issues.Add(new(CheckSeverity.Warning, null, "Workspace mai salvato: percorsi non relativi."));
         if (cues.OfType<AudioCue>().Any() && !env.AudioOutputReady)
-            issues.Add(new(CheckSeverity.Error, null, "L'uscita audio non è disponibile: controlla Strumenti → Impostazioni."));
+            issues.Add(new(CheckSeverity.Error, null, "Uscita audio non disponibile."));
     }
 
     private static void CheckNumbering(List<Cue> cues, List<CheckIssue> issues)
@@ -115,7 +115,7 @@ public static class ShowChecker
         }
 
         foreach (var cue in cues.Where(c => string.IsNullOrWhiteSpace(c.Number)))
-            issues.Add(new(CheckSeverity.Info, cue, "Cue senza numero: non può essere richiamata da Fade, Stop o OSC."));
+            issues.Add(new(CheckSeverity.Info, cue, "Cue senza numero."));
     }
 
     private static void CheckSequence(List<Cue> cues, List<CheckIssue> issues)
@@ -127,10 +127,10 @@ public static class ShowChecker
                 issues.Add(new(CheckSeverity.Info, cue, "Cue disarmata: verrà saltata."));
 
             if (Engine.ShowSequence.Follows(cue) && i == cues.Count - 1)
-                issues.Add(new(CheckSeverity.Info, cue, "Ultima cue con follow: non c'è nessuna cue successiva."));
+                issues.Add(new(CheckSeverity.Info, cue, "Follow sull'ultima cue."));
 
             if (Engine.ShowSequence.Follows(cue) && NeverEnds(cue))
-                issues.Add(new(CheckSeverity.Warning, cue, "Follow su una cue che non finisce da sola (loop o immagine senza durata): la cue successiva non partirà mai."));
+                issues.Add(new(CheckSeverity.Warning, cue, "Follow su una cue senza fine: la successiva non partirà mai."));
 
             if (cue.LinkAction != LinkAction.None)
             {
@@ -139,9 +139,9 @@ public static class ShowChecker
                 else if (string.Equals(cue.Number.Trim(), cue.LinkTarget, StringComparison.OrdinalIgnoreCase))
                     issues.Add(new(CheckSeverity.Warning, cue, "Link verso sé stessa: non fa nulla."));
                 else if (FindTarget(cues, cue.LinkTarget) is null)
-                    issues.Add(new(CheckSeverity.Error, cue, $"Link: la cue {cue.LinkTarget} non esiste."));
+                    issues.Add(new(CheckSeverity.Error, cue, $"Link: cue {cue.LinkTarget} inesistente."));
                 else if (Engine.ShowSequence.StartLinkLoop(cues, cue) is { } loop)
-                    issues.Add(new(CheckSeverity.Error, cue, $"Ciclo di link: {Engine.ShowSequence.Describe(loop)}. Si avvia solo il primo giro."));
+                    issues.Add(new(CheckSeverity.Error, cue, $"Link non consentito: loop {Engine.ShowSequence.Describe(loop)} infinito"));
             }
         }
     }
@@ -170,28 +170,28 @@ public static class ShowChecker
                     var target = FindTarget(cues, fade.TargetNumber);
                     if (target is null)
                     {
-                        issues.Add(new(CheckSeverity.Error, fade, $"La cue target {fade.TargetNumber} non esiste."));
+                        issues.Add(new(CheckSeverity.Error, fade, $"Cue {fade.TargetNumber} inesistente."));
                         break;
                     }
                     if (target is not MediaCue)
-                        issues.Add(new(CheckSeverity.Error, fade, $"La cue target {fade.TargetNumber} ({target.TypeName}) non ha né audio né immagine da sfumare."));
+                        issues.Add(new(CheckSeverity.Error, fade, $"Cue {fade.TargetNumber} ({target.TypeName}): niente da sfumare."));
                     if (!fade.FadeVolume && !fade.FadeOpacity && !fade.StopWhenDone)
-                        issues.Add(new(CheckSeverity.Warning, fade, "Il fade non cambia né volume né opacità e non ferma il target: non fa nulla."));
+                        issues.Add(new(CheckSeverity.Warning, fade, "Fade senza effetto."));
                     if (fade.FadeVolume && target is ImageCue)
-                        issues.Add(new(CheckSeverity.Info, fade, $"Fade del volume su un'immagine (cue {fade.TargetNumber}): non ha effetto."));
+                        issues.Add(new(CheckSeverity.Info, fade, $"Fade del volume su un'immagine (cue {fade.TargetNumber})."));
                     if (fade.FadeOpacity && target is AudioCue)
-                        issues.Add(new(CheckSeverity.Info, fade, $"Fade dell'opacità su una cue audio (cue {fade.TargetNumber}): non ha effetto."));
+                        issues.Add(new(CheckSeverity.Info, fade, $"Fade dell'opacità su una cue audio (cue {fade.TargetNumber})."));
                     if (cues.IndexOf(target) > i)
-                        issues.Add(new(CheckSeverity.Warning, fade, $"La cue target {fade.TargetNumber} viene dopo il fade nella lista: probabilmente non sarà in esecuzione."));
+                        issues.Add(new(CheckSeverity.Warning, fade, $"Cue {fade.TargetNumber} viene dopo il fade: non sarà in esecuzione."));
                     break;
                 }
                 case StopCue stop when !string.IsNullOrWhiteSpace(stop.TargetNumber):
                 {
                     var target = FindTarget(cues, stop.TargetNumber);
                     if (target is null)
-                        issues.Add(new(CheckSeverity.Error, stop, $"La cue target {stop.TargetNumber} non esiste."));
+                        issues.Add(new(CheckSeverity.Error, stop, $"Cue {stop.TargetNumber} inesistente."));
                     else if (cues.IndexOf(target) > i)
-                        issues.Add(new(CheckSeverity.Warning, stop, $"La cue target {stop.TargetNumber} viene dopo lo stop nella lista: probabilmente non sarà in esecuzione."));
+                        issues.Add(new(CheckSeverity.Warning, stop, $"Cue {stop.TargetNumber} viene dopo lo stop: non sarà in esecuzione."));
                     break;
                 }
             }
@@ -214,20 +214,20 @@ public static class ShowChecker
         foreach (var route in workspace.VideoRoutes)
         {
             if (route.Outputs.Count == 0)
-                issues.Add(new(CheckSeverity.Error, null, $"Route video \"{route.Name}\" senza uscite: le sue cue non saranno visibili."));
+                issues.Add(new(CheckSeverity.Error, null, $"Route video \"{route.Name}\" senza uscite."));
             foreach (var output in route.Outputs)
             {
                 if (output.ScreenIndex >= env.ScreenCount)
-                    issues.Add(new(CheckSeverity.Warning, null, $"Route video \"{route.Name}\", uscita \"{output.Name}\": lo schermo {output.ScreenIndex + 1} non è collegato, verrà usata la finestra di anteprima."));
+                    issues.Add(new(CheckSeverity.Warning, null, $"Route video \"{route.Name}\", uscita \"{output.Name}\": schermo {output.ScreenIndex + 1} non collegato, uso l'anteprima."));
                 else if (output.ScreenIndex < 0)
-                    issues.Add(new(CheckSeverity.Info, null, $"Route video \"{route.Name}\", uscita \"{output.Name}\": finestra di anteprima, non un proiettore."));
+                    issues.Add(new(CheckSeverity.Info, null, $"Route video \"{route.Name}\", uscita \"{output.Name}\": finestra di anteprima."));
             }
         }
 
         foreach (var group in workspace.AudioRoutes.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
-            issues.Add(new(CheckSeverity.Info, null, $"Più route audio si chiamano \"{group.Key}\": nelle cue sono difficili da distinguere."));
+            issues.Add(new(CheckSeverity.Info, null, $"Più route audio si chiamano \"{group.Key}\"."));
         foreach (var group in workspace.VideoRoutes.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
-            issues.Add(new(CheckSeverity.Info, null, $"Più route video si chiamano \"{group.Key}\": nelle cue sono difficili da distinguere."));
+            issues.Add(new(CheckSeverity.Info, null, $"Più route video si chiamano \"{group.Key}\"."));
 
         void CheckReference(Cue cue, Guid? id, bool video)
         {
@@ -235,7 +235,7 @@ public static class ShowChecker
             var exists = video ? workspace.VideoRoutes.Any(r => r.Id == id) : workspace.AudioRoutes.Any(r => r.Id == id);
             if (exists) return;
             var fallback = video ? workspace.VideoRoutes.FirstOrDefault()?.Name : workspace.AudioRoutes.FirstOrDefault()?.Name;
-            issues.Add(new(CheckSeverity.Warning, cue, $"La route {(video ? "video" : "audio")} della cue non esiste più: verrà usata \"{fallback}\"."));
+            issues.Add(new(CheckSeverity.Warning, cue, $"Route {(video ? "video" : "audio")} inesistente: uso \"{fallback}\"."));
         }
 
         foreach (var cue in cues)
@@ -265,7 +265,7 @@ public static class ShowChecker
 
         if (!string.IsNullOrWhiteSpace(live.AudioDeviceName)
             && !env.AudioCaptureDevices.Contains(live.AudioDeviceName, StringComparer.OrdinalIgnoreCase))
-            issues.Add(new(CheckSeverity.Warning, live, $"L'ingresso audio \"{live.AudioDeviceName}\" non è collegato: la sorgente andrà in onda senza suono."));
+            issues.Add(new(CheckSeverity.Warning, live, $"Ingresso audio \"{live.AudioDeviceName}\" non collegato: niente suono."));
     }
 
     private static void CheckDevicesAndMessages(List<Cue> cues, IShowCheckEnvironment env, List<CheckIssue> issues)
@@ -290,7 +290,7 @@ public static class ShowChecker
                              && !env.MidiDevices.Contains(device, StringComparer.OrdinalIgnoreCase))
                         issues.Add(new(CheckSeverity.Error, midi, $"Il dispositivo MIDI \"{device}\" non è collegato."));
                     else if (string.IsNullOrWhiteSpace(device))
-                        issues.Add(new(CheckSeverity.Info, midi, $"Nessun dispositivo scelto: verrà usato \"{env.MidiDevices[0]}\"."));
+                        issues.Add(new(CheckSeverity.Info, midi, $"Nessun dispositivo: uso \"{env.MidiDevices[0]}\"."));
                     break;
                 }
                 case NetworkCue net:
@@ -298,7 +298,7 @@ public static class ShowChecker
                     if (string.IsNullOrWhiteSpace(net.Host))
                         issues.Add(new(CheckSeverity.Error, net, "Host di destinazione mancante."));
                     else if (!IPAddress.TryParse(net.Host, out _))
-                        issues.Add(new(CheckSeverity.Info, net, $"\"{net.Host}\" è un nome host: verrà risolto al momento dell'invio. Un indirizzo IP è più affidabile in scena."));
+                        issues.Add(new(CheckSeverity.Info, net, $"\"{net.Host}\" è un nome host: meglio un indirizzo IP."));
                     try { NetworkCuePlayer.BuildPayload(net); }
                     catch (FormatException ex) { issues.Add(new(CheckSeverity.Error, net, ex.Message)); }
                     break;
@@ -326,10 +326,10 @@ public static class ShowChecker
         }
 
         if (workspace.FilePath is not null && Path.IsPathRooted(cue.FilePath))
-            issues.Add(new(CheckSeverity.Warning, cue, $"Percorso assoluto fuori dalla cartella dello show ({cue.FilePath}): copiando lo show su un altro PC il file non verrà trovato."));
+            issues.Add(new(CheckSeverity.Warning, cue, $"Percorso fuori dalla cartella dello show: {cue.FilePath}"));
 
         if (env.RiskyDrive(path) is string drive)
-            issues.Add(new(CheckSeverity.Warning, cue, $"Il file è su un'unità {drive}: se si scollega durante lo show la cue fallisce."));
+            issues.Add(new(CheckSeverity.Warning, cue, $"File su unità {drive}."));
 
         MediaProbe probe;
         try { probe = await env.ProbeAsync(cue, path, token).ConfigureAwait(false); }
@@ -354,7 +354,7 @@ public static class ShowChecker
                 else if (audio.EndTime > 0 && audio.EndTime <= audio.StartTime)
                     issues.Add(new(CheckSeverity.Error, cue, "Il punto di fine è prima del punto di inizio."));
                 else if (audio.EndTime > duration)
-                    issues.Add(new(CheckSeverity.Info, cue, $"Il punto di fine ({audio.EndTime:0.##} s) supera la durata del file ({duration:0.##} s): verrà usata la fine del file."));
+                    issues.Add(new(CheckSeverity.Info, cue, $"Fine ({audio.EndTime:0.##} s) oltre la durata del file ({duration:0.##} s)."));
             }
 
             var playable = cue is AudioCue a2 ? (a2.EndTime > 0 ? Math.Min(a2.EndTime, duration) : duration) - a2.StartTime : duration;
@@ -366,9 +366,9 @@ public static class ShowChecker
         {
             var output = peak + level.VolumeDb;
             if (output > 0.05)
-                issues.Add(new(CheckSeverity.Warning, cue, $"Andrà in clip: picco del file {peak:0.0} dBFS + volume {level.VolumeDb:+0.0;-0.0} dB = {output:+0.0} dBFS. Abbassa il volume di almeno {output:0.0} dB."));
+                issues.Add(new(CheckSeverity.Warning, cue, $"In clip: picco {peak:0.0} dBFS + volume {level.VolumeDb:+0.0;-0.0} dB = {output:+0.0} dBFS."));
             else if (peak > -0.1)
-                issues.Add(new(CheckSeverity.Info, cue, $"Il file arriva già a {peak:0.0} dBFS: potrebbe essere distorto all'origine."));
+                issues.Add(new(CheckSeverity.Info, cue, $"File già a {peak:0.0} dBFS: forse distorto."));
         }
 
         return issues;

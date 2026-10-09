@@ -35,13 +35,13 @@
         <Border Grid.Row="2" Style="{StaticResource Panel}" Padding="4">
             <Grid>
                 <TextBlock x:Name="EmptyText" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
-                           FontSize="{StaticResource FontTitle}" Foreground="{StaticResource SuccessBrush}" Text="Nessun problema trovato: lo show è pronto." />
+                           FontSize="{StaticResource FontTitle}" Foreground="{StaticResource SuccessBrush}" Text="Nessun problema." />
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="IssueList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Padding="12,8" CornerRadius="{StaticResource RadiusControl}" Margin="0,1"
-                                        MouseLeftButtonDown="OnIssueClick" ToolTip="Doppio clic per selezionare la cue">
+                                        MouseLeftButtonDown="OnIssueClick" ToolTip="Doppio clic: seleziona la cue">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="Transparent" />

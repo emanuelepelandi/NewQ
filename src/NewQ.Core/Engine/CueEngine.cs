@@ -176,7 +176,7 @@ public sealed class CueEngine
     {
         if (IsRunaway(group))
         {
-            ReportError(cue, "ciclo di follow/link senza attese: il GO è stato fermato");
+            ReportError(cue, "loop di follow/link infinito: GO fermato");
             CancelPendingContinues(group);
             return;
         }
@@ -381,7 +381,7 @@ public sealed class CueEngine
             .ToList();
 
         if (targets.Count == 0)
-            Warn($"Fade {fade.Number}: la cue {fade.TargetNumber} non è in esecuzione.");
+            Warn($"Fade {fade.Number}: cue {fade.TargetNumber} non in esecuzione.");
 
         var request = new FadeRequest(
             duration,
@@ -483,7 +483,7 @@ public sealed class CueEngine
         var cue = rc.Cue;
         if (ShowSequence.LinkTargetOf(Workspace.Cues, cue) is not Cue target)
         {
-            Warn($"Link della cue {cue.Number}: la cue {cue.LinkTarget} non esiste.");
+            Warn($"Link {cue.Number}: cue {cue.LinkTarget} inesistente.");
             return;
         }
         switch (cue.LinkAction)
@@ -491,7 +491,7 @@ public sealed class CueEngine
             case LinkAction.Start:
                 if (rc.LinkPath.Contains(target))
                 {
-                    Warn($"Link della cue {cue.Number}: la cue {target.Number} è già partita in questo giro di link.");
+                    Warn($"Link {cue.Number}: cue {target.Number} già avviata.");
                     return;
                 }
                 var path = new HashSet<Cue>(rc.LinkPath) { cue };

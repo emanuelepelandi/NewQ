@@ -123,8 +123,8 @@ internal sealed class PreparedVideo : IDisposable
         Frames = new VideoFrameSource(Player);
         Frames.FirstFrame += () => Post(OnFirstFrame);
         Player.EncounteredError += (_, _) => Post(() => Fail(source.IsLive
-            ? "libVLC non riesce ad aprire la sorgente (scollegata o già in uso da un altro programma?)"
-            : "libVLC non riesce a riprodurre il file"));
+            ? "sorgente non disponibile (scollegata o in uso?)"
+            : "file non riproducibile"));
         Player.EndReached += (_, _) => Post(() => Ended?.Invoke());
 
         _media = new Media(VlcRuntime.LibVlc, source.Location, source.Type);

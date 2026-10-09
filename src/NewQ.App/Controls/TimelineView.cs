@@ -395,7 +395,7 @@ public sealed class TimelineView : FrameworkElement
         dc.DrawRectangle(B("PanelBrush"), null, new Rect(0, 0, w, h));
         if (_timeline.Blocks.Count == 0)
         {
-            var empty = Text("Nessuna cue: la timeline mostrerà qui lo show, GO per GO.", 13, B("TextMutedBrush"));
+            var empty = Text("Nessuna cue", 13, B("TextMutedBrush"));
             dc.DrawText(empty, new Point(GutterWidth + 16, RulerHeight + 16));
             return;
         }

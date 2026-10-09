@@ -183,7 +183,7 @@ public partial class VideoRoutesPanel : UserControl
     {
         if (SelectedRoute is not VideoRoute route || SelectedOutput is not VideoOutput output) return;
         if (route.Outputs.Count == 1 && MessageBox.Show(
-                $"\"{route.Name}\" resterà senza uscite: le sue cue non saranno visibili. Continuare?",
+                $"\"{route.Name}\" resterà senza uscite. Continuare?",
                 "Route video", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         var index = route.Outputs.IndexOf(output);

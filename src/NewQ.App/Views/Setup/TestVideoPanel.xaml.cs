@@ -27,17 +27,17 @@ public partial class TestVideoPanel : UserControl
 
     public static readonly IReadOnlyList<PatternInfo> All = new[]
     {
-        new PatternInfo(TestPatternKind.Motion, "Fluidità (movimento)", "Barre e quadrato in moto costante, striscia di 60 frame e contatore: scatti, judder e frame persi."),
-        new PatternInfo(TestPatternKind.Grid, "Griglia di allineamento", "Linee, croce centrale, cerchi e bordo: keystone, warp, messa a fuoco, overscan."),
-        new PatternInfo(TestPatternKind.ColorBars, "Barre colore", "Barre al 75 % e rampa: colori, canali RGB invertiti, saturazione."),
-        new PatternInfo(TestPatternKind.GrayRamp, "Rampa di grigi", "Rampa continua e 11 gradini: gamma, linearità, livello del nero, banding."),
-        new PatternInfo(TestPatternKind.Checkerboard, "Scacchiera", "Scala dei pixel, nitidezza, contrasto ANSI, convergenza."),
-        new PatternInfo(TestPatternKind.White, "Bianco pieno", "Uniformità di luminosità, hot spot, sovrapposizione del blend."),
-        new PatternInfo(TestPatternKind.Gray50, "Grigio 50 %", "Uniformità e bande scure o chiare nelle zone di blend."),
-        new PatternInfo(TestPatternKind.Black, "Nero", "Livello del nero e luce residua nelle sovrapposizioni."),
-        new PatternInfo(TestPatternKind.Red, "Rosso", "Pixel difettosi e uniformità del canale rosso."),
-        new PatternInfo(TestPatternKind.Green, "Verde", "Pixel difettosi e uniformità del canale verde."),
-        new PatternInfo(TestPatternKind.Blue, "Blu", "Pixel difettosi e uniformità del canale blu."),
+        new PatternInfo(TestPatternKind.Motion, "Fluidità (movimento)", "Scatti, judder, frame persi."),
+        new PatternInfo(TestPatternKind.Grid, "Griglia di allineamento", "Keystone, warp, fuoco, overscan."),
+        new PatternInfo(TestPatternKind.ColorBars, "Barre colore", "Colori, canali RGB, saturazione."),
+        new PatternInfo(TestPatternKind.GrayRamp, "Rampa di grigi", "Gamma, nero, banding."),
+        new PatternInfo(TestPatternKind.Checkerboard, "Scacchiera", "Nitidezza, contrasto, convergenza."),
+        new PatternInfo(TestPatternKind.White, "Bianco pieno", "Uniformità, hot spot, blend."),
+        new PatternInfo(TestPatternKind.Gray50, "Grigio 50 %", "Uniformità, bande nel blend."),
+        new PatternInfo(TestPatternKind.Black, "Nero", "Nero, luce residua nel blend."),
+        new PatternInfo(TestPatternKind.Red, "Rosso", "Pixel difettosi, uniformità."),
+        new PatternInfo(TestPatternKind.Green, "Verde", "Pixel difettosi, uniformità."),
+        new PatternInfo(TestPatternKind.Blue, "Blu", "Pixel difettosi, uniformità."),
     };
 
     private SetupContext? _context;

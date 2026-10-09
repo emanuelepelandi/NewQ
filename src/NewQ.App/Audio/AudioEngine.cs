@@ -74,17 +74,17 @@ public sealed class AudioEngine : IDisposable
             lock (_graphLock) available = _devices.TryGetValue(AsioKey, out var asio) ? asio.AvailableChannels : 0;
             if (available == 0) return "il driver ASIO non è attivo";
             return route.FirstChannel + 2 > available
-                ? $"il driver ASIO ha {available} uscite: i canali {route.FirstChannel + 1}-{route.FirstChannel + 2} non esistono"
+                ? $"canali {route.FirstChannel + 1}-{route.FirstChannel + 2} inesistenti (ASIO: {available} uscite)"
                 : null;
         }
 
         var devices = GetWasapiDevices();
         var id = string.IsNullOrEmpty(route.DeviceId) ? _settings.WasapiDeviceId : route.DeviceId;
         var device = string.IsNullOrEmpty(id) ? null : devices.FirstOrDefault(d => d.Id == id);
-        if (!string.IsNullOrEmpty(id) && device is null) return "la scheda audio non è collegata (verrà usata quella predefinita)";
+        if (!string.IsNullOrEmpty(id) && device is null) return "scheda non collegata: uso la predefinita";
         var channels = device?.Channels ?? 2;
         return route.FirstChannel + 2 > channels
-            ? $"la scheda ha {channels} canali: i canali {route.FirstChannel + 1}-{route.FirstChannel + 2} non esistono"
+            ? $"canali {route.FirstChannel + 1}-{route.FirstChannel + 2} inesistenti (la scheda ne ha {channels})"
             : null;
     }
 
@@ -151,7 +151,7 @@ public sealed class AudioEngine : IDisposable
             if (routeId is Guid id && _buses.TryGetValue(id, out var bus)) return bus;
             if (_buses.TryGetValue(_defaultRoute, out var fallback)) return fallback;
         }
-        throw new InvalidOperationException("Uscita audio non disponibile: controlla le route e le impostazioni audio.");
+        throw new InvalidOperationException("Uscita audio non disponibile.");
     }
 
     /// <summary>Adds any stereo-or-mono source to a route (test signals, sound of videos). Returns the converted input.</summary>
@@ -226,7 +226,7 @@ public sealed class AudioEngine : IDisposable
             if (device.State == DeviceState.Active) return id;
         }
         catch { /* not found */ }
-        Report("Una route audio usa una scheda non collegata: uso la scheda predefinita di Windows.");
+        Report("Scheda di una route non collegata: uso la predefinita.");
         return DefaultKey;
     }
 
@@ -384,7 +384,7 @@ internal sealed class DeviceOutput : ISampleProvider, IDisposable
             if (settings.WasapiExclusive)
             {
                 try { return new WasapiOut(d, AudioClientShareMode.Exclusive, true, settings.LatencyMs); }
-                catch (Exception ex) { report($"Modalità esclusiva non supportata ({ex.Message}), uso la modalità condivisa."); }
+                catch (Exception ex) { report($"Modalità esclusiva non supportata: uso la condivisa ({ex.Message})."); }
             }
             return new WasapiOut(d, AudioClientShareMode.Shared, true, settings.LatencyMs);
         }, asio: false);
