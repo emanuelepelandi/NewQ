@@ -239,7 +239,7 @@
                 <TextBlock Text="{Binding Name}" Style="{StaticResource SectionHeaderFirst}" />
                 <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}"
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
-                <ComboBox ui:ControlHelper.Header="Continua" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
+                <ComboBox ui:ControlHelper.Header="Follow" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
                           SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}"
                           Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}" />
             </StackPanel>
@@ -311,7 +311,8 @@
                     <MenuItem Header="Fade in" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[fadeIn], Mode=TwoWay}" />
                     <MenuItem Header="Fade out" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[fadeOut], Mode=TwoWay}" />
                     <MenuItem Header="Loop" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[loop], Mode=TwoWay}" />
-                    <MenuItem Header="Continua" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[continue], Mode=TwoWay}" />
+                    <MenuItem Header="Follow" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[continue], Mode=TwoWay}" />
+                    <MenuItem Header="Link" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[link], Mode=TwoWay}" />
                     <MenuItem Header="Armata" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[armed], Mode=TwoWay}" />
                     <MenuItem Header="Note" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[notes], Mode=TwoWay}" />
                     <MenuItem Header="Stato (avanzamento)" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[state], Mode=TwoWay}" />
@@ -695,7 +696,8 @@
                         <DataGridTextColumn x:Name="ColFadeIn" Header="Fade in" Binding="{Binding FadeIn, StringFormat='0.##', FallbackValue=''}" Width="76" MinWidth="76" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColFadeOut" Header="Fade out" Binding="{Binding FadeOut, StringFormat='0.##', FallbackValue=''}" Width="80" MinWidth="80" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColLoop" Header="Loop" Binding="{Binding Loop, Converter={StaticResource CheckMark}, FallbackValue=''}" Width="60" MinWidth="60" IsReadOnly="True" />
-                        <DataGridTextColumn x:Name="ColContinue" Header="⇥" Binding="{Binding ContinueSymbol, Mode=OneWay}" Width="40" MinWidth="40" IsReadOnly="True" />
+                        <DataGridTextColumn x:Name="ColContinue" Header="Follow" Binding="{Binding ContinueSymbol, Mode=OneWay}" Width="64" MinWidth="64" IsReadOnly="True" />
+                        <DataGridTextColumn x:Name="ColLink" Header="Link" Binding="{Binding LinkText, Mode=OneWay}" Width="64" MinWidth="64" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColArmed" Header="Armata" Binding="{Binding Armed, Converter={StaticResource CheckMark}}" Width="76" MinWidth="76" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColNotes" Header="Note" Binding="{Binding Notes}" Width="2*" MinWidth="120" IsReadOnly="True" />
                         <DataGridTemplateColumn x:Name="ColState" Header="Stato" Width="120" MinWidth="120" IsReadOnly="True">
@@ -918,8 +920,14 @@
                                 <TextBox ui:ControlHelper.Header="Pre-wait (s)" Text="{Binding PreWait}" />
                                 <TextBox ui:ControlHelper.Header="Post-wait (s)" Text="{Binding PostWait}" />
                             </UniformGrid>
-                            <ComboBox ui:ControlHelper.Header="Continua" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
+                            <ComboBox ui:ControlHelper.Header="Follow" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
                                       SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}" />
+                            <UniformGrid Columns="2">
+                                <ComboBox ui:ControlHelper.Header="Link" ItemsSource="{x:Static c:EnumSources.LinkActions}"
+                                          SelectedItem="{Binding LinkAction}" ItemTemplate="{StaticResource EnumItem}" />
+                                <TextBox ui:ControlHelper.Header="Cue (numero)" Text="{Binding LinkTarget}"
+                                         Visibility="{Binding LinkAction, Converter={StaticResource EnumMatch}, ConverterParameter='Start,Stop,FadeOut'}" />
+                            </UniformGrid>
                             <CheckBox Content="Armata" IsChecked="{Binding Armed}" />
                             </StackPanel>
 

@@ -126,11 +126,21 @@ public static class ShowChecker
             if (!cue.Armed)
                 issues.Add(new(CheckSeverity.Info, cue, "Cue disarmata: verrà saltata."));
 
-            if (cue.ContinueMode != ContinueMode.DoNotContinue && i == cues.Count - 1)
-                issues.Add(new(CheckSeverity.Info, cue, "Ultima cue con auto-continue/follow: non c'è nessuna cue successiva."));
+            if (Engine.ShowSequence.Follows(cue) && i == cues.Count - 1)
+                issues.Add(new(CheckSeverity.Info, cue, "Ultima cue con follow: non c'è nessuna cue successiva."));
 
-            if (cue.ContinueMode == ContinueMode.AutoFollow && NeverEnds(cue))
-                issues.Add(new(CheckSeverity.Warning, cue, "Auto-follow su una cue che non finisce da sola (loop o immagine senza durata): la cue successiva non partirà mai."));
+            if (Engine.ShowSequence.Follows(cue) && NeverEnds(cue))
+                issues.Add(new(CheckSeverity.Warning, cue, "Follow su una cue che non finisce da sola (loop o immagine senza durata): la cue successiva non partirà mai."));
+
+            if (cue.LinkAction != LinkAction.None)
+            {
+                if (cue.LinkTarget.Length == 0)
+                    issues.Add(new(CheckSeverity.Warning, cue, "Link senza cue: non fa nulla."));
+                else if (string.Equals(cue.Number.Trim(), cue.LinkTarget, StringComparison.OrdinalIgnoreCase))
+                    issues.Add(new(CheckSeverity.Warning, cue, "Link verso sé stessa: non fa nulla."));
+                else if (FindTarget(cues, cue.LinkTarget) is null)
+                    issues.Add(new(CheckSeverity.Error, cue, $"Link: la cue {cue.LinkTarget} non esiste."));
+            }
         }
     }
 

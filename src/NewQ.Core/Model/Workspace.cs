@@ -24,8 +24,11 @@ public sealed class Workspace
 {
     public const string FileExtension = ".newq";
 
-    /// <summary>2 = audio/video routes (version 1 files are converted on load).</summary>
-    public const int CurrentFormatVersion = 2;
+    /// <summary>
+    /// 2 = audio/video routes; 3 = Follow (wait/auto) and Link instead of auto-continue.
+    /// Older files are converted on load (<see cref="EnsureRoutes"/>).
+    /// </summary>
+    public const int CurrentFormatVersion = 3;
 
     public int FormatVersion { get; set; } = CurrentFormatVersion;
     public WorkspaceSettings Settings { get; set; } = new();
@@ -90,7 +93,30 @@ public sealed class Workspace
             }
         }
 
+        if (FormatVersion < 3) ConvertAutoContinue();
         FormatVersion = CurrentFormatVersion;
+    }
+
+    /// <summary>
+    /// Format 3: "auto-continue" (next cue post-wait seconds after this one's start) becomes a Start link to the next
+    /// cue, which takes the post-wait as extra pre-wait. The show plays the same, and the playhead still skips the
+    /// linked cue after the GO.
+    /// </summary>
+    private void ConvertAutoContinue()
+    {
+        for (var i = 0; i < Cues.Count; i++)
+        {
+            var cue = Cues[i];
+            if (cue.ContinueMode != ContinueMode.AutoContinue) continue;
+            cue.ContinueMode = ContinueMode.DoNotContinue;
+            if (i + 1 >= Cues.Count || cue.HasLink) continue;
+            var next = Cues[i + 1];
+            if (string.IsNullOrWhiteSpace(next.Number)) next.Number = NextCueNumber();
+            next.PreWait += cue.PostWait;
+            cue.PostWait = 0;
+            cue.LinkAction = LinkAction.Start;
+            cue.LinkTarget = next.Number;
+        }
     }
 
     // ------------------------------------------------------------------ show markers

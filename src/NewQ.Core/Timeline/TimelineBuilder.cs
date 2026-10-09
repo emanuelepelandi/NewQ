@@ -1,12 +1,14 @@
+using NewQ.Core.Engine;
 using NewQ.Core.Model;
 
 namespace NewQ.Core.Timeline;
 
 /// <summary>
-/// Predicts the course of the show from the cue list, with the engine's rules: a GO fires the playhead cue;
-/// pre-wait delays its start; auto-continue fires the next cue post-wait seconds after the start, auto-follow when
-/// the cue ends; the chain stops at the first "do not continue" cue, and the next GO starts a new block. Disarmed
-/// cues take no time but keep the chain going. Fade and Stop cues act on the running cues with the target number.
+/// Predicts the course of the show from the cue list, with the engine's rules (<see cref="ShowSequence"/>): a GO
+/// fires the playhead cue; pre-wait delays its start; a follow fires the next cue when the cue ends (wait follow:
+/// post-wait seconds later); a Start link fires its target when the cue starts, Stop and Fade out links end it.
+/// Everything a GO fires forms a block; the next GO starts a new one. Disarmed cues take no time and do no link but
+/// keep their follow. Fade and Stop cues act on the running cues with the target number.
 /// The wait between GOs is up to the operator: each block is placed after the previous one has ended. Cues that never
 /// end by themselves (loops, live sources, held images) go on through the following blocks until something stops them.
 /// </summary>
@@ -16,7 +18,8 @@ public static class TimelineBuilder
     /// Seconds a cue plays (null = until stopped). The default uses <see cref="Cue.Duration"/>; the app adds the
     /// lengths of video files it has probed.
     /// </param>
-    public static ShowTimeline Build(IReadOnlyList<Cue> cues, Func<Cue, double?>? lengthOf = null)
+    /// <param name="linkFadeSeconds">Duration of a Fade out link (the workspace's "Fade cue" time).</param>
+    public static ShowTimeline Build(IReadOnlyList<Cue> cues, Func<Cue, double?>? lengthOf = null, double linkFadeSeconds = 3)
     {
         lengthOf ??= c => c.Duration;
         cues = cues.Where(c => !c.IsShowMarker).ToList(); // --SHOW START-- / --SHOW END-- take no time and fire nothing
@@ -29,24 +32,41 @@ public static class TimelineBuilder
         {
             var block = blocks.Count;
             var blockItems = new List<TimelineItem>();
-            var fireAt = 0.0;
-            var j = i;
-            while (true)
+            // Cues fired by this GO, waiting to be placed: (moment fired, order, cue). The earliest start goes first,
+            // so a Stop or Fade sees what is running at its moment.
+            var pending = new List<(double FireAt, int Order, Cue Cue)> { (0, 0, cues[i]) };
+            var placed = new HashSet<Cue>();
+            var order = 1;
+            while (pending.Count > 0)
             {
-                var cue = cues[j];
+                var k = 0;
+                for (var n = 1; n < pending.Count; n++)
+                {
+                    var a = pending[n].FireAt + Math.Max(0, pending[n].Cue.PreWait);
+                    var b = pending[k].FireAt + Math.Max(0, pending[k].Cue.PreWait);
+                    if (a < b || a == b && pending[n].Order < pending[k].Order) k = n;
+                }
+                var (fireAt, _, cue) = pending[k];
+                pending.RemoveAt(k);
+                if (!placed.Add(cue)) continue; // reached twice (links): the engine doesn't restart it either
+
                 var start = new TimelinePoint(block, fireAt + Math.Max(0, cue.PreWait));
-                var item = CreateItem(cue, start, j == i, lengthOf);
+                var item = CreateItem(cue, start, ReferenceEquals(cue, cues[i]), lengthOf);
                 ApplyEffects(item, carried.Concat(blockItems));
                 blockItems.Add(item);
 
-                if (cue.ContinueMode == ContinueMode.DoNotContinue || j + 1 >= cues.Count) break;
-                if (cue.ContinueMode == ContinueMode.AutoContinue)
-                    fireAt = start.Time + Math.Max(0, cue.PostWait);
-                else if (item.End is TimelinePoint end && end.Block == block)
-                    fireAt = end.Time; // auto-follow: when this cue ends
-                else
-                    break; // auto-follow on a cue that never ends: the chain stops here (Show Check warns about it)
-                j++;
+                if (cue.Armed && ShowSequence.LinkTargetOf(cues, cue) is Cue target)
+                {
+                    if (cue.LinkAction == LinkAction.Start)
+                        pending.Add((start.Time, order++, target));
+                    else
+                        StopRunning(carried.Concat(blockItems), target.Number, start,
+                            cue.LinkAction == LinkAction.FadeOut ? linkFadeSeconds : 0);
+                }
+                // A follow on a cue that never ends never fires (Show Check warns about it).
+                if (ShowSequence.Follows(cue) && ShowSequence.NextInList(cues, cue) is Cue next
+                    && item.End is TimelinePoint end && end.Block == block)
+                    pending.Add((end.Time + ShowSequence.FollowDelay(cue), order++, next));
             }
 
             var length = blockItems.Select(it => it.Start.Time)
@@ -58,7 +78,10 @@ public static class TimelineBuilder
 
             carried.RemoveAll(it => !it.IsOpenEnded);
             carried.AddRange(blockItems.Where(it => it.IsOpenEnded));
-            i = j + 1;
+            // The next GO: the first cue below that this block didn't place (like the engine's playhead, except after
+            // a follow that never fires: that cue is shown as its own GO rather than lost).
+            i++;
+            while (i < cues.Count && placed.Contains(cues[i])) i++;
         }
 
         return new ShowTimeline(blocks, items);
@@ -132,6 +155,18 @@ public static class TimelineBuilder
                 break;
         }
     }
+
+    /// <summary>Stop / Fade out link: the running cues with that number fade to nothing and end.</summary>
+    private static void StopRunning(IEnumerable<TimelineItem> others, string number, TimelinePoint at, double fadeSeconds)
+    {
+        foreach (var target in others.Where(o => o.Kind == TimelineItemKind.Media && !o.Disarmed && IsRunningAt(o, at) && SameNumber(o.Cue, number)).ToList())
+        {
+            var endAt = at with { Time = at.Time + fadeSeconds };
+            Ramp(target, at, endAt, 0);
+            EndAt(target, endAt);
+        }
+    }
+
 
     /// <summary>Target level of a Fade cue as a fraction of the cue's own level; null if it changes nothing the cue has.</summary>
     private static double? TargetLevel(FadeCue fade, Cue target)

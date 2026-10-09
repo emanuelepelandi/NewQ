@@ -41,7 +41,7 @@ public partial class MainWindow : Window
         ["target"] = ColTarget, ["videoRoute"] = ColVideoRoute, ["audioRoute"] = ColAudioRoute, ["volume"] = ColVolume,
         ["opacity"] = ColOpacity, ["layer"] = ColLayer, ["prewait"] = ColPrewait, ["duration"] = ColDuration,
         ["postwait"] = ColPostwait, ["fadeIn"] = ColFadeIn, ["fadeOut"] = ColFadeOut, ["loop"] = ColLoop,
-        ["continue"] = ColContinue, ["armed"] = ColArmed, ["notes"] = ColNotes, ["state"] = ColState,
+        ["continue"] = ColContinue, ["link"] = ColLink, ["armed"] = ColArmed, ["notes"] = ColNotes, ["state"] = ColState,
     };
 
     private void HookView()

@@ -5,14 +5,25 @@ namespace NewQ.Core.Engine;
 /// <summary>One firing of a cue, from GO (including pre-wait) until it ends.</summary>
 public sealed class RunningCue
 {
-    internal RunningCue(Cue cue, TimeSpan firedAt)
+    internal RunningCue(Cue cue, TimeSpan firedAt, int group, IReadOnlySet<Cue> linkPath)
     {
         Cue = cue;
         FiredAt = firedAt;
+        Group = group;
+        LinkPath = linkPath;
     }
 
     public Cue Cue { get; }
     public TimeSpan FiredAt { get; }
+
+    /// <summary>
+    /// The trigger this firing belongs to: every GO (or direct start) opens a group, and the cues it fires through
+    /// follows and links share it. The timeline draws one cursor per group.
+    /// </summary>
+    public int Group { get; }
+
+    /// <summary>Cues started by links on the way to this one: a link never starts one of them again (no loops).</summary>
+    internal IReadOnlySet<Cue> LinkPath { get; }
     public IActiveCue? Handle { get; internal set; }
     public bool IsInPreWait => PreWaitTimer is not null;
     public bool IsFinished { get; internal set; }
@@ -24,7 +35,7 @@ public sealed class RunningCue
 }
 
 /// <summary>
-/// Sequencing core: playhead, GO, pre/post-wait, auto-continue/follow, fades, stops, panic.
+/// Sequencing core: playhead, GO, pre/post-wait, follows, links, fades, stops, panic.
 /// Not thread-safe: call it only from the scheduler thread.
 /// </summary>
 public sealed class CueEngine
@@ -35,12 +46,14 @@ public sealed class CueEngine
     private readonly IScheduler _scheduler;
     private readonly List<ICuePlayer> _players;
     private readonly List<RunningCue> _running = new();
-    private readonly List<IDisposable> _pendingContinues = new();
+    private readonly List<(IDisposable Timer, int Group)> _pendingContinues = new();
     private static readonly TimeSpan PreloadDebounce = TimeSpan.FromMilliseconds(250);
 
     private TimeSpan? _lastGo;
     private TimeSpan? _lastPanic;
     private IDisposable? _preloadTimer;
+    private int _lastGroup;
+    private static readonly IReadOnlySet<Cue> NoLinks = new HashSet<Cue>();
 
     public CueEngine(IScheduler scheduler, IEnumerable<ICuePlayer> players, Workspace? workspace = null)
     {
@@ -57,6 +70,10 @@ public sealed class CueEngine
     public Cue? Playhead { get; private set; }
     public IReadOnlyList<RunningCue> Running => _running;
     public bool IsPaused { get; private set; }
+
+    /// <summary>Something of this GO is still going on: a cue running (or in pre-wait), or a wait follow pending.</summary>
+    public bool IsGroupActive(int group)
+        => _running.Any(r => r.Group == group && !r.IsFinished) || _pendingContinues.Any(p => p.Group == group);
 
     public event EventHandler? PlayheadChanged;
     public event EventHandler? RunningChanged;
@@ -100,19 +117,9 @@ public sealed class CueEngine
         });
     }
 
-    /// <summary>The cues the next GO will fire: the playhead and every cue chained to it.</summary>
+    /// <summary>The cues the next GO will fire: the playhead, its follows and its Start links.</summary>
     public IReadOnlyList<Cue> CuesFiredByNextGo()
-    {
-        var result = new List<Cue>();
-        if (Playhead is null) return result;
-        var cues = Workspace.Cues;
-        for (var i = cues.IndexOf(Playhead); i >= 0 && i < cues.Count; i++)
-        {
-            result.Add(cues[i]);
-            if (cues[i].ContinueMode == ContinueMode.DoNotContinue) break;
-        }
-        return result;
-    }
+        => Playhead is null ? Array.Empty<Cue>() : ShowSequence.FiredBy(Workspace.Cues, Playhead);
 
     private void RefreshPreloads()
     {
@@ -138,7 +145,7 @@ public sealed class CueEngine
 
     // ------------------------------------------------------------------ transport
 
-    /// <summary>Fires the cue at the playhead and moves the playhead past its continue chain.</summary>
+    /// <summary>Fires the cue at the playhead and moves the playhead past the cues this GO covers.</summary>
     public bool Go()
     {
         var now = _scheduler.Now;
@@ -148,20 +155,23 @@ public sealed class CueEngine
 
         var cue = Playhead;
         if (cue is null) return false;
+        var group = ++_lastGroup;
 
         // Past the last cue the playhead rests on --SHOW END-- (when there is one), never on nothing.
-        var next = CueAfterChain(cue) ?? Workspace.ShowEnd;
-        Fire(cue);
+        var next = ShowSequence.NextAfter(Workspace.Cues, cue) ?? Workspace.ShowEnd;
+        Fire(cue, group, NoLinks);
         SetPlayhead(next);
         return true;
     }
 
-    /// <summary>Fires a specific cue without moving the playhead.</summary>
-    public void Fire(Cue cue)
+    /// <summary>Fires a specific cue without moving the playhead (a new group, like a GO).</summary>
+    public void Fire(Cue cue) => Fire(cue, ++_lastGroup, NoLinks);
+
+    private void Fire(Cue cue, int group, IReadOnlySet<Cue> linkPath)
     {
         if (IsPaused) ResumeAll();
 
-        var rc = new RunningCue(cue, _scheduler.Now);
+        var rc = new RunningCue(cue, _scheduler.Now, group, linkPath);
         _running.Add(rc);
         cue.ErrorMessage = null;
         cue.Clipped = false;
@@ -298,26 +308,23 @@ public sealed class CueEngine
         if (rc.IsFinished) return;
         var cue = rc.Cue;
 
-        // The continue timer is armed first so that a cue failing to start still continues the sequence.
-        if (cue.ContinueMode == ContinueMode.AutoContinue)
-            ScheduleContinue(cue, TimeSpan.FromSeconds(cue.PostWait));
-
         try
         {
             rc.Handle = StartHandle(rc);
+            if (!rc.IsFinished)
+            {
+                if (IsPaused) PauseInstance(rc);
+                RefreshState(cue);
+            }
         }
         catch (Exception ex)
         {
             ReportError(cue, ex.Message);
             Complete(rc);
-            return;
         }
 
-        if (!rc.IsFinished)
-        {
-            if (IsPaused) PauseInstance(rc);
-            RefreshState(cue);
-        }
+        // Right after the start, in the same moment, even if the cue failed to start: the sequence goes on.
+        if (cue.Armed && cue.HasLink) ExecuteLink(rc);
     }
 
     private IActiveCue StartHandle(RunningCue rc)
@@ -436,36 +443,61 @@ public sealed class CueEngine
         RefreshState(rc.Cue);
         RunningChanged?.Invoke(this, EventArgs.Empty);
 
-        if (rc.Cue.ContinueMode == ContinueMode.AutoFollow && !rc.StoppedManually && NextCue(rc.Cue) is Cue next)
-            Fire(next);
+        if (ShowSequence.Follows(rc.Cue) && !rc.StoppedManually && NextCue(rc.Cue) is Cue next)
+            ScheduleFollow(next, TimeSpan.FromSeconds(ShowSequence.FollowDelay(rc.Cue)), rc);
         else if (_running.Count == 0 && Playhead is null && Workspace.ShowEnd is ShowMarkerCue end)
             SetPlayhead(end); // everything is over: the playhead waits on --SHOW END--
     }
 
-    private void ScheduleContinue(Cue cue, TimeSpan postWait)
+    /// <summary>Follow: the next cue, in the same group, now (auto) or after the post-wait (wait follow).</summary>
+    private void ScheduleFollow(Cue next, TimeSpan delay, RunningCue from)
     {
-        if (NextCue(cue) is not Cue next) return;
-        if (postWait <= TimeSpan.Zero)
+        if (delay <= TimeSpan.Zero)
         {
-            // Post so the current cue finishes starting before the next one fires.
-            IDisposable? immediate = null;
-            immediate = _scheduler.Schedule(TimeSpan.Zero, () => { _pendingContinues.Remove(immediate!); Fire(next); });
-            _pendingContinues.Add(immediate);
+            Fire(next, from.Group, NoLinks);
             return;
         }
-
         IDisposable? timer = null;
-        timer = _scheduler.Schedule(postWait, () =>
+        timer = _scheduler.Schedule(delay, () =>
         {
-            _pendingContinues.Remove(timer!);
-            Fire(next);
+            _pendingContinues.RemoveAll(p => ReferenceEquals(p.Timer, timer));
+            Fire(next, from.Group, NoLinks);
         });
-        _pendingContinues.Add(timer);
+        _pendingContinues.Add((timer, from.Group));
+    }
+
+    /// <summary>The link of a cue that starts: start, stop or fade out its target.</summary>
+    private void ExecuteLink(RunningCue rc)
+    {
+        var cue = rc.Cue;
+        if (ShowSequence.LinkTargetOf(Workspace.Cues, cue) is not Cue target)
+        {
+            Warn($"Link della cue {cue.Number}: la cue {cue.LinkTarget} non esiste.");
+            return;
+        }
+        switch (cue.LinkAction)
+        {
+            case LinkAction.Start:
+                if (rc.LinkPath.Contains(target))
+                {
+                    Warn($"Link della cue {cue.Number}: la cue {target.Number} è già partita in questo giro di link.");
+                    return;
+                }
+                var path = new HashSet<Cue>(rc.LinkPath) { cue };
+                Fire(target, rc.Group, path);
+                break;
+            case LinkAction.Stop:
+                Stop(target, TimeSpan.Zero);
+                break;
+            case LinkAction.FadeOut:
+                Stop(target, TimeSpan.FromSeconds(Workspace.Settings.CueFadeSeconds));
+                break;
+        }
     }
 
     private void CancelPendingContinues()
     {
-        foreach (var timer in _pendingContinues) timer.Dispose();
+        foreach (var (timer, _) in _pendingContinues) timer.Dispose();
         _pendingContinues.Clear();
     }
 
@@ -505,16 +537,6 @@ public sealed class CueEngine
     {
         var index = Workspace.Cues.IndexOf(cue);
         return index >= 0 && index + 1 < Workspace.Cues.Count ? Workspace.Cues[index + 1] : null;
-    }
-
-    /// <summary>The cue after the end of the auto-continue/follow chain that starts at <paramref name="cue"/>.</summary>
-    private Cue? CueAfterChain(Cue cue)
-    {
-        var cues = Workspace.Cues;
-        var i = cues.IndexOf(cue);
-        if (i < 0) return null;
-        while (i < cues.Count - 1 && cues[i].ContinueMode != ContinueMode.DoNotContinue) i++;
-        return i + 1 < cues.Count ? cues[i + 1] : null;
     }
 
     private void ReportError(Cue cue, string message)

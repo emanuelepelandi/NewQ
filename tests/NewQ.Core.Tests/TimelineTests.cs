@@ -16,17 +16,17 @@ public class TimelineTests
     {
         var t = TimelineBuilder.Build(new Cue[]
         {
-            Audio("1", 10, ContinueMode.AutoContinue, post: 2),   // fires 2 two seconds after it starts
-            Audio("2", 5, ContinueMode.AutoFollow, pre: 1),        // starts at 2 + 1 = 3, ends at 8, then fires 3
-            Audio("3", 4),                                          // starts at 8, ends at 12; chain stops
+            Audio("1", 10, ContinueMode.WaitFollow, post: 2),     // ends at 10, fires 2 two seconds later
+            Audio("2", 5, ContinueMode.AutoFollow, pre: 1),        // starts at 12 + 1 = 13, ends at 18, then fires 3
+            Audio("3", 4),                                          // starts at 18, ends at 22; chain stops
             Audio("4", 6),                                          // next GO
         });
 
         Assert.Equal(2, t.Blocks.Count);
         Assert.Equal(new TimelinePoint(0, 0), ItemOf(t, "1").Start);
-        Assert.Equal(new TimelinePoint(0, 3), ItemOf(t, "2").Start);
-        Assert.Equal(new TimelinePoint(0, 8), ItemOf(t, "3").Start);
-        Assert.Equal(12, t.Blocks[0].Length);
+        Assert.Equal(new TimelinePoint(0, 13), ItemOf(t, "2").Start);
+        Assert.Equal(new TimelinePoint(0, 18), ItemOf(t, "3").Start);
+        Assert.Equal(22, t.Blocks[0].Length);
         Assert.Equal(new TimelinePoint(1, 0), ItemOf(t, "4").Start);
         Assert.True(ItemOf(t, "1").StartsBlock);
         Assert.False(ItemOf(t, "2").StartsBlock);
@@ -83,10 +83,12 @@ public class TimelineTests
     [Fact]
     public void Fade_cue_changes_the_level_of_its_target_and_can_stop_it()
     {
-        var music = Audio("1", 60, ContinueMode.AutoContinue, post: 10);
+        var music = Audio("1", 60);
         music.VolumeDb = 0;
+        music.LinkAction = LinkAction.Start;
+        music.LinkTarget = "2";
         var fade = new FadeCue { Number = "2", TargetNumber = "1", FadeDuration = 4, FadeVolume = true, TargetVolumeDb = -6.0206, StopWhenDone = false,
-                             ContinueMode = ContinueMode.AutoContinue, PostWait = 6 };
+                             PreWait = 10, ContinueMode = ContinueMode.WaitFollow, PostWait = 2 };   // 10 → 14, then 3 at 16
         var t = TimelineBuilder.Build(new Cue[] { music, fade, new FadeCue { Number = "3", TargetNumber = "1", FadeDuration = 2, FadeVolume = true, TargetVolumeDb = -60, StopWhenDone = true } });
 
         var item = ItemOf(t, "1");

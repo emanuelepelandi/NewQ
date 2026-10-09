@@ -86,10 +86,10 @@ public class ShowMarkerTests
     }
 
     [Fact]
-    public void Start_with_auto_continue_fires_the_first_cue_with_the_same_GO()
+    public void Start_with_auto_follow_fires_the_first_cue_with_the_same_GO()
     {
         var engine = CreateShow(Audio("1"), Audio("2"));
-        engine.Workspace.ShowStart!.ContinueMode = ContinueMode.AutoContinue;
+        engine.Workspace.ShowStart!.ContinueMode = ContinueMode.AutoFollow;
 
         engine.Go();
         _scheduler.Advance(0.01);

@@ -616,40 +616,45 @@ public sealed class TimelineView : FrameworkElement
 }
 
 /// <summary>
-/// The current position of the show over the timeline: a thin line redrawn alone while cues run. While the show
-/// waits for the operator, it stands, amber, in the middle of the next GO gap.
+/// The cursors of the show over the timeline, one per GO going on (green), or the wait for the next GO (amber, in
+/// its gap): a thin layer redrawn alone while cues run.
 /// </summary>
 public sealed class TimelineNowLine : FrameworkElement
 {
-    private double? _x;
-    private int? _waitingFor;
+    private readonly List<(double X, bool Waiting)> _cursors = new();
 
     public TimelineNowLine() => IsHitTestVisible = false;
 
-    /// <summary>Screen X of "now" (null = hide); <paramref name="waitingForGo"/> = number of the awaited GO.</summary>
-    public void Set(double? x, int? waitingForGo)
+    /// <summary>Screen X of each cursor; redraws only when something moved.</summary>
+    public void Set(IReadOnlyList<(double X, bool Waiting)> cursors)
     {
-        if (Nullable.Equals(x, _x) && waitingForGo == _waitingFor) return;
-        _x = x;
-        _waitingFor = waitingForGo;
+        if (cursors.Count == _cursors.Count)
+        {
+            var same = true;
+            for (var i = 0; i < cursors.Count && same; i++) same = cursors[i] == _cursors[i];
+            if (same) return;
+        }
+        _cursors.Clear();
+        _cursors.AddRange(cursors);
         InvalidateVisual();
     }
 
     protected override void OnRender(DrawingContext dc)
     {
-        if (_x is not double x || x < TimelineView.GutterWidth - TimelineView.GapWidth / 2 || x > ActualWidth) return;
-        var brush = (Brush)FindResource(_waitingFor is null ? "SuccessBrush" : "WarningBrush");
-        var pen = new Pen(brush, 2);
-        dc.DrawLine(pen, new Point(x, TimelineView.RulerHeight), new Point(x, ActualHeight));
-        var head = new StreamGeometry();
-        using (var g = head.Open())
+        foreach (var (x, waiting) in _cursors)
         {
-            g.BeginFigure(new Point(x - 5, TimelineView.RulerHeight), true, true);
-            g.LineTo(new Point(x + 5, TimelineView.RulerHeight), true, false);
-            g.LineTo(new Point(x, TimelineView.RulerHeight + 7), true, false);
+            if (x < TimelineView.GutterWidth - TimelineView.GapWidth / 2 || x > ActualWidth) continue;
+            var brush = (Brush)FindResource(waiting ? "WarningBrush" : "SuccessBrush");
+            dc.DrawLine(new Pen(brush, 2), new Point(x, TimelineView.RulerHeight), new Point(x, ActualHeight));
+            var head = new StreamGeometry();
+            using (var g = head.Open())
+            {
+                g.BeginFigure(new Point(x - 5, TimelineView.RulerHeight), true, true);
+                g.LineTo(new Point(x + 5, TimelineView.RulerHeight), true, false);
+                g.LineTo(new Point(x, TimelineView.RulerHeight + 7), true, false);
+            }
+            head.Freeze();
+            dc.DrawGeometry(brush, null, head);
         }
-        head.Freeze();
-        dc.DrawGeometry(brush, null, head);
-
     }
 }

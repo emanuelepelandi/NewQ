@@ -2,14 +2,32 @@ using System.Text.Json.Serialization;
 
 namespace NewQ.Core.Model;
 
+/// <summary>What happens after a cue ("Follow" in the UI).</summary>
 public enum ContinueMode
 {
-    /// <summary>Stop here and wait for the next GO.</summary>
+    /// <summary>Nothing: the next cue waits for its GO.</summary>
     DoNotContinue,
-    /// <summary>Start the next cue after this cue's post-wait (measured from its start).</summary>
+    /// <summary>
+    /// Legacy (files before format 3): started the next cue post-wait seconds after this cue's start. Converted on
+    /// load into a Start link to the next cue (<see cref="Workspace.EnsureRoutes"/>); the engine treats it as none.
+    /// </summary>
     AutoContinue,
     /// <summary>Start the next cue when this cue finishes.</summary>
     AutoFollow,
+    /// <summary>Start the next cue post-wait seconds after this cue finishes.</summary>
+    WaitFollow,
+}
+
+/// <summary>What a cue does to another cue (its link target) when it starts.</summary>
+public enum LinkAction
+{
+    None,
+    /// <summary>Start the target too (with its own pre-wait).</summary>
+    Start,
+    /// <summary>Stop the target at once.</summary>
+    Stop,
+    /// <summary>Fade the target out ("Fade cue" time of the workspace), then stop it.</summary>
+    FadeOut,
 }
 
 public enum CueRunState { Idle, PreWait, Running, Paused, Error }
@@ -36,7 +54,7 @@ public abstract class Cue : ObservableObject
 
     private static readonly HashSet<string> DerivedProperties = new()
     {
-        nameof(Summary), nameof(DurationText), nameof(ContinueSymbol), nameof(TypeName),
+        nameof(Summary), nameof(DurationText), nameof(ContinueSymbol), nameof(LinkText), nameof(HasLink), nameof(TypeName),
     };
 
     private string _number = "";
@@ -45,6 +63,8 @@ public abstract class Cue : ObservableObject
     private double _preWait;
     private double _postWait;
     private ContinueMode _continueMode;
+    private LinkAction _linkAction;
+    private string _linkTarget = "";
     private bool _armed = true;
     private string? _color;
 
@@ -66,10 +86,20 @@ public abstract class Cue : ObservableObject
     /// <summary>Seconds to wait after GO before the cue actually starts.</summary>
     public double PreWait { get => _preWait; set => SetField(ref _preWait, Math.Max(0, value)); }
 
-    /// <summary>Seconds after start before the next cue fires (AutoContinue only).</summary>
+    /// <summary>Seconds after the end of this cue before the next one fires (Wait follow only).</summary>
     public double PostWait { get => _postWait; set => SetField(ref _postWait, Math.Max(0, value)); }
 
+    /// <summary>"Follow": whether the next cue starts by itself when this one ends.</summary>
     public ContinueMode ContinueMode { get => _continueMode; set => SetField(ref _continueMode, value); }
+
+    /// <summary>What this cue does to <see cref="LinkTarget"/> when it starts (GO, follow, link or OSC).</summary>
+    public LinkAction LinkAction { get => _linkAction; set => SetField(ref _linkAction, value); }
+
+    /// <summary>Number of the cue the link acts on.</summary>
+    public string LinkTarget { get => _linkTarget; set => SetField(ref _linkTarget, (value ?? "").Trim()); }
+
+    /// <summary>The link does something (an action and a target).</summary>
+    [JsonIgnore] public bool HasLink => LinkAction != LinkAction.None && LinkTarget.Length > 0;
 
     /// <summary>A disarmed cue still takes part in the sequence but performs no action.</summary>
     public bool Armed { get => _armed; set => SetField(ref _armed, value); }
@@ -94,9 +124,18 @@ public abstract class Cue : ObservableObject
     [JsonIgnore]
     public string ContinueSymbol => ContinueMode switch
     {
-        ContinueMode.AutoContinue => "⇥",
+        ContinueMode.WaitFollow => "⇣",
         ContinueMode.AutoFollow => "↧",
         _ => "",
+    };
+
+    /// <summary>The link in short for the list: "▶ 5" start, "■ 5" stop, "↘ 5" fade out.</summary>
+    [JsonIgnore]
+    public string LinkText => !HasLink ? "" : LinkAction switch
+    {
+        LinkAction.Start => "▶ " + LinkTarget,
+        LinkAction.Stop => "■ " + LinkTarget,
+        _ => "↘ " + LinkTarget,
     };
 
     // ---- runtime state (set by the engine, never persisted) ----
@@ -150,6 +189,8 @@ public abstract class Cue : ObservableObject
         base.OnPropertyChanged(nameof(Summary));
         base.OnPropertyChanged(nameof(DurationText));
         base.OnPropertyChanged(nameof(ContinueSymbol));
+        base.OnPropertyChanged(nameof(LinkText));
+        base.OnPropertyChanged(nameof(HasLink));
     }
 
     public override string ToString() => $"{Number} {TypeName} {Name}".Trim();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -69,15 +70,16 @@ public partial class TimelinePanel : UserControl
         View.Update(_vm.Timeline, _vm.Workspace);
     }
 
-    /// <summary>The "now" line follows the show while cues run (only this thin layer is redrawn).</summary>
+    private readonly List<(double X, bool Waiting)> _cursorXs = new();
+
+    /// <summary>The cursors follow the show while cues run (only this thin layer is redrawn).</summary>
     private void UpdateNow()
     {
-        if (_vm is not null && _vm.TryGetTimelineNow(out var now))
-        {
-            if (now.WaitingForGo) NowLine.Set(View.ScreenXOfGo(now.At.Block + 1), now.At.Block + 2);
-            else NowLine.Set(View.ScreenXOf(now.At), null);
-        }
-        else NowLine.Set(null, null);
+        _cursorXs.Clear();
+        if (_vm is not null)
+            foreach (var now in _vm.TimelineCursors())
+                _cursorXs.Add(now.WaitingForGo ? (View.ScreenXOfGo(now.At.Block + 1), true) : (View.ScreenXOf(now.At), false));
+        NowLine.Set(_cursorXs);
     }
 
     private void UpdateScrollBars()

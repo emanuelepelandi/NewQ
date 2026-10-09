@@ -11,9 +11,13 @@ public sealed class EnumDisplayConverter : IValueConverter
 {
     private static readonly Dictionary<object, string> Labels = new()
     {
-        [ContinueMode.DoNotContinue] = "Nessuno (attendi GO)",
-        [ContinueMode.AutoContinue] = "Auto-continue (dopo post-wait)",
-        [ContinueMode.AutoFollow] = "Auto-follow (a fine cue)",
+        [ContinueMode.DoNotContinue] = "Nessuno",
+        [ContinueMode.WaitFollow] = "Wait follow",
+        [ContinueMode.AutoFollow] = "Auto follow",
+        [LinkAction.None] = "Nessuno",
+        [LinkAction.Start] = "Avvia",
+        [LinkAction.Stop] = "Ferma",
+        [LinkAction.FadeOut] = "Fade out",
         [FitMode.Fit] = "Adatta (letterbox)",
         [FitMode.Fill] = "Riempi (ritaglia)",
         [FitMode.Stretch] = "Stira",
@@ -157,7 +161,9 @@ public sealed class CheckMarkConverter : IValueConverter
 
 public static class EnumSources
 {
-    public static Array ContinueModes { get; } = Enum.GetValues(typeof(ContinueMode));
+    // The legacy auto-continue is converted on load: it is never offered.
+    public static ContinueMode[] ContinueModes { get; } = { ContinueMode.DoNotContinue, ContinueMode.WaitFollow, ContinueMode.AutoFollow };
+    public static Array LinkActions { get; } = Enum.GetValues(typeof(LinkAction));
     public static Array FitModes { get; } = Enum.GetValues(typeof(FitMode));
     public static Array MidiKinds { get; } = Enum.GetValues(typeof(MidiMessageKind));
     public static Array MscCommands { get; } = Enum.GetValues(typeof(MscCommand));

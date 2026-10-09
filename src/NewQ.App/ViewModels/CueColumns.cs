@@ -26,14 +26,15 @@ public sealed class CueColumns : INotifyPropertyChanged
         ("fadeIn", "Fade in"),
         ("fadeOut", "Fade out"),
         ("loop", "Loop"),
-        ("continue", "Continua"),
+        ("continue", "Follow"),
+        ("link", "Link"),
         ("armed", "Armata"),
         ("notes", "Note"),
         ("state", "Stato (avanzamento)"),
     };
 
     /// <summary>The columns shown before the user chooses (the original layout).</summary>
-    public static readonly IReadOnlyList<string> Defaults = new[] { "target", "prewait", "duration", "postwait", "continue", "state" };
+    public static readonly IReadOnlyList<string> Defaults = new[] { "target", "prewait", "duration", "postwait", "continue", "link", "state" };
 
     private readonly HashSet<string> _visible;
 

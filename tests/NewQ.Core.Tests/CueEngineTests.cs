@@ -20,6 +20,13 @@ public class CueEngineTests
     private static AudioCue Audio(string number, ContinueMode mode = ContinueMode.DoNotContinue, double preWait = 0, double postWait = 0)
         => new() { Number = number, ContinueMode = mode, PreWait = preWait, PostWait = postWait };
 
+    private static T Linked<T>(T cue, LinkAction action, string target) where T : Cue
+    {
+        cue.LinkAction = action;
+        cue.LinkTarget = target;
+        return cue;
+    }
+
     [Fact]
     public void Go_fires_playhead_and_advances()
     {
@@ -73,14 +80,16 @@ public class CueEngineTests
     }
 
     [Fact]
-    public void AutoContinue_fires_next_after_post_wait_and_playhead_skips_chain()
+    public void WaitFollow_fires_next_post_wait_after_the_end_and_playhead_skips_it()
     {
-        var engine = CreateEngine(Audio("1", ContinueMode.AutoContinue, postWait: 1.5), Audio("2"), Audio("3"));
+        var engine = CreateEngine(Audio("1", ContinueMode.WaitFollow, postWait: 1.5), Audio("2"), Audio("3"));
 
         engine.Go();
         Assert.Equal("3", engine.Playhead?.Number);
-        Assert.Equal(new[] { "1" }, _player.StartedNumbers);
+        _scheduler.Advance(5);
+        Assert.Equal(new[] { "1" }, _player.StartedNumbers); // still playing: nothing yet
 
+        _player.Started[0].Finish();
         _scheduler.Advance(1.0);
         Assert.Equal(new[] { "1" }, _player.StartedNumbers);
 
@@ -89,19 +98,118 @@ public class CueEngineTests
     }
 
     [Fact]
-    public void AutoContinue_without_post_wait_fires_whole_chain()
+    public void WaitFollow_does_not_fire_when_cue_is_stopped_manually()
     {
-        var engine = CreateEngine(
-            Audio("1", ContinueMode.AutoContinue),
-            Audio("2", ContinueMode.AutoContinue),
-            Audio("3"),
-            Audio("4"));
+        var engine = CreateEngine(Audio("1", ContinueMode.WaitFollow, postWait: 1), Audio("2"));
+        engine.Go();
+        engine.Stop(engine.Workspace.Cues[0], TimeSpan.Zero);
+        _scheduler.Advance(5);
+        Assert.Equal(new[] { "1" }, _player.StartedNumbers);
+    }
+
+    [Fact]
+    public void Legacy_auto_continue_does_nothing_in_the_engine()
+    {
+        var engine = CreateEngine(Audio("1", ContinueMode.AutoContinue), Audio("2"));
+        engine.Go();
+        _scheduler.Advance(5);
+        Assert.Equal(new[] { "1" }, _player.StartedNumbers);
+        Assert.Equal("2", engine.Playhead?.Number);
+    }
+
+    [Fact]
+    public void Start_links_fire_their_targets_together_and_playhead_skips_them()
+    {
+        var engine = CreateEngine(Linked(Audio("1"), LinkAction.Start, "2"), Linked(Audio("2"), LinkAction.Start, "3"), Audio("3"), Audio("4"));
 
         engine.Go();
-        _scheduler.Flush();
 
         Assert.Equal(new[] { "1", "2", "3" }, _player.StartedNumbers);
         Assert.Equal("4", engine.Playhead?.Number);
+        Assert.Single(engine.Running.Select(r => r.Group).Distinct()); // one GO, one group
+    }
+
+    [Fact]
+    public void Linked_target_waits_its_own_pre_wait()
+    {
+        var engine = CreateEngine(Linked(Audio("1"), LinkAction.Start, "2"), Audio("2", preWait: 2));
+        engine.Go();
+        Assert.Equal(new[] { "1" }, _player.StartedNumbers);
+        _scheduler.Advance(2.1);
+        Assert.Equal(new[] { "1", "2" }, _player.StartedNumbers);
+    }
+
+    [Fact]
+    public void Link_acts_when_the_cue_starts_after_its_pre_wait()
+    {
+        var engine = CreateEngine(Linked(Audio("1", preWait: 1), LinkAction.Start, "3"), Audio("2"), Audio("3"));
+        engine.Go();
+        Assert.Empty(_player.Started);
+        Assert.Equal("2", engine.Playhead?.Number); // 3 is linked but not right below 1: its own GO stays
+        _scheduler.Advance(1.1);
+        Assert.Equal(new[] { "1", "3" }, _player.StartedNumbers);
+    }
+
+    [Fact]
+    public void Link_stop_and_fade_out_act_on_their_targets()
+    {
+        var engine = CreateEngine(Audio("1"), Audio("2"), Linked(Audio("3"), LinkAction.Stop, "1"), Linked(Audio("4"), LinkAction.FadeOut, "2"));
+        engine.Workspace.Settings.CueFadeSeconds = 2.5;
+        engine.Go();
+        engine.Go();
+        engine.Go(); // 3 stops 1
+        Assert.Equal(TimeSpan.Zero, _player.Started[0].StoppedWithFade);
+        engine.Go(); // 4 fades 2 out
+        Assert.Equal(TimeSpan.FromSeconds(2.5), _player.Started[1].StoppedWithFade);
+    }
+
+    [Fact]
+    public void Link_loops_start_each_cue_once()
+    {
+        string? warned = null;
+        var engine = CreateEngine(Linked(Audio("1"), LinkAction.Start, "2"), Linked(Audio("2"), LinkAction.Start, "1"));
+        engine.Log += (_, e) => warned = e.Message;
+        engine.Go();
+        Assert.Equal(new[] { "1", "2" }, _player.StartedNumbers);
+        Assert.NotNull(warned);
+    }
+
+    [Fact]
+    public void Link_on_a_disarmed_cue_does_nothing()
+    {
+        var engine = CreateEngine(Linked(Audio("1"), LinkAction.Start, "3"), Audio("2"), Audio("3"));
+        engine.Workspace.Cues[0].Armed = false;
+        engine.Go();
+        _scheduler.Flush();
+        Assert.Empty(_player.Started);
+    }
+
+    [Fact]
+    public void Each_GO_is_a_group_shared_by_its_follows_and_links()
+    {
+        var engine = CreateEngine(Audio("1", ContinueMode.AutoFollow), Linked(Audio("2"), LinkAction.Start, "3"), Audio("3"), Audio("4"));
+        engine.Go();                 // 1, then 2 (+3) when 1 ends
+        _player.Started[0].Finish();
+        _scheduler.Flush();
+        engine.Go();                 // 4
+        var groups = engine.Running.ToDictionary(r => r.Cue.Number, r => r.Group);
+        Assert.Equal(groups["2"], groups["3"]);
+        Assert.NotEqual(groups["2"], groups["4"]);
+        Assert.True(engine.IsGroupActive(groups["2"]));
+    }
+
+    [Fact]
+    public void Group_stays_active_while_a_wait_follow_is_pending()
+    {
+        var engine = CreateEngine(Audio("1", ContinueMode.WaitFollow, postWait: 3), Audio("2"));
+        engine.Go();
+        var group = engine.Running[0].Group;
+        _player.Started[0].Finish();
+        _scheduler.Advance(1);
+        Assert.Empty(engine.Running);
+        Assert.True(engine.IsGroupActive(group));
+        engine.StopAll(TimeSpan.Zero);
+        Assert.False(engine.IsGroupActive(group));
     }
 
     [Fact]
@@ -134,9 +242,11 @@ public class CueEngineTests
     [Fact]
     public void StopAll_cancels_pending_continues_and_prewaits()
     {
-        var engine = CreateEngine(Audio("1", ContinueMode.AutoContinue, postWait: 2), Audio("2"), Audio("3", preWait: 5));
+        var engine = CreateEngine(Audio("1", ContinueMode.WaitFollow, postWait: 2), Audio("2"), Audio("3", preWait: 5));
 
-        engine.Go();            // fires 1 (2 is pending)
+        engine.Go();            // fires 1
+        _player.Started[0].Finish();
+        _scheduler.Advance(0.5); // 2 is pending
         engine.Fire(engine.Workspace.Cues[2]); // 3 in pre-wait
         engine.StopAll(TimeSpan.Zero);
         _scheduler.Advance(10);
@@ -299,7 +409,7 @@ public class CueEngineTests
         var ws = new Workspace();
         ws.Settings.GoLockoutMs = 0;
         ws.Cues.Add(new VideoCue { Number = "1" });
-        ws.Cues.Add(new AudioCue { Number = "2", ContinueMode = ContinueMode.AutoContinue });
+        ws.Cues.Add(new AudioCue { Number = "2", LinkAction = LinkAction.Start, LinkTarget = "3" });
         ws.Cues.Add(new VideoCue { Number = "3" });
         ws.Cues.Add(new VideoCue { Number = "4" });
         var engine = new CueEngine(_scheduler, new ICuePlayer[] { recorder, _player }, ws);

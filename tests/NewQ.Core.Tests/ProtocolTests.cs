@@ -169,7 +169,7 @@ public class SerializationTests
     {
         var ws = new Workspace();
         ws.Settings.PanicFadeSeconds = 2.5;
-        ws.Cues.Add(new AudioCue { Number = "1", Name = "Intro", FilePath = "audio/intro.wav", VolumeDb = -6, Loop = true, ContinueMode = ContinueMode.AutoContinue, PostWait = 1 });
+        ws.Cues.Add(new AudioCue { Number = "1", Name = "Intro", FilePath = "audio/intro.wav", VolumeDb = -6, Loop = true, ContinueMode = ContinueMode.WaitFollow, PostWait = 1, LinkAction = LinkAction.FadeOut, LinkTarget = "2" });
         ws.Cues.Add(new VideoCue { Number = "2", FilePath = "v.mp4", Layer = 3, FitMode = FitMode.Fill });
         ws.Cues.Add(new ImageCue { Number = "3", FilePath = "i.png", HoldDuration = 5 });
         ws.Cues.Add(new MidiCue { Number = "4", Kind = MidiMessageKind.ShowControl, MscCueNumber = "7" });
@@ -186,14 +186,16 @@ public class SerializationTests
         var audio = Assert.IsType<AudioCue>(loaded.Cues[0]);
         Assert.Equal(-6, audio.VolumeDb);
         Assert.True(audio.Loop);
-        Assert.Equal(ContinueMode.AutoContinue, audio.ContinueMode);
+        Assert.Equal(ContinueMode.WaitFollow, audio.ContinueMode);
+        Assert.Equal(LinkAction.FadeOut, audio.LinkAction);
+        Assert.Equal("2", audio.LinkTarget);
         Assert.Equal(FitMode.Fill, Assert.IsType<VideoCue>(loaded.Cues[1]).FitMode);
         Assert.Equal(@"%1POWR 1\r", Assert.IsType<NetworkCue>(loaded.Cues[4]).Payload);
 
         // Runtime / computed state must not leak into the file.
         Assert.DoesNotContain("RunState", json);
         Assert.DoesNotContain("Summary", json);
-        Assert.Contains("\"AutoContinue\"", json);
+        Assert.Contains("\"WaitFollow\"", json);
     }
 
     [Fact]

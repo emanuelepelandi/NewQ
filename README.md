@@ -16,9 +16,13 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | **Fade** | Porta volume e/o opacità di una cue in esecuzione a un nuovo valore, e se serve la ferma. |
 | **Stop** | Ferma una cue specifica, o tutte, con un fade opzionale. |
 
-Ogni cue ha **pre-wait**, **post-wait**, modalità **auto-continue** e **auto-follow**, e lo stato *armata/disarmata*.
+Ogni cue ha **pre-wait** (attesa prima di partire), lo stato *armata/disarmata* e:
+- **Follow**: *Nessuno*; *Auto follow*, la cue successiva parte quando questa finisce; *Wait follow*, parte **post-wait** secondi dopo la fine. Una cue fermata a mano non fa partire la successiva.
+- **Link**: quando la cue parte (GO, follow, link, OSC), agisce su un'altra cue indicata per numero: *Avvia* (con il suo pre-wait: per far partire più cue insieme), *Ferma*, *Fade out* (durata "Fade cue" delle impostazioni). Dopo un GO il playhead salta le cue subito sotto che il GO ha già fatto partire. Un giro di link non riavvia mai la stessa cue.
 
-**--SHOW START-- e --SHOW END--**: ogni workspace inizia e finisce con due righe fisse, che non fanno nulla e non si possono eliminare, spostare o rinominare; le nuove cue vanno sempre tra le due. Aprendo un workspace il playhead è su **--SHOW START--**: il GO passa alla prima cue (con «Continua» impostato su START, lo stesso GO la fa anche partire). Dopo l'ultima cue il playhead si ferma su **--SHOW END--**, anche quando tutto ha finito di suonare, così si può continuare a spostarlo con le frecce. Le note di entrambe si possono modificare.
+I workspace salvati con le versioni precedenti si convertono all'apertura: ogni *auto-continue* diventa un link *Avvia* verso la cue successiva, che riceve il vecchio post-wait come pre-wait. Lo show suona come prima.
+
+**--SHOW START-- e --SHOW END--**: ogni workspace inizia e finisce con due righe fisse, che non fanno nulla e non si possono eliminare, spostare o rinominare; le nuove cue vanno sempre tra le due. Aprendo un workspace il playhead è su **--SHOW START--**: il GO passa alla prima cue (con il Follow di START su *Auto follow*, lo stesso GO la fa anche partire). Dopo l'ultima cue il playhead si ferma su **--SHOW END--**, anche quando tutto ha finito di suonare, così si può continuare a spostarlo con le frecce. Le note di entrambe si possono modificare.
 
 **Meter audio**:
 - **Uscita stereo**, nell'intestazione: zone verde (fino a −12 dBFS), gialla (fino a −3) e rossa (fino a 0), indicatore di picco e pulsante **0 dB** che diventa rosso (**CLIP**) se l'uscita va in clip. Un clic lo azzera.
@@ -37,7 +41,7 @@ Ogni cue ha **pre-wait**, **post-wait**, modalità **auto-continue** e **auto-fo
 - **Formati**: analisi di audio, video (con libVLC) e immagini; punti di inizio e fine fuori dal file.
 - **Livelli**: clip previsto dal picco del file più il volume della cue.
 - **Uscite e dispositivi**: schermi non collegati, dispositivi MIDI assenti, messaggi MIDI, MSC, SysEx e OSC non validi.
-- **Logica delle cue**: numeri duplicati, Fade e Stop verso cue inesistenti o successive, auto-follow su cue che non finiscono mai.
+- **Logica delle cue**: numeri duplicati, Fade e Stop verso cue inesistenti o successive, follow su cue che non finiscono mai, link verso cue inesistenti.
 
 Un doppio clic su un problema seleziona la cue interessata.
 
@@ -65,7 +69,7 @@ I test non sopravvivono mai allo spettacolo: **Panic**, l'attivazione di **Safe*
 
 **Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Generale → Fade cue*. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade.
 
-**Timeline** (Visualizza → Timeline, Ctrl+T): sotto la lista, a tutta larghezza, lo show previsto GO per GO. Ogni GO apre un blocco con le cue che lancia (pre-wait, auto-continue, auto-follow); ogni blocco è preceduto da un varco tratteggiato con l'etichetta **GO n** (verde pieno: il prossimo GO): lì l'operatore preme GO, e il tempo di attesa non è contato. Ogni cue è una barra la cui forma è il suo livello nel tempo: fade in, fade out, cue Fade che la abbassano, Stop che la chiudono. Le cue senza fine (loop, live, immagini fisse) proseguono tratteggiate nei blocchi successivi finché qualcosa non le ferma. Video e immagini mostrano il primo fotogramma; la durata dei video viene letta dal file. Corsie per route o per tipo di cue; zoom (Ctrl+rotella), "Adatta", "Segui il playhead"; durante lo show una linea verde segue quello che succede davvero (tempo reale di riproduzione, pause e scorrimenti inclusi); finito il blocco si ferma, arancio, nel varco del prossimo GO e salta avanti solo quando il GO arriva. Un clic su una cue la seleziona. Le anteprime si generano in background e mai mentre lo show è in riproduzione.
+**Timeline** (Visualizza → Timeline, Ctrl+T): sotto la lista, a tutta larghezza, lo show previsto GO per GO. Ogni GO apre un blocco con le cue che lancia (pre-wait, follow, link); ogni blocco è preceduto da un varco tratteggiato con l'etichetta **GO n** (verde pieno: il prossimo GO): lì l'operatore preme GO, e il tempo di attesa non è contato. Ogni cue è una barra la cui forma è il suo livello nel tempo: fade in, fade out, cue Fade che la abbassano, Stop che la chiudono. Le cue senza fine (loop, live, immagini fisse) proseguono tratteggiate nei blocchi successivi finché qualcosa non le ferma. Video e immagini mostrano il primo fotogramma; la durata dei video viene letta dal file. Corsie per route o per tipo di cue; zoom (Ctrl+rotella), "Adatta", "Segui il playhead"; durante lo show c'è un cursore verde per ogni GO in corso, che segue quello che succede davvero nel suo blocco (tempo reale di riproduzione, pause e scorrimenti inclusi): uno show tutto in follow ha un solo cursore, più GO che si sovrappongono ne hanno uno ciascuno. Finito l'ultimo GO, un cursore arancio aspetta nel varco del prossimo. Un clic su una cue la seleziona. Le anteprime si generano in background e mai mentre lo show è in riproduzione.
 
 **Visualizza**: il pannello *Proprietà cue* si comprime in una striscia a destra (freccia nell'intestazione, Ctrl+I) per dare spazio alla lista; *Colonne della lista* sceglie quali proprietà mostrare: destinazione, route video e audio, volume, opacità, layer, pre/post-wait, durata, fade in/out, loop, continua, armata, note, stato. Le cue senza quella proprietà lasciano la cella vuota. Scelte e larghezza del pannello sono salvate per macchina.
 
