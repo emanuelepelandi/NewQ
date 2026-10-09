@@ -120,4 +120,67 @@ public class FollowLinkTests
         Assert.Same(cues[3], ShowSequence.NextAfter(cues, cues[2]));
         Assert.Equal(new[] { cues[3] }, ShowSequence.FiredBy(cues, cues[3])); // a Stop link fires nothing
     }
+
+    [Fact]
+    public void Start_link_loops_are_found_however_long()
+    {
+        var cues = new Cue[] { Link(Audio("1", 5), LinkAction.Start, "2"), Link(Audio("2", 5), LinkAction.Start, "3"), Link(Audio("3", 5), LinkAction.Start, "1"), Audio("4", 5) };
+        Assert.Equal("1 → 2 → 3 → 1", ShowSequence.Describe(ShowSequence.StartLinkLoop(cues, cues[0])!));
+        Assert.NotNull(ShowSequence.StartLinkLoop(cues, cues[2]));
+        Assert.Null(ShowSequence.StartLinkLoop(cues, cues[3]));
+        Assert.NotNull(ShowSequence.FindStartLinkLoop(cues));
+    }
+
+    [Fact]
+    public void Stop_links_and_follows_never_make_a_forbidden_loop()
+    {
+        var cues = new Cue[]
+        {
+            Link(Audio("1", 5, ContinueMode.AutoFollow), LinkAction.Stop, "2"),
+            Link(Audio("2", 5, ContinueMode.AutoFollow), LinkAction.FadeOut, "1"),
+            Link(Audio("3", 5, ContinueMode.WaitFollow), LinkAction.Start, "1"),   // follow down + link up: a repeating show
+        };
+        Assert.Null(ShowSequence.FindStartLinkLoop(cues));
+    }
+
+    [Fact]
+    public void Engine_stops_a_GO_that_loops_without_ever_waiting()
+    {
+        // Two instant cues: 1 follows into 2, 2 starts 1 again with a link. Allowed (it goes through a follow) but
+        // nothing in it takes time: the engine must stop it instead of spinning forever.
+        var scheduler = new ManualScheduler();
+        var ws = new Workspace();
+        ws.Settings.GoLockoutMs = 0;
+        ws.Cues.Add(new StopCue { Number = "1", TargetNumber = "x", ContinueMode = ContinueMode.AutoFollow });
+        ws.Cues.Add(Link(new StopCue { Number = "2", TargetNumber = "x" }, LinkAction.Start, "1"));
+        var engine = new CueEngine(scheduler, new[] { new FakePlayer() }, ws);
+        string? error = null;
+        engine.Log += (_, e) => { if (e.Level == EngineLogLevel.Error) error ??= e.Message; };
+
+        engine.Go();
+        for (var i = 0; i < 5000 && engine.Running.Count > 0; i++) scheduler.Advance(0);
+        scheduler.Advance(0.1);
+
+        Assert.Empty(engine.Running);
+        Assert.Contains("ciclo", error);
+    }
+
+    [Fact]
+    public void A_slow_repeating_show_is_not_stopped()
+    {
+        var scheduler = new ManualScheduler();
+        var player = new FakePlayer();
+        var ws = new Workspace();
+        ws.Cues.Add(Audio("1", 5, ContinueMode.AutoFollow));
+        ws.Cues.Add(Link(Audio("2", 5), LinkAction.Start, "1"));
+        var engine = new CueEngine(scheduler, new[] { player }, ws);
+
+        engine.Go();
+        for (var lap = 0; lap < 400; lap++)
+        {
+            player.Started[^1].Finish(); // each cue ends: the show goes round
+            scheduler.Advance(0.5);
+        }
+        Assert.True(player.Started.Count > 400);
+    }
 }

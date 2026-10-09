@@ -53,6 +53,11 @@ public sealed class CueEngine
     private TimeSpan? _lastPanic;
     private IDisposable? _preloadTimer;
     private int _lastGroup;
+
+    // Safety net against loops that fire without ever waiting (e.g. follows and links between instant cues):
+    // past this many firings of one GO within a second, the GO is stopped instead of freezing the app.
+    private const int MaxFiresPerGroupPerSecond = 300;
+    private readonly Dictionary<int, (TimeSpan Since, int Count)> _groupBurst = new();
     private static readonly IReadOnlySet<Cue> NoLinks = new HashSet<Cue>();
 
     public CueEngine(IScheduler scheduler, IEnumerable<ICuePlayer> players, Workspace? workspace = null)
@@ -169,6 +174,12 @@ public sealed class CueEngine
 
     private void Fire(Cue cue, int group, IReadOnlySet<Cue> linkPath)
     {
+        if (IsRunaway(group))
+        {
+            ReportError(cue, "ciclo di follow/link senza attese: il GO è stato fermato");
+            CancelPendingContinues(group);
+            return;
+        }
         if (IsPaused) ResumeAll();
 
         var rc = new RunningCue(cue, _scheduler.Now, group, linkPath);
@@ -492,6 +503,29 @@ public sealed class CueEngine
             case LinkAction.FadeOut:
                 Stop(target, TimeSpan.FromSeconds(Workspace.Settings.CueFadeSeconds));
                 break;
+        }
+    }
+
+    /// <summary>Counts the firings of a GO; true once it fires too many in one second (a loop with no wait).</summary>
+    private bool IsRunaway(int group)
+    {
+        var now = _scheduler.Now;
+        if (_groupBurst.Count > 64)
+            foreach (var old in _groupBurst.Where(g => now - g.Value.Since > TimeSpan.FromSeconds(2)).Select(g => g.Key).ToList())
+                _groupBurst.Remove(old);
+
+        var (since, count) = _groupBurst.TryGetValue(group, out var burst) && now - burst.Since < TimeSpan.FromSeconds(1)
+            ? burst : (now, 0);
+        _groupBurst[group] = (since, count + 1);
+        return count + 1 > MaxFiresPerGroupPerSecond;
+    }
+
+    private void CancelPendingContinues(int group)
+    {
+        foreach (var (timer, _) in _pendingContinues.Where(p => p.Group == group).ToList())
+        {
+            timer.Dispose();
+            _pendingContinues.RemoveAll(p => ReferenceEquals(p.Timer, timer));
         }
     }
 

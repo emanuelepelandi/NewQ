@@ -55,6 +55,36 @@ public static class ShowSequence
         return j < cues.Count ? cues[j] : null;
     }
 
+    /// <summary>
+    /// A loop of Start links through <paramref name="from"/> (from → … → from), or null. Such a loop would start the
+    /// same cues again in the same instant forever, so it is never allowed. Follows go down the list and wait for
+    /// the end of the cue: a loop through them is just a show that repeats, and is fine.
+    /// </summary>
+    public static IReadOnlyList<Cue>? StartLinkLoop(IReadOnlyList<Cue> cues, Cue from)
+    {
+        var path = new List<Cue> { from };
+        var cue = from;
+        while (cue.LinkAction == LinkAction.Start && LinkTargetOf(cues, cue) is Cue target)
+        {
+            if (ReferenceEquals(target, from)) { path.Add(from); return path; }
+            if (path.Contains(target)) return null; // a loop further on, not through this cue
+            path.Add(target);
+            cue = target;
+        }
+        return null;
+    }
+
+    /// <summary>The first loop of Start links in the list, or null.</summary>
+    public static IReadOnlyList<Cue>? FindStartLinkLoop(IReadOnlyList<Cue> cues)
+    {
+        foreach (var cue in cues)
+            if (StartLinkLoop(cues, cue) is { } loop) return loop;
+        return null;
+    }
+
+    /// <summary>"1 → 2 → 1", for messages.</summary>
+    public static string Describe(IReadOnlyList<Cue> loop) => string.Join(" → ", loop.Select(c => c.Number));
+
     public static Cue? NextInList(IReadOnlyList<Cue> cues, Cue cue)
     {
         var index = IndexOf(cues, cue);

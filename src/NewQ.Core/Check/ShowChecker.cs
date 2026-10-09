@@ -140,6 +140,8 @@ public static class ShowChecker
                     issues.Add(new(CheckSeverity.Warning, cue, "Link verso sé stessa: non fa nulla."));
                 else if (FindTarget(cues, cue.LinkTarget) is null)
                     issues.Add(new(CheckSeverity.Error, cue, $"Link: la cue {cue.LinkTarget} non esiste."));
+                else if (Engine.ShowSequence.StartLinkLoop(cues, cue) is { } loop)
+                    issues.Add(new(CheckSeverity.Error, cue, $"Ciclo di link: {Engine.ShowSequence.Describe(loop)}. Si avvia solo il primo giro."));
             }
         }
     }

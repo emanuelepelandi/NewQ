@@ -271,11 +271,15 @@
     <Style x:Key="FormTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Margin" Value="{StaticResource FieldMargin}" />
         <Setter Property="ui:ControlHelper.CornerRadius" Value="{StaticResource RadiusControl}" />
+        <!-- The field's header is also its name for screen readers and UI automation. -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding (ui:ControlHelper.Header), RelativeSource={RelativeSource Self}}" />
     </Style>
     <Style x:Key="FormComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
         <Setter Property="Margin" Value="{StaticResource FieldMargin}" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="ui:ControlHelper.CornerRadius" Value="{StaticResource RadiusControl}" />
+        <!-- The field's header is also its name for screen readers and UI automation. -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding (ui:ControlHelper.Header), RelativeSource={RelativeSource Self}}" />
     </Style>
     <Style x:Key="FormCheckBox" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
         <Setter Property="Margin" Value="{StaticResource FieldMargin}" />

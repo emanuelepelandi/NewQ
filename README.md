@@ -18,7 +18,7 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 
 Ogni cue ha **pre-wait** (attesa prima di partire), lo stato *armata/disarmata* e:
 - **Follow**: *Nessuno*; *Auto follow*, la cue successiva parte quando questa finisce; *Wait follow*, parte **post-wait** secondi dopo la fine. Una cue fermata a mano non fa partire la successiva.
-- **Link**: quando la cue parte (GO, follow, link, OSC), agisce su un'altra cue indicata per numero: *Avvia* (con il suo pre-wait: per far partire più cue insieme), *Ferma*, *Fade out* (durata "Fade cue" delle impostazioni). Dopo un GO il playhead salta le cue subito sotto che il GO ha già fatto partire. Un giro di link non riavvia mai la stessa cue.
+- **Link**: quando la cue parte (GO, follow, link, OSC), agisce su un'altra cue indicata per numero: *Avvia* (con il suo pre-wait: per far partire più cue insieme), *Ferma*, *Fade out* (durata "Fade cue" delle impostazioni). Dopo un GO il playhead salta le cue subito sotto che il GO ha già fatto partire. Due o più cue non possono avviarsi a vicenda con dei link (1 avvia 2, 2 avvia 1): ripartirebbero all'infinito nello stesso istante, quindi la modifica che chiude il giro viene annullata subito, con un messaggio; un file che ne contiene uno lo segnala all'apertura e nello Show Check, e ne parte solo il primo giro. Un giro che passa per un follow è invece consentito (aspetta la fine delle cue: lo show si ripete); se però non contiene nulla che duri e gira a vuoto, l'engine lo ferma.
 
 I workspace salvati con le versioni precedenti si convertono all'apertura: ogni *auto-continue* diventa un link *Avvia* verso la cue successiva, che riceve il vecchio post-wait come pre-wait. Lo show suona come prima.
 

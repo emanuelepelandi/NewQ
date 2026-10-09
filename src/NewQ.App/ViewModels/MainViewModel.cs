@@ -397,6 +397,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         workspace.Cues.CollectionChanged += OnCuesChanged;
         workspace.Settings.PropertyChanged += OnSettingsChanged;
         foreach (var cue in workspace.Cues) cue.PropertyChanged += OnCuePropertyChanged;
+        _validLinks.Clear();
+        RememberLinks(workspace.Cues);
+        if (ShowSequence.FindStartLinkLoop(workspace.Cues) is { } loop)
+            AddLog(EngineLogLevel.Warning, $"Ciclo di link nel workspace: {ShowSequence.Describe(loop)}. Si avvia solo il primo giro: correggi uno dei link.");
         workspace.AudioRoutes.CollectionChanged += OnAudioRoutesChanged;
         foreach (var route in workspace.AudioRoutes) route.PropertyChanged += OnAudioRouteChanged;
         workspace.VideoRoutes.CollectionChanged += OnVideoRoutesChanged;
@@ -532,6 +536,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (e.OldItems is not null) foreach (Cue c in e.OldItems) c.PropertyChanged -= OnCuePropertyChanged;
         if (e.NewItems is not null) foreach (Cue c in e.NewItems) c.PropertyChanged += OnCuePropertyChanged;
+        if (e.OldItems is not null) foreach (Cue c in e.OldItems) _validLinks.Remove(c);
+        if (e.NewItems is not null) RememberLinks(e.NewItems.Cast<Cue>());
         IsDirty = true;
         Engine.SchedulePreload(); // reordering can change what the next GO fires
         ScheduleTimeline();
@@ -550,10 +556,58 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void OnCuePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (!Cue.IsPersistentProperty(e.PropertyName)) return;
+        if (sender is Cue changed && !GuardLinkLoop(changed, e.PropertyName)) return; // undone: it closed a loop
         IsDirty = true;
         ScheduleTimeline();
         Engine.SchedulePreload(); // file, output or continue mode may have changed
         if (sender is AudioCue audio && e.PropertyName == nameof(MediaCue.FilePath)) ProbeDuration(audio);
+    }
+
+    // ---- no loops of Start links ----
+    // A Start link that leads back to its cue would start the same cues again in the same instant forever. Any edit
+    // that closes such a loop (link, link target, or a cue number that a link points to) is undone right away.
+    // Loops through follows are fine: they wait for the cues to end, the show just repeats.
+
+    private readonly Dictionary<Cue, (LinkAction Action, string Target, string Number)> _validLinks = new();
+    private bool _undoingLink;
+
+    private void RememberLinks(IEnumerable<Cue> cues)
+    {
+        foreach (var cue in cues) _validLinks[cue] = (cue.LinkAction, cue.LinkTarget, cue.Number);
+    }
+
+    /// <summary>False when the change closed a loop of Start links and is being undone.</summary>
+    private bool GuardLinkLoop(Cue cue, string? property)
+    {
+        if (_undoingLink || property is not (nameof(Cue.LinkAction) or nameof(Cue.LinkTarget) or nameof(Cue.Number))) return true;
+        if (ShowSequence.StartLinkLoop(Workspace.Cues, cue) is not { } loop)
+        {
+            _validLinks[cue] = (cue.LinkAction, cue.LinkTarget, cue.Number);
+            return true;
+        }
+
+        var message = $"Link non consentito: creerebbe il ciclo {ShowSequence.Describe(loop)}, che farebbe ripartire le cue all'infinito.";
+        AddLog(EngineLogLevel.Warning, message);
+        StatusText = message;
+        var (action, target, number) = _validLinks.TryGetValue(cue, out var valid) ? valid : (LinkAction.None, "", cue.Number);
+        // After the binding that made the change has finished, so the field shows the value put back.
+        _dispatcher.BeginInvoke(() =>
+        {
+            _undoingLink = true;
+            try
+            {
+                switch (property)
+                {
+                    case nameof(Cue.LinkAction): cue.LinkAction = action; break;
+                    case nameof(Cue.LinkTarget): cue.LinkTarget = target; break;
+                    default: cue.Number = number; break;
+                }
+            }
+            finally { _undoingLink = false; }
+            // Undoing a number may itself be refused if something else changed meanwhile: never leave a loop.
+            if (ShowSequence.StartLinkLoop(Workspace.Cues, cue) is not null) cue.LinkAction = LinkAction.None;
+        });
+        return false;
     }
 
     private void ProbeDuration(AudioCue cue)
