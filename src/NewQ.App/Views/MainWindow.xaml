@@ -126,7 +126,7 @@
                 <TextBlock Text="SORGENTE LIVE" Style="{StaticResource SectionHeader}" />
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="&#xE72C;"
-                            VerticalAlignment="Bottom" Margin="0,0,8,12" ToolTip="Aggiorna l'elenco delle sorgenti collegate"
+                            VerticalAlignment="Bottom" Margin="0,0,8,12" ToolTip="Aggiorna sorgenti"
                             Command="{Binding DataContext.RefreshDevicesCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                     <ComboBox ui:ControlHelper.Header="Videocamera / scheda di acquisizione" IsEditable="True"
                               ItemsSource="{Binding DataContext.VideoCaptureDevices, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -150,8 +150,6 @@
                     <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
                     <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
                 </UniformGrid>
-                <TextBlock Style="{StaticResource Hint}"
-                           Text="Va in onda finché non viene fermata o sfumata. La sorgente si apre in anticipo quando la cue diventa la prossima, così il GO è immediato. Funziona con le webcam e con le schede di acquisizione HDMI/SDI che hanno un driver Windows (DirectShow/UVC). In pausa l'immagine si congela." />
             </StackPanel>
         </DataTemplate>
 
@@ -182,7 +180,7 @@
                         <TextBox ui:ControlHelper.Header="Command format" Text="{Binding MscCommandFormat}" />
                     </UniformGrid>
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Command format: 1 = luci, 16 = suono, 48 = macchinari, 64 = video, 127 = tutti." />
+                               Text="Command format: 1 luci · 16 suono · 48 macchinari · 64 video · 127 tutti" />
                 </StackPanel>
 
                 <TextBox ui:ControlHelper.Header="Byte SysEx (esadecimale)" Text="{Binding SysExHex}"
@@ -203,12 +201,12 @@
                     <TextBox ui:ControlHelper.Header="Indirizzo OSC" Text="{Binding OscAddress}" />
                     <TextBox ui:ControlHelper.Header="Argomenti" Text="{Binding OscArguments}" />
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Separati da spazi: 1 → int, 0.5 → float, true/false → bool, &quot;testo con spazi&quot; → string." />
+                               Text="1 int · 0.5 float · true/false bool · &quot;testo&quot; string" />
                 </StackPanel>
                 <StackPanel Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='Udp,Tcp'}">
                     <TextBox ui:ControlHelper.Header="Messaggio" Text="{Binding Payload}" AcceptsReturn="False" />
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Escape supportati: \r \n \t \0 \\ e \xHH per byte arbitrari (es. PJLink: %1POWR 1\r)." />
+                               Text="Escape: \r \n \t \0 \\ \xHH" />
                 </StackPanel>
             </StackPanel>
         </DataTemplate>
@@ -239,13 +237,7 @@
         <DataTemplate DataType="{x:Type m:ShowMarkerCue}">
             <StackPanel>
                 <TextBlock Text="{Binding Name}" Style="{StaticResource SectionHeaderFirst}" />
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,8,12"
-                           Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}"
-                           Text="Inizio fisso dello show: non fa nulla. Il playhead parte da qui quando apri il workspace; il GO passa alla prima cue (o la fa partire subito con «Continua»)." />
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,8,12"
-                           Visibility="{Binding IsEnd, Converter={StaticResource BoolToVis}}"
-                           Text="Fine fissa dello show: non fa nulla. Il playhead si ferma qui dopo l'ultima cue, così puoi continuare a spostarlo con le frecce." />
-                <TextBox ui:ControlHelper.Header="Note (visibili sotto il GO)" Text="{Binding Notes}"
+                <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}"
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
                 <ComboBox ui:ControlHelper.Header="Continua" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
                           SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}"
@@ -280,7 +272,7 @@
                 <MenuItem Header="Nuova cue Audio" Command="{Binding AddCueCommand}" CommandParameter="audio" />
                 <MenuItem Header="Nuova cue Video" Command="{Binding AddCueCommand}" CommandParameter="video" />
                 <MenuItem Header="Nuova cue Immagine" Command="{Binding AddCueCommand}" CommandParameter="image" />
-                <MenuItem Header="Nuova cue Live (videocamera, HDMI)" Command="{Binding AddCueCommand}" CommandParameter="live" />
+                <MenuItem Header="Nuova cue Live" Command="{Binding AddCueCommand}" CommandParameter="live" />
                 <MenuItem Header="Nuova cue MIDI" Command="{Binding AddCueCommand}" CommandParameter="midi" />
                 <MenuItem Header="Nuova cue Rete (OSC/UDP/TCP)" Command="{Binding AddCueCommand}" CommandParameter="network" />
                 <MenuItem Header="Nuova cue Attesa" Command="{Binding AddCueCommand}" CommandParameter="wait" />
@@ -294,11 +286,11 @@
             </MenuItem>
             <MenuItem Header="_Show">
                 <MenuItem Header="GO" InputGestureText="{Binding ShortcutText[Go]}" Command="{Binding GoCommand}" />
-                <MenuItem Header="Avvia cue selezionata (senza spostare il playhead)" InputGestureText="{Binding ShortcutText[FireSelected]}" Command="{Binding FireSelectedCommand}" />
+                <MenuItem Header="Avvia cue selezionata" InputGestureText="{Binding ShortcutText[FireSelected]}" Command="{Binding FireSelectedCommand}" />
                 <MenuItem Header="Pausa / Riprendi" InputGestureText="{Binding ShortcutText[PauseResume]}" Command="{Binding TogglePauseCommand}" />
                 <MenuItem Header="Fade out della cue selezionata" InputGestureText="{Binding ShortcutText[FadeSelected]}" Command="{Binding FadeSelectedCommand}" />
                 <MenuItem Header="Stop tutto" InputGestureText="{Binding ShortcutText[StopAll]}" Command="{Binding StopAllCommand}" />
-                <MenuItem Header="Panic (fade out tutto)" InputGestureText="{Binding ShortcutText[Panic]}" Command="{Binding PanicCommand}" />
+                <MenuItem Header="Panic" InputGestureText="{Binding ShortcutText[Panic]}" Command="{Binding PanicCommand}" />
             </MenuItem>
             <MenuItem Header="_Visualizza">
                 <MenuItem Header="Mostra / comprimi Proprietà cue" Command="{Binding ToggleInspectorCommand}"
@@ -328,7 +320,7 @@
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="_Strumenti">
-                <MenuItem Header="Safe (blocca le modifiche durante lo spettacolo)" IsCheckable="True"
+                <MenuItem Header="Modalità Safe" IsCheckable="True"
                           IsChecked="{Binding IsSafeMode, Mode=TwoWay}" InputGestureText="{Binding ShortcutText[ToggleSafe]}" />
                 <Separator />
                 <MenuItem Header="Show Check…" InputGestureText="{Binding ShortcutText[ShowCheck]}" Command="{Binding ShowCheckCommand}" />
@@ -339,7 +331,7 @@
                 <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
                 <MenuItem Header="Test tone e rumore rosa…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />
                 <MenuItem Header="Scorciatoie da tastiera…" Click="OnSetupTabClick" Tag="5" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Aggiorna dispositivi (MIDI, schermi, sorgenti live)" Command="{Binding RefreshDevicesCommand}" />
+                <MenuItem Header="Aggiorna dispositivi" Command="{Binding RefreshDevicesCommand}" />
                 <MenuItem Header="Chiudi uscite video" Command="{Binding CloseOutputsCommand}" />
             </MenuItem>
         </Menu>
@@ -370,7 +362,7 @@
                     </Border>
                     <!-- Safe mode: editing locked for the show. -->
                     <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{StaticResource InfoTintBrush}"
-                            ToolTip="Modalità Safe: le modifiche allo show sono bloccate. Strumenti → Safe (Ctrl+Maiusc+L) per sbloccare."
+                            ToolTip="Modalità Safe: modifiche bloccate"
                             Visibility="{Binding IsSafeMode, Converter={StaticResource BoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" FontSize="{StaticResource FontCaption}" Text="{StaticResource IconLock}"
@@ -380,7 +372,7 @@
                     </Border>
                     <!-- Shown when the window loses focus: keyboard GO/Panic don't reach NewQ. -->
                     <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{StaticResource WarningTintBrush}"
-                            ToolTip="La finestra di NewQ non ha il focus: Spazio, Esc e gli altri tasti vanno a un'altra finestra. Clicca su NewQ per riattivarli."
+                            ToolTip="I tasti vanno a un'altra finestra"
                             Visibility="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" FontSize="{StaticResource FontCaption}" Text="{StaticResource IconWarning}"
@@ -403,7 +395,7 @@
 
             <!-- Output meter: what reaches the sound card, after the master volume. -->
             <Grid Grid.Column="2" Width="240" VerticalAlignment="Center" Margin="0,0,24,0"
-                  ToolTip="Livello dell'uscita audio (dBFS). Verde fino a −12, giallo fino a −3, rosso fino a 0 dBFS (0 digitale).">
+                  ToolTip="Uscita audio (dBFS)">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="16" />
                     <ColumnDefinition Width="*" />
@@ -426,7 +418,7 @@
                 <Button Grid.Column="2" Grid.RowSpan="2" Margin="8,0,0,0" Width="44" Height="20" MinHeight="0"
                         Padding="0" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold" Focusable="False"
                         Command="{Binding ResetClipsCommand}"
-                        ToolTip="0 dBFS digitale. Rosso = l'uscita è andata in clip. Clic per azzerare.">
+                        ToolTip="Clip a 0 dBFS · clic per azzerare">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource DefaultButton}">
                             <Setter Property="Content" Value="0 dB" />
@@ -466,14 +458,14 @@
                 </Button>
                 <Button Content="Fade cue" Command="{Binding FadeSelectedCommand}" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
                         ctl:ButtonIcon.Glyph="{StaticResource IconFade}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
-                        ToolTip="{Binding ShortcutHint[FadeSelected], Converter={StaticResource Format}, ConverterParameter='Fade out di suono e immagine della cue selezionata, poi stop ({0}). Durata in Impostazioni → Generale'}" />
+                        ToolTip="{Binding ShortcutHint[FadeSelected], Converter={StaticResource Format}, ConverterParameter='Fade out della cue selezionata ({0})'}" />
                 <Button Content="Stop tutto" Command="{Binding StopAllCommand}" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
                         ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
                         ToolTip="{Binding ShortcutHint[StopAll], Converter={StaticResource Format}, ConverterParameter='Ferma subito tutte le cue ({0})'}" />
                 <Button Content="Panic" Command="{Binding PanicCommand}" Style="{StaticResource TransportButton}"
                         BorderBrush="{StaticResource WarningBrush}"
                         ctl:ButtonIcon.Glyph="{StaticResource IconWarning}" ctl:ButtonIcon.Brush="{StaticResource WarningBrush}"
-                        ToolTip="{Binding ShortcutHint[Panic], Converter={StaticResource Format}, ConverterParameter='Fade out di tutto; due volte = stop immediato ({0})'}" />
+                        ToolTip="{Binding ShortcutHint[Panic], Converter={StaticResource Format}, ConverterParameter='Fade out di tutto · due volte = stop ({0})'}" />
             </StackPanel>
         </Grid>
         </Border>
@@ -487,7 +479,7 @@
                             ctl:ButtonIcon.Glyph="{StaticResource IconShowCheck}" ToolTip="{Binding ShortcutHint[ShowCheck], Converter={StaticResource Format}, ConverterParameter='Rundown virtuale a buio e in muto ({0})'}" />
                     <ToggleButton Style="{StaticResource SubtleToggle}" Content="Safe" IsChecked="{Binding IsSafeMode, Mode=TwoWay}"
                                   ctl:ButtonIcon.Glyph="{StaticResource IconLock}" MinHeight="{StaticResource ControlHeight}"
-                                  ToolTip="{Binding ShortcutHint[ToggleSafe], Converter={StaticResource Format}, ConverterParameter='Blocca le modifiche durante lo spettacolo ({0})'}" />
+                                  ToolTip="{Binding ShortcutHint[ToggleSafe], Converter={StaticResource Format}, ConverterParameter='Modalità Safe ({0})'}" />
                 </StackPanel>
                 <WrapPanel>
                     <Button Style="{StaticResource ToolButton}" Content="Audio" Command="{Binding AddCueCommand}" CommandParameter="audio"
@@ -497,11 +489,11 @@
                     <Button Style="{StaticResource ToolButton}" Content="Immagine" Command="{Binding AddCueCommand}" CommandParameter="image"
                             ctl:ButtonIcon.Glyph="{StaticResource IconImage}" ToolTip="Nuova cue immagine" />
                     <Button Style="{StaticResource ToolButton}" Content="Live" Command="{Binding AddCueCommand}" CommandParameter="live"
-                            ctl:ButtonIcon.Glyph="{StaticResource IconLive}" ToolTip="Nuova cue live: videocamera o sorgente HDMI tramite scheda di acquisizione" />
+                            ctl:ButtonIcon.Glyph="{StaticResource IconLive}" ToolTip="Nuova cue live" />
                     <Button Style="{StaticResource ToolButton}" Content="MIDI" Command="{Binding AddCueCommand}" CommandParameter="midi"
                             ctl:ButtonIcon.Glyph="{StaticResource IconMidi}" ToolTip="Nuova cue MIDI" />
                     <Button Style="{StaticResource ToolButton}" Content="Rete" Command="{Binding AddCueCommand}" CommandParameter="network"
-                            ctl:ButtonIcon.Glyph="{StaticResource IconNetwork}" ToolTip="Nuova cue di rete (OSC, UDP, TCP)" />
+                            ctl:ButtonIcon.Glyph="{StaticResource IconNetwork}" ToolTip="Nuova cue di rete" />
                     <Button Style="{StaticResource ToolButton}" Content="Attesa" Command="{Binding AddCueCommand}" CommandParameter="wait"
                             ctl:ButtonIcon.Glyph="{StaticResource IconWait}" ToolTip="Nuova cue attesa" />
                     <Button Style="{StaticResource ToolButton}" Content="Fade" Command="{Binding AddCueCommand}" CommandParameter="fade"
@@ -593,6 +585,16 @@
                           Background="Transparent" BorderThickness="0" RowHeight="34" Padding="4,0"
                           AllowDrop="{Binding CanEdit}" Drop="OnCueGridDrop" HorizontalScrollBarVisibility="Auto"
                           SelectionChanged="OnCueGridSelectionChanged" BeginningEdit="OnCueGridBeginningEdit">
+                    <DataGrid.Resources>
+                        <!-- Whole rows are selected: the white frame around the focused cell is noise. -->
+                        <SolidColorBrush x:Key="DataGridCellFocusVisualPrimaryBrush" Color="Transparent" />
+                        <SolidColorBrush x:Key="DataGridCellFocusVisualSecondaryBrush" Color="Transparent" />
+                    </DataGrid.Resources>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell" BasedOn="{StaticResource DefaultDataGridCellStyle}">
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        </Style>
+                    </DataGrid.CellStyle>
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
                             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
@@ -645,7 +647,7 @@
                                 <DataTemplate>
                                     <Border Style="{StaticResource Badge}" Padding="4,0" Background="{StaticResource ClipBrush}"
                                             Visibility="{Binding Clipped, Converter={StaticResource BoolToVis}}"
-                                            ToolTip="Questa cue è arrivata a 0 dBFS (clip): abbassa il suo volume. L'indicatore si azzera al prossimo GO o con il pulsante 0 dB.">
+                                            ToolTip="Clip a 0 dBFS">
                                         <TextBlock Text="CLIP" Style="{StaticResource BadgeText}" FontSize="9" FontWeight="Bold"
                                                    Foreground="{StaticResource TextOnAccentBrush}" />
                                     </Border>
@@ -722,7 +724,7 @@
 
                 <TextBlock Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
                            Foreground="{StaticResource TextMutedBrush}" TextAlignment="Center" FontSize="{StaticResource FontTitle}"
-                           Text="Trascina qui file audio, video o immagini&#x0a;oppure usa i pulsanti della barra per creare le cue.">
+                           Text="Trascina qui file audio, video o immagini">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Collapsed" />
@@ -770,7 +772,7 @@
                                                     PreviewMouseLeftButtonUp="OnScrubEnd">
                                                 <Slider Value="{Binding Progress, Mode=OneWay}" Minimum="0" Maximum="1"
                                                         Focusable="False" IsMoveToPointEnabled="True"
-                                                        ToolTip="Trascina per scorrere la timeline"
+                                                        ToolTip="Scorri"
                                                         LostMouseCapture="OnScrubEnd"
                                                         ValueChanged="OnScrubValueChanged" />
                                             </Border>
@@ -809,7 +811,7 @@
                                             </Button>
                                             <Button Grid.Column="7" Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0" Margin="0,0,4,0"
                                                     ctl:ButtonIcon.Glyph="{StaticResource IconFade}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
-                                                    ToolTip="Fade out di questa cue, poi stop"
+                                                    ToolTip="Fade out"
                                                     Command="{Binding DataContext.FadeCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}" />
                                             <Button Grid.Column="8" Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0"
@@ -894,7 +896,7 @@
                                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IconLock}" Foreground="{StaticResource SafeBrush}"
                                            VerticalAlignment="Top" Margin="0,1,8,0" />
                                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SafeBrush}" FontSize="{StaticResource FontSmall}"
-                                           Text="Modalità Safe: proprietà in sola lettura. Disattivala da Strumenti → Safe (Ctrl+Maiusc+L)." />
+                                           Text="Modalità Safe: sola lettura" />
                             </DockPanel>
                         </Border>
                         <StackPanel IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}">
@@ -910,7 +912,7 @@
                                 <TextBox ui:ControlHelper.Header="Numero" Text="{Binding Number}" />
                                 <TextBox Grid.Column="1" ui:ControlHelper.Header="Nome" Text="{Binding Name}" />
                             </Grid>
-                            <TextBox ui:ControlHelper.Header="Note (visibili sotto il GO)" Text="{Binding Notes}"
+                            <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}"
                                      AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
                             <UniformGrid Columns="2">
                                 <TextBox ui:ControlHelper.Header="Pre-wait (s)" Text="{Binding PreWait}" />
@@ -918,7 +920,7 @@
                             </UniformGrid>
                             <ComboBox ui:ControlHelper.Header="Continua" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
                                       SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}" />
-                            <CheckBox Content="Armata (se disattivata la cue viene saltata)" IsChecked="{Binding Armed}" />
+                            <CheckBox Content="Armata" IsChecked="{Binding Armed}" />
                             </StackPanel>
 
                             <ContentControl Content="{Binding}" Focusable="False" />

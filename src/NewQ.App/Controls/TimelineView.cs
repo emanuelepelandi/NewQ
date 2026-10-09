@@ -313,7 +313,7 @@ public sealed class TimelineView : FrameworkElement
         _hover = hit;
         _hoverGap = gap;
         ToolTip = hit is not null ? Describe(hit.Item)
-            : gap >= 0 ? $"GO {gap + 1}: qui l'operatore preme GO e parte la cue {_timeline.Blocks[gap].FirstCue.Number} {_timeline.Blocks[gap].FirstCue.Name}.\nIl tempo di attesa dipende dall'operatore: la timeline non lo conta."
+            : gap >= 0 ? $"GO {gap + 1} → {_timeline.Blocks[gap].FirstCue.Number} {_timeline.Blocks[gap].FirstCue.Name}"
             : null;
         Cursor = hit is null ? null : Cursors.Hand;
     }
@@ -348,8 +348,8 @@ public sealed class TimelineView : FrameworkElement
         var lines = new List<string> { $"{c.Number}  {c.Name}  ·  {c.TypeName}{(item.Disarmed ? " (disarmata)" : "")}" };
         lines.Add($"Inizio: {When(item.Start)}");
         lines.Add(item.End is TimelinePoint end
-            ? $"Fine: {When(end)}{(item.EndedByCue ? " (fermata da un'altra cue)" : "")}"
-            : "Fine: continua finché non viene fermata");
+            ? $"Fine: {When(end)}{(item.EndedByCue ? " (fermata da una cue)" : "")}"
+            : "Fine: finché fermata");
         if (c is MediaCue m && (m.FadeIn > 0 || m.FadeOut > 0))
             lines.Add($"Fade in {m.FadeIn.ToString("0.##", CultureInfo.CurrentCulture)} s · fade out {m.FadeOut.ToString("0.##", CultureInfo.CurrentCulture)} s");
         return string.Join("\n", lines);

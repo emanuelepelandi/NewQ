@@ -70,7 +70,7 @@
                 </StackPanel>
 
                 <StackPanel x:Name="SweepPanel">
-                    <TextBlock Text="SWEEP (LOGARITMICO, RIPARTE ALLA FINE)" Style="{StaticResource SectionHeader}" />
+                    <TextBlock Text="SWEEP" Style="{StaticResource SectionHeader}" />
                     <UniformGrid Columns="3">
                         <TextBox x:Name="SweepFromBox" ui:ControlHelper.Header="Da (Hz)" Text="20" Margin="0,0,8,0" LostFocus="OnSettingChanged" />
                         <TextBox x:Name="SweepToBox" ui:ControlHelper.Header="A (Hz)" Text="20000" Margin="0,0,8,0" LostFocus="OnSettingChanged" />
@@ -88,7 +88,7 @@
                             TickPlacement="BottomRight" VerticalAlignment="Center" Margin="0,0,12,0" ValueChanged="OnLevelSlider" />
                     <TextBox x:Name="LevelBox" Grid.Column="1" Text="-20" LostFocus="OnLevelBox" />
                 </Grid>
-                <TextBlock x:Name="LevelWarning" Text="Attenzione: livello alto. Abbassa l'impianto prima di avviare." Foreground="{StaticResource WarningBrush}"
+                <TextBlock x:Name="LevelWarning" Text="Livello alto: abbassa l'impianto." Foreground="{StaticResource WarningBrush}"
                            FontSize="{StaticResource FontSmall}" Margin="0,4,0,0" Visibility="Collapsed" />
 
                 <TextBlock Text="CANALI" Style="{StaticResource SectionHeader}" />
@@ -103,8 +103,6 @@
                     <Button x:Name="StartButton" AutomationProperties.Name="Avvia test audio" Content="Avvia sulle route selezionate" Click="OnStart" Style="{StaticResource PrimaryButton}" ctl:ButtonIcon.Glyph="{StaticResource IconPlay}" MinWidth="220" Margin="0,0,8,0" />
                     <Button AutomationProperties.Name="Ferma test audio" Content="Ferma tutto" Click="OnStopAll" ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}" MinWidth="140" />
                 </StackPanel>
-                <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}" Margin="0,12,0,0"
-                           Text="I test escono dopo il gain della route e il volume master. Le modifiche a tipo, frequenza, livello e canali si applicano subito ai test in corso. Panic, la modalità Safe e la chiusura di questa finestra li fermano." />
             </StackPanel>
         </ScrollViewer>
     </Grid>

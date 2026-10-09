@@ -18,8 +18,6 @@
 
         <StackPanel>
             <TextBlock Text="Show Check" FontSize="{StaticResource FontTitle}" FontWeight="SemiBold" />
-            <TextBlock Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="{StaticResource FontSmall}"
-                       Text="Rundown virtuale a buio e in muto: file e percorsi, formati, livelli audio, uscite, dispositivi e logica delle cue." />
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Panel}" Padding="16,12" Margin="0,16,0,12">

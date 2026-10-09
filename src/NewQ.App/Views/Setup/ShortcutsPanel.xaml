@@ -12,7 +12,7 @@
         <DockPanel Margin="0,0,0,12">
             <Button DockPanel.Dock="Right" Content="Ripristina tutti i predefiniti" Click="OnResetAll" VerticalAlignment="Top" />
             <TextBlock Style="{StaticResource Hint}" Margin="0,0,24,0"
-                       Text="Clicca su un campo e premi la combinazione. Ogni tasto può avere una sola funzione: se è già usato, viene tolto dall'altra. Una funzione può restare senza tasto. Mentre scrivi in un campo funzionano solo le combinazioni con Ctrl o Alt, e il Panic." />
+                       Text="Clicca su un campo e premi la combinazione." />
         </DockPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Panel}">

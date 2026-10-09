@@ -60,8 +60,6 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}" Margin="0,8,8,0"
-                           Text="Il pattern copre tutto ciò che è in onda sulla route, passando per geometria, warp ed edge blend delle sue uscite. Panic, la modalità Safe e la chiusura di questa finestra spengono tutti i test." />
             </StackPanel>
         </ScrollViewer>
     </Grid>

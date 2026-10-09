@@ -27,8 +27,8 @@
                     <StackPanel Margin="24,16,24,24" HorizontalAlignment="Left" Width="560">
                     <TextBlock Text="AUDIO" Style="{StaticResource SectionHeaderFirst}" />
                     <ComboBox x:Name="DriverBox" ui:ControlHelper.Header="Driver" SelectionChanged="OnDriverChanged">
-                        <ComboBoxItem Content="WASAPI (Windows, consigliato)" Tag="Wasapi" />
-                        <ComboBoxItem Content="ASIO (interfacce audio professionali)" Tag="Asio" />
+                        <ComboBoxItem Content="WASAPI (consigliato)" Tag="Wasapi" />
+                        <ComboBoxItem Content="ASIO" Tag="Asio" />
                     </ComboBox>
 
                     <StackPanel x:Name="WasapiPanel">
@@ -43,7 +43,6 @@
                         <ComboBox x:Name="AsioDriverBox" ui:ControlHelper.Header="Driver ASIO" />
                         <UniformGrid Columns="2">
                             <TextBox x:Name="SampleRateBox" ui:ControlHelper.Header="Frequenza (Hz)" />
-                            <TextBlock Text="I canali di uscita si scelgono in ogni route audio." Style="{StaticResource Hint}" VerticalAlignment="Bottom" Margin="0,0,8,16" />
                         </UniformGrid>
                     </StackPanel>
 
@@ -88,8 +87,6 @@
 
         <Border Grid.Row="1" Background="{StaticResource RaisedBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="16,12">
             <DockPanel>
-                <TextBlock Text="Route e test si applicano subito. OK / Annulla riguardano le schede Generale e Scorciatoie."
-                           Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSmall}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Annulla" IsCancel="True" MinWidth="100" Margin="0,0,8,0" />
                     <Button Content="OK" IsDefault="True" MinWidth="100" Click="OnOk" Style="{StaticResource PrimaryButton}" />

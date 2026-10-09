@@ -346,8 +346,6 @@ public sealed class ShowMarkerCue : Cue
     [JsonIgnore] public bool IsStart => Kind == ShowMarkerKind.Start;
     [JsonIgnore] public bool IsEnd => Kind == ShowMarkerKind.End;
 
-    public override string Summary => IsStart ? "Inizio dello show" : "Fine dello show";
-
     public static ShowMarkerCue Create(ShowMarkerKind kind)
         => new() { Kind = kind, Name = kind == ShowMarkerKind.Start ? StartName : EndName };
 }

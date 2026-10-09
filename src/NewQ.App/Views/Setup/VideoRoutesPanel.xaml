@@ -70,7 +70,7 @@
                         <ToggleButton x:Name="IdentifyToggle" Content="Identifica uscite" Click="OnIdentifyToggle" Margin="0,0,8,8" />
                         <Button Content="Affianca uscite in blend" Click="OnTileOutputs" Margin="0,0,8,8" />
                         <TextBlock Text="sovrapposizione" VerticalAlignment="Center" Margin="0,0,8,8" Foreground="{StaticResource TextMutedBrush}" />
-                        <TextBox x:Name="OverlapBox" Text="15" Width="56" Margin="0,0,4,6" ToolTip="Sovrapposizione tra uscite vicine, in % della larghezza di un'uscita" />
+                        <TextBox x:Name="OverlapBox" Text="15" Width="56" Margin="0,0,4,6" ToolTip="Sovrapposizione in % della larghezza" />
                         <TextBlock Text="%" VerticalAlignment="Center" Margin="0,0,8,8" />
                     </WrapPanel>
                 </StackPanel>
@@ -152,8 +152,6 @@
                         <Slider Grid.Row="5" Grid.Column="1" Style="{StaticResource SliderRow}" Minimum="1" Maximum="4" SmallChange="0.05" LargeChange="0.5" Value="{Binding BlendCurve}" />
                         <TextBox Grid.Row="5" Grid.Column="2" Text="{Binding BlendCurve, StringFormat=0.00}" VerticalAlignment="Center" Margin="0" />
                     </Grid>
-                    <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}" Margin="0,12,0,0"
-                               Text="Il blend è una frazione dell'immagine di questa uscita. Per due proiettori sovrapposti usa «Affianca uscite in blend»: imposta porzioni del canvas e blend in modo coerente. Tutte le modifiche sono visibili subito sulle uscite." />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

@@ -33,7 +33,7 @@
                           SelectedValuePath="Id" SelectedValue="{Binding DeviceId}" HorizontalAlignment="Stretch"
                           SelectionChanged="OnDeviceChanged" Margin="0,0,0,4" />
                 <TextBlock x:Name="AsioNote" TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"
-                           Text="Con ASIO tutte le route usano il driver scelto nella scheda Generale: qui si sceglie solo la coppia di canali." />
+                           Text="ASIO: driver della scheda Generale, qui solo i canali." />
 
                 <ComboBox x:Name="PairBox" ui:ControlHelper.Header="Canali di uscita" DisplayMemberPath="Label"
                           SelectedValuePath="First" SelectedValue="{Binding FirstChannel}" Width="200" HorizontalAlignment="Left"
@@ -56,7 +56,7 @@
                 <ctl:MeterScale Margin="0,2,0,12" />
 
                 <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSmall}" Foreground="{StaticResource TextMutedBrush}"
-                           Text="Le modifiche alle route si applicano subito e si salvano con il workspace. Cambiare scheda o canali ferma le cue in riproduzione (gain e muto no)." />
+                           Text="Cambiare scheda o canali ferma le cue in riproduzione." />
             </StackPanel>
         </ScrollViewer>
     </Grid>

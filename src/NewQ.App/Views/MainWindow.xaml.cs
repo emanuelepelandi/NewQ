@@ -112,6 +112,12 @@ public partial class MainWindow : Window
         => Keyboard.FocusedElement is TextBoxBase or PasswordBox
            || Keyboard.FocusedElement is ComboBox { IsEditable: true };
 
+    /// <summary>Controls that use the arrow keys themselves: text, lists, sliders, menus, the geometry editor.</summary>
+    private static bool ArrowsBelongToFocus()
+        => Keyboard.FocusedElement is TextBoxBase or PasswordBox or ComboBox or ComboBoxItem or Slider or ScrollBar
+               or MenuItem or ListBoxItem or Controls.GeometryEditor
+           || Keyboard.FocusedElement is DependencyObject d && ItemsControl.ItemsControlFromItemContainer(d) is ComboBox;
+
     /// <summary>
     /// Keyboard shortcuts come from the editable map (Strumenti → Scorciatoie). While typing in a field only
     /// gestures with Ctrl/Alt and Esc work, so typing never fires GO or Stop.
@@ -131,7 +137,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (ViewModel.FindShortcut(gesture) is not ShortcutAction action) return;
+        if (ViewModel.FindShortcut(gesture) is not ShortcutAction action)
+        {
+            // Up/Down move the playhead from anywhere in the window, not only from the list (elsewhere WPF would
+            // walk the focus through the controls instead).
+            if (gesture is "Up" or "Down" && !ArrowsBelongToFocus())
+            {
+                ViewModel.Engine.MovePlayhead(gesture == "Up" ? -1 : 1);
+                if (!CueGrid.IsKeyboardFocusWithin) CueGrid.Focus();
+                e.Handled = true;
+            }
+            return;
+        }
         var whileTyping = ShortcutMap.HasCommandModifier(gesture) || action == ShortcutAction.Panic; // PANIC works everywhere
         if (IsEditingText() && !whileTyping) return;
         if (action == ShortcutAction.Delete && !CueGrid.IsKeyboardFocusWithin) return; // never delete from another control
@@ -158,7 +175,11 @@ public partial class MainWindow : Window
 
     private void OnCueGridSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CueGrid.SelectedItem is not null) CueGrid.ScrollIntoView(CueGrid.SelectedItem);
+        if (CueGrid.SelectedItem is not { } item) return;
+        CueGrid.ScrollIntoView(item);
+        // The list's current cell follows the playhead (GO, arrows, remote): Enter/F2 then edit the right row.
+        if (!ReferenceEquals(CueGrid.CurrentItem, item) && !IsEditingText())
+            CueGrid.CurrentCell = new DataGridCellInfo(item, CueGrid.CurrentCell.Column ?? CueGrid.Columns[0]);
     }
 
     /// <summary>--SHOW START-- / --SHOW END-- keep their fixed number and name.</summary>
