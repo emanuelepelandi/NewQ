@@ -126,10 +126,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             else if (kind == "live") AddLiveCue();
             else AddCue(CreateCue(kind));
         }, _ => CanEdit);
-        DeleteCueCommand = new RelayCommand(DeleteSelected, () => CanEdit && SelectedCue is not null);
-        DuplicateCueCommand = new RelayCommand(Duplicate, () => CanEdit && SelectedCue is not null);
-        MoveUpCommand = new RelayCommand(() => MoveSelected(-1), () => CanEdit && SelectedCue is not null);
-        MoveDownCommand = new RelayCommand(() => MoveSelected(1), () => CanEdit && SelectedCue is not null);
+        // --SHOW START-- / --SHOW END-- stay where they are.
+        DeleteCueCommand = new RelayCommand(DeleteSelected, () => CanEdit && SelectedCue is { IsShowMarker: false });
+        DuplicateCueCommand = new RelayCommand(Duplicate, () => CanEdit && SelectedCue is { IsShowMarker: false });
+        MoveUpCommand = new RelayCommand(() => MoveSelected(-1), () => CanEdit && SelectedCue is { IsShowMarker: false });
+        MoveDownCommand = new RelayCommand(() => MoveSelected(1), () => CanEdit && SelectedCue is { IsShowMarker: false });
         BrowseFileCommand = new RelayCommand(p => { if (p is MediaCue m) BrowseFile(m); }, _ => CanEdit);
         CloseOutputsCommand = new RelayCommand(() => { Engine.StopAll(TimeSpan.Zero); _outputs.CloseAll(); }, () => CanEdit);
         RefreshDevicesCommand = new RelayCommand(RefreshDevices, () => CanEdit);
@@ -372,6 +373,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         // Version-1 files (cues targeting a monitor) are converted to routes; new workspaces get default routes.
         var converted = workspace.FilePath is not null && workspace.FormatVersion < Workspace.CurrentFormatVersion;
         workspace.EnsureRoutes(System.Windows.Forms.Screen.AllScreens.Length);
+        workspace.EnsureShowMarkers(); // the playhead starts on --SHOW START--
 
         UnhookWorkspace(Engine.Workspace);
         Engine.LoadWorkspace(workspace);
@@ -381,6 +383,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         foreach (var cue in workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
         IsDirty = converted; // the converted file must be saved to keep the routes
         OnPropertyChanged(nameof(Workspace));
+        OnPropertyChanged(nameof(HasProgramCues));
         ScheduleTimeline();
         OnPropertyChanged(nameof(SelectedCue));
         OnPropertyChanged(nameof(WindowTitle));
@@ -532,7 +535,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         IsDirty = true;
         Engine.SchedulePreload(); // reordering can change what the next GO fires
         ScheduleTimeline();
+        OnPropertyChanged(nameof(HasProgramCues));
     }
+
+    /// <summary>The workspace has cues besides --SHOW START-- / --SHOW END-- (the empty-list hint hides).</summary>
+    public bool HasProgramCues => Workspace.Cues.Any(c => !c.IsShowMarker);
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e) => IsDirty = true;
 
@@ -662,7 +669,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         AssignDefaultRoutes(cue);
         if (string.IsNullOrEmpty(cue.Number)) cue.Number = Workspace.NextCueNumber();
         var index = SelectedCue is null ? Workspace.Cues.Count : Workspace.Cues.IndexOf(SelectedCue) + 1;
-        Workspace.Cues.Insert(index, cue);
+        Workspace.Cues.Insert(Workspace.ClampToProgram(index), cue); // after START, before END
         SelectedCue = cue;
     }
 
@@ -693,7 +700,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void DeleteSelected()
     {
-        if (SelectedCue is not Cue cue) return;
+        if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
         var index = Workspace.Cues.IndexOf(cue);
         Engine.Stop(cue, TimeSpan.Zero);
         Workspace.Cues.Remove(cue);
@@ -702,7 +709,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void Duplicate()
     {
-        if (SelectedCue is not Cue cue) return;
+        if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
         var copy = WorkspaceSerializer.CloneCue(cue);
         copy.Number = Workspace.NextCueNumber();
         if (copy is AudioCue a) ProbeDuration(a);
@@ -711,10 +718,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void MoveSelected(int delta)
     {
-        if (SelectedCue is not Cue cue) return;
+        if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
         var index = Workspace.Cues.IndexOf(cue);
         var target = index + delta;
-        if (target < 0 || target >= Workspace.Cues.Count) return;
+        if (target < 0 || target >= Workspace.Cues.Count || Workspace.Cues[target].IsShowMarker) return;
         Workspace.Cues.Move(index, target);
         OnPropertyChanged(nameof(SelectedCue));
     }

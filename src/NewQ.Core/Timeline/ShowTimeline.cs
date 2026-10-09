@@ -66,9 +66,10 @@ public sealed class ShowTimeline
     public IReadOnlyList<TimelineBlock> Blocks { get; }
     public IReadOnlyList<TimelineItem> Items { get; }
 
-    /// <summary>The block a cue belongs to, or -1.</summary>
+    /// <summary>The block a cue belongs to, or -1 (--SHOW START-- counts as the first block, --SHOW END-- as none).</summary>
     public int BlockOf(Cue cue)
     {
+        if (cue is ShowMarkerCue marker) return marker.IsStart && Blocks.Count > 0 ? 0 : -1;
         foreach (var item in Items)
             if (ReferenceEquals(item.Cue, cue)) return item.Start.Block;
         return -1;

@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
+using NAudio.CoreAudioApi;
 using NewQ.App.Video.Gpu;
 using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 
@@ -15,7 +17,10 @@ public static class VlcRuntime
     private static readonly Lazy<LibVLC> Instance = new(() =>
     {
         LibVLCSharp.Shared.Core.Initialize();
-        return new LibVLC("--no-osd", "--no-video-title-show", "--no-snapshot-preview", "--no-stats", "--quiet");
+        // DirectSound, not the default WASAPI output (mmdevice): mmdevice puts every player of the process in one
+        // Windows audio session and sets the volume on that session, so muting a preloading video muted the one
+        // playing too. DirectSound keeps one volume per player.
+        return new LibVLC("--no-osd", "--no-video-title-show", "--no-snapshot-preview", "--no-stats", "--quiet", "--aout=directsound");
     });
 
     public static LibVLC LibVlc => Instance.Value;
@@ -37,6 +42,29 @@ public static class VlcRuntime
 
 /// <summary>Where the sound of a video goes: a WASAPI endpoint (empty = Windows default) and a linear gain.</summary>
 public readonly record struct VideoAudioTarget(string DeviceId, double Gain);
+
+/// <summary>libVLC's DirectSound output names a sound card by the endpoint GUID, not by the WASAPI id the routes store.</summary>
+internal static class DirectSoundDevices
+{
+    private static readonly PropertyKey EndpointGuid = new(new Guid("1da5d803-d492-4edd-8c23-e0c0ffee7f0e"), 4);
+    private static readonly ConcurrentDictionary<string, string?> Cache = new();
+
+    /// <summary>The DirectSound id of a WASAPI endpoint; null = the Windows default (empty id, or a missing card).</summary>
+    public static string? Of(string wasapiId)
+    {
+        if (string.IsNullOrEmpty(wasapiId)) return null;
+        return Cache.GetOrAdd(wasapiId, id =>
+        {
+            try
+            {
+                using var enumerator = new MMDeviceEnumerator();
+                using var device = enumerator.GetDevice(id);
+                return device.Properties[EndpointGuid]?.Value?.ToString()?.ToUpperInvariant();
+            }
+            catch { return null; } // unplugged: the default device, like libVLC did before
+        });
+    }
+}
 
 /// <summary>What libVLC opens: a file, or a live capture device (DirectShow).</summary>
 /// <param name="Key">Identity of the source with all its options: two cues with the same key can share it.</param>
@@ -77,7 +105,6 @@ internal sealed class PreparedVideo : IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly Media _media;
     private bool _disposed;
-    private bool _deviceSet;
 
     public PreparedVideo(string path, bool loop, string audioDevice, Dispatcher dispatcher)
         : this(VideoSource.File(path, loop), audioDevice, dispatcher) { }
@@ -91,9 +118,10 @@ internal sealed class PreparedVideo : IDisposable
         Loop = source.Loop;
 
         Player = new MediaPlayer(VlcRuntime.LibVlc) { EnableKeyInput = false, EnableMouseInput = false, Volume = 0 };
+        // Before Play, so the sound never starts on the default device.
+        if (DirectSoundDevices.Of(audioDevice) is string device) Player.SetOutputDevice(device, null);
         Frames = new VideoFrameSource(Player);
         Frames.FirstFrame += () => Post(OnFirstFrame);
-        Player.Playing += (_, _) => Post(SetAudioDevice);
         Player.EncounteredError += (_, _) => Post(() => Fail(source.IsLive
             ? "libVLC non riesce ad aprire la sorgente (scollegata o già in uso da un altro programma?)"
             : "libVLC non riesce a riprodurre il file"));
@@ -135,13 +163,6 @@ internal sealed class PreparedVideo : IDisposable
         if (IsClaimed || IsLive) return; // GO came while preloading, or a live source: keep playing
         Player.SetPause(true);
         Player.Time = 0; // libVLC decodes and displays frame 0 again
-    }
-
-    private void SetAudioDevice()
-    {
-        if (_disposed || _deviceSet || string.IsNullOrEmpty(_audioDevice)) return;
-        _deviceSet = true;
-        Player.SetOutputDevice(_audioDevice, null);
     }
 
     private void Fail(string message)

@@ -235,6 +235,24 @@
             </StackPanel>
         </DataTemplate>
 
+        <!-- SHOW START / SHOW END markers: fixed rows, only notes (and, for START, how GO goes on) can change. -->
+        <DataTemplate DataType="{x:Type m:ShowMarkerCue}">
+            <StackPanel>
+                <TextBlock Text="{Binding Name}" Style="{StaticResource SectionHeaderFirst}" />
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,8,12"
+                           Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}"
+                           Text="Inizio fisso dello show: non fa nulla. Il playhead parte da qui quando apri il workspace; il GO passa alla prima cue (o la fa partire subito con «Continua»)." />
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,8,12"
+                           Visibility="{Binding IsEnd, Converter={StaticResource BoolToVis}}"
+                           Text="Fine fissa dello show: non fa nulla. Il playhead si ferma qui dopo l'ultima cue, così puoi continuare a spostarlo con le frecce." />
+                <TextBox ui:ControlHelper.Header="Note (visibili sotto il GO)" Text="{Binding Notes}"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
+                <ComboBox ui:ControlHelper.Header="Continua" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
+                          SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}"
+                          Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}" />
+            </StackPanel>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type m:StopCue}">
             <StackPanel>
                 <TextBlock Text="STOP" Style="{StaticResource SectionHeader}" />
@@ -574,7 +592,7 @@
                           IsReadOnly="{Binding IsSafeMode}"
                           Background="Transparent" BorderThickness="0" RowHeight="34" Padding="4,0"
                           AllowDrop="{Binding CanEdit}" Drop="OnCueGridDrop" HorizontalScrollBarVisibility="Auto"
-                          SelectionChanged="OnCueGridSelectionChanged">
+                          SelectionChanged="OnCueGridSelectionChanged" BeginningEdit="OnCueGridBeginningEdit">
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
                             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
@@ -588,6 +606,11 @@
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Armed}" Value="False">
                                     <Setter Property="Opacity" Value="0.45" />
+                                </DataTrigger>
+                                <!-- SHOW START / SHOW END markers: structure, not content. -->
+                                <DataTrigger Binding="{Binding IsShowMarker}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding RunState}" Value="Running">
                                     <Setter Property="Foreground" Value="{StaticResource RunningBrush}" />
@@ -704,7 +727,7 @@
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Workspace.Cues.Count}" Value="0">
+                                <DataTrigger Binding="{Binding HasProgramCues}" Value="False">
                                     <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -877,6 +900,8 @@
                         <StackPanel IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}">
                             <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource ErrorBrush}" TextWrapping="Wrap"
                                        Margin="0,0,8,12" Visibility="{Binding ErrorMessage, Converter={StaticResource NotEmpty}}" />
+                            <!-- Common fields (the show markers have their own, reduced set in their template). -->
+                            <StackPanel Visibility="{Binding IsShowMarker, Converter={StaticResource InverseBoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="88" />
@@ -894,6 +919,7 @@
                             <ComboBox ui:ControlHelper.Header="Continua" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
                                       SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}" />
                             <CheckBox Content="Armata (se disattivata la cue viene saltata)" IsChecked="{Binding Armed}" />
+                            </StackPanel>
 
                             <ContentControl Content="{Binding}" Focusable="False" />
                         </StackPanel>

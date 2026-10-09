@@ -7,7 +7,7 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | Cue | Cosa fa |
 |---|---|
 | **Audio** | WAV, MP3, AIFF, FLAC, M4A/AAC, WMA. Volume in dB, inizio/fine (trim), loop, fade in, fade out finale. Mixer sempre attivo per una latenza di GO minima. Suona su una **route audio**. Uscita **WASAPI** (condivisa o esclusiva) o **ASIO**. |
-| **Video** | Motore **libVLC** (lo stesso di VLC): H.264, HEVC, VP9, AV1, ProRes, HAP, DNxHD; contenitori MP4/MOV/MKV/AVI/WMV…, con decodifica hardware. Precaricamento automatico: il primo fotogramma appare circa 70 ms dopo il GO, poi la riproduzione è fluida a 60 fps anche con monitor a frequenze diverse. Composizione su **GPU** (Direct3D 11) verso le **route video**. Fade da e verso il nero, volume, loop senza stacchi; l'audio del video esce sulla scheda della sua route audio. |
+| **Video** | Motore **libVLC** (lo stesso di VLC): H.264, HEVC, VP9, AV1, ProRes, HAP, DNxHD; contenitori MP4/MOV/MKV/AVI/WMV…, con decodifica hardware. Precaricamento automatico: il primo fotogramma appare circa 70 ms dopo il GO, poi la riproduzione è fluida a 60 fps anche con monitor a frequenze diverse. Composizione su **GPU** (Direct3D 11) verso le **route video**. Fade da e verso il nero, volume, loop senza stacchi; l'audio del video esce sulla scheda della sua route audio, con un volume indipendente per ogni video (uscita DirectSound di libVLC: con l'uscita WASAPI predefinita tutti i video condividono un unico volume, e il precaricamento di un video ammutoliva quello in riproduzione). |
 | **Immagine** | PNG/JPG/BMP/GIF/TIFF sulle stesse route dei video (sempre sopra ai video), con layer, fade e durata. Decodificate in anticipo in background. |
 | **Live** | Una sorgente dal vivo (videocamera, sorgente HDMI/SDI tramite scheda di acquisizione) sulle route video, come un video senza fine: layer, opacità, fade, audio della sorgente sulla sua route. La sorgente si apre in anticipo quando la cue diventa la prossima; più cue sulla stessa sorgente la condividono. In pausa l'immagine si congela. Usa il modulo DirectShow di libVLC, vedi sotto. |
 | **MIDI** | Note On/Off, Control Change, Program Change, Pitch Bend, **MIDI Show Control** (GO/STOP/RESUME… per mixer luci e audio), **SysEx** raw. |
@@ -17,6 +17,8 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | **Stop** | Ferma una cue specifica, o tutte, con un fade opzionale. |
 
 Ogni cue ha **pre-wait**, **post-wait**, modalità **auto-continue** e **auto-follow**, e lo stato *armata/disarmata*.
+
+**--SHOW START-- e --SHOW END--**: ogni workspace inizia e finisce con due righe fisse, che non fanno nulla e non si possono eliminare, spostare o rinominare; le nuove cue vanno sempre tra le due. Aprendo un workspace il playhead è su **--SHOW START--**: il GO passa alla prima cue (con «Continua» impostato su START, lo stesso GO la fa anche partire). Dopo l'ultima cue il playhead si ferma su **--SHOW END--**, anche quando tutto ha finito di suonare, così si può continuare a spostarlo con le frecce. Le note di entrambe si possono modificare.
 
 **Meter audio**:
 - **Uscita stereo**, nell'intestazione: zone verde (fino a −12 dBFS), gialla (fino a −3) e rossa (fino a 0), indicatore di picco e pulsante **0 dB** che diventa rosso (**CLIP**) se l'uscita va in clip. Un clic lo azzera.

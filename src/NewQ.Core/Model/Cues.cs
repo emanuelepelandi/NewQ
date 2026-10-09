@@ -324,3 +324,30 @@ public sealed class StopCue : Cue
 
     public override string Summary => string.IsNullOrEmpty(TargetNumber) ? "Tutte le cue" : $"→ Cue {TargetNumber}";
 }
+
+// ======================= Show structure =======================
+
+public enum ShowMarkerKind { Start, End }
+
+/// <summary>
+/// The fixed first and last rows of every workspace. They do nothing: START is where the playhead rests when the
+/// workspace opens, END where it rests when the show is over, so the playhead always has a place to be.
+/// They can't be deleted, moved or renamed (see <see cref="Workspace.EnsureShowMarkers"/>).
+/// </summary>
+public sealed class ShowMarkerCue : Cue
+{
+    public const string StartName = "--SHOW START--";
+    public const string EndName = "--SHOW END--";
+
+    public ShowMarkerKind Kind { get; set; }
+
+    public override string TypeName => "Show";
+    public override bool IsShowMarker => true;
+    [JsonIgnore] public bool IsStart => Kind == ShowMarkerKind.Start;
+    [JsonIgnore] public bool IsEnd => Kind == ShowMarkerKind.End;
+
+    public override string Summary => IsStart ? "Inizio dello show" : "Fine dello show";
+
+    public static ShowMarkerCue Create(ShowMarkerKind kind)
+        => new() { Kind = kind, Name = kind == ShowMarkerKind.Start ? StartName : EndName };
+}

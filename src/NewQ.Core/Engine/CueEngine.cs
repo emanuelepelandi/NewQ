@@ -149,7 +149,8 @@ public sealed class CueEngine
         var cue = Playhead;
         if (cue is null) return false;
 
-        var next = CueAfterChain(cue);
+        // Past the last cue the playhead rests on --SHOW END-- (when there is one), never on nothing.
+        var next = CueAfterChain(cue) ?? Workspace.ShowEnd;
         Fire(cue);
         SetPlayhead(next);
         return true;
@@ -327,7 +328,7 @@ public sealed class CueEngine
             error: message => _scheduler.Post(() => ReportError(cue, message)),
             workspace: Workspace);
 
-        if (!cue.Armed)
+        if (!cue.Armed || cue.IsShowMarker) // --SHOW START-- / --SHOW END-- do nothing
         {
             context.Completed();
             return InstantActiveCue.Instance;
@@ -437,6 +438,8 @@ public sealed class CueEngine
 
         if (rc.Cue.ContinueMode == ContinueMode.AutoFollow && !rc.StoppedManually && NextCue(rc.Cue) is Cue next)
             Fire(next);
+        else if (_running.Count == 0 && Playhead is null && Workspace.ShowEnd is ShowMarkerCue end)
+            SetPlayhead(end); // everything is over: the playhead waits on --SHOW END--
     }
 
     private void ScheduleContinue(Cue cue, TimeSpan postWait)

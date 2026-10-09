@@ -161,6 +161,12 @@ public partial class MainWindow : Window
         if (CueGrid.SelectedItem is not null) CueGrid.ScrollIntoView(CueGrid.SelectedItem);
     }
 
+    /// <summary>--SHOW START-- / --SHOW END-- keep their fixed number and name.</summary>
+    private void OnCueGridBeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    {
+        if (e.Row.Item is Core.Model.Cue { IsShowMarker: true }) e.Cancel = true;
+    }
+
     private void OnCueGridDrop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files)

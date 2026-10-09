@@ -24,6 +24,7 @@ public enum CueRunState { Idle, PreWait, Running, Paused, Error }
 [JsonDerivedType(typeof(WaitCue), "wait")]
 [JsonDerivedType(typeof(FadeCue), "fade")]
 [JsonDerivedType(typeof(StopCue), "stop")]
+[JsonDerivedType(typeof(ShowMarkerCue), "marker")]
 public abstract class Cue : ObservableObject
 {
     // Properties that change at runtime or are computed: they never make the workspace "dirty".
@@ -78,6 +79,9 @@ public abstract class Cue : ObservableObject
     // ---- computed / display ----
 
     [JsonIgnore] public abstract string TypeName { get; }
+
+    /// <summary>The fixed --SHOW START-- / --SHOW END-- rows (<see cref="ShowMarkerCue"/>).</summary>
+    [JsonIgnore] public virtual bool IsShowMarker => false;
 
     /// <summary>Short description of what the cue targets (file, address, device...).</summary>
     [JsonIgnore] public virtual string Summary => "";

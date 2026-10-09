@@ -93,6 +93,51 @@ public sealed class Workspace
         FormatVersion = CurrentFormatVersion;
     }
 
+    // ------------------------------------------------------------------ show markers
+
+    /// <summary>The --SHOW START-- row, if the workspace has one (always the first row after <see cref="EnsureShowMarkers"/>).</summary>
+    [JsonIgnore] public ShowMarkerCue? ShowStart => Cues.Count > 0 && Cues[0] is ShowMarkerCue { IsStart: true } m ? m : null;
+
+    /// <summary>The --SHOW END-- row, if the workspace has one (always the last row after <see cref="EnsureShowMarkers"/>).</summary>
+    [JsonIgnore] public ShowMarkerCue? ShowEnd => Cues.Count > 0 && Cues[^1] is ShowMarkerCue { IsEnd: true } m ? m : null;
+
+    /// <summary>
+    /// Puts exactly one --SHOW START-- first and one --SHOW END-- last (adds them to new and older workspaces,
+    /// drops extra copies, restores their fixed names). Safe to call more than once.
+    /// </summary>
+    public void EnsureShowMarkers()
+    {
+        var markers = Cues.OfType<ShowMarkerCue>().ToList();
+        var start = markers.FirstOrDefault(m => m.IsStart) ?? ShowMarkerCue.Create(ShowMarkerKind.Start);
+        var end = markers.FirstOrDefault(m => m.IsEnd) ?? ShowMarkerCue.Create(ShowMarkerKind.End);
+        foreach (var extra in markers.Where(m => !ReferenceEquals(m, start) && !ReferenceEquals(m, end)))
+            Cues.Remove(extra);
+
+        if (!ReferenceEquals(ShowStart, start))
+        {
+            Cues.Remove(start);
+            Cues.Insert(0, start);
+        }
+        if (!ReferenceEquals(ShowEnd, end))
+        {
+            Cues.Remove(end);
+            Cues.Add(end);
+        }
+
+        start.Name = ShowMarkerCue.StartName;
+        end.Name = ShowMarkerCue.EndName;
+        start.Number = end.Number = "";
+        end.ContinueMode = ContinueMode.DoNotContinue; // nothing comes after it
+    }
+
+    /// <summary>Keeps a position for a new or moved cue between --SHOW START-- and --SHOW END--.</summary>
+    public int ClampToProgram(int index)
+    {
+        var first = ShowStart is null ? 0 : 1;
+        var last = ShowEnd is null ? Cues.Count : Cues.Count - 1; // inserting here goes right before END
+        return Math.Clamp(index, first, Math.Max(first, last));
+    }
+
     public static VideoRoute CreateVideoRoute(int screenIndex)
     {
         var name = screenIndex < 0 ? "Anteprima" : $"Schermo {screenIndex + 1}";

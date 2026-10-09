@@ -56,7 +56,7 @@ public static class ShowChecker
         IProgress<double>? progress = null, CancellationToken token = default)
     {
         // Snapshot: the check runs in background while the UI may keep going.
-        var cues = workspace.Cues.ToList();
+        var cues = workspace.Cues.Where(c => !c.IsShowMarker).ToList(); // --SHOW START/END-- do nothing to check
         var issues = new List<CheckIssue>();
 
         CheckWorkspace(workspace, cues, env, issues);

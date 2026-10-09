@@ -112,7 +112,8 @@ public sealed class MediaThumbnails : IDisposable
         var grabber = new FrameGrabber();
         using var media = new Media(VlcRuntime.LibVlc, path, FromType.FromPath);
         media.AddOption(":no-audio");
-        using var player = new MediaPlayer(media) { EnableKeyInput = false, EnableMouseInput = false, Volume = 0 };
+        // No volume here: ":no-audio" already keeps it silent, and touching the volume must stay per cue player.
+        using var player = new MediaPlayer(media) { EnableKeyInput = false, EnableMouseInput = false };
         grabber.Attach(player);
         player.Play();
         var gotFrame = grabber.Frame.Wait(FrameTimeout);

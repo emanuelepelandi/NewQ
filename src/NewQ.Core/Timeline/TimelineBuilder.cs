@@ -19,6 +19,7 @@ public static class TimelineBuilder
     public static ShowTimeline Build(IReadOnlyList<Cue> cues, Func<Cue, double?>? lengthOf = null)
     {
         lengthOf ??= c => c.Duration;
+        cues = cues.Where(c => !c.IsShowMarker).ToList(); // --SHOW START-- / --SHOW END-- take no time and fire nothing
         var items = new List<TimelineItem>();
         var blocks = new List<TimelineBlock>();
         var carried = new List<TimelineItem>(); // open-ended cues still running from earlier blocks
