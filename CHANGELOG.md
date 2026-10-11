@@ -99,3 +99,7 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Aggiunto**: l'indirizzo da aprire sul telefono o tablet compare nelle impostazioni (si aggiorna con la porta) e nella barra di stato, con tutti gli indirizzi nel tooltip; un clic lo copia.
 - **Corretto**: i client che inviano `Expect: 100-continue` non aspettano più ~350 ms a ogni comando.
 
+### 2026-10-11 - Tolto il dispositivo audio dalle impostazioni generali (commit `e994b89`)
+- **Rimosso**: *Impostazioni → Generale → Dispositivo di uscita*. Sceglieva solo la scheda delle route audio lasciate su "Predefinita", un doppione della scheda che ogni route ha già.
+- **Cambiato**: nelle route audio la scheda "Predefinita" è ora la scheda predefinita di Windows.
+
