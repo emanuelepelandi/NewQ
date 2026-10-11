@@ -41,6 +41,7 @@ public partial class TimelinePanel : UserControl
         _syncing = false;
         vm.PropertyChanged += OnViewModelChanged;
         vm.Thumbnails.Updated += View.Redraw;
+        vm.TimelineStateChanged += View.Redraw; // fading cues turn amber
         Refresh();
         if (IsVisible) _nowTimer.Start();
     }

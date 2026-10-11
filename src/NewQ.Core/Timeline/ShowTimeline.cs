@@ -64,6 +64,10 @@ public sealed class ShowTimeline
     }
 
     public IReadOnlyList<TimelineBlock> Blocks { get; }
+
+    /// <summary>--SHOW START-- has a GO of its own, before GO 1 (drawn as a START gap, not counted).</summary>
+    public bool StartHasGo { get; init; }
+
     public IReadOnlyList<TimelineItem> Items { get; }
 
     /// <summary>Where a cue is placed in a block (a linked cue can be in more than one), or null.</summary>

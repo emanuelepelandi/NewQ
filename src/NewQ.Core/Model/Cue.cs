@@ -50,11 +50,13 @@ public abstract class Cue : ObservableObject
     {
         nameof(RunState), nameof(Progress), nameof(ElapsedSeconds), nameof(ElapsedText),
         nameof(RemainingText), nameof(RuntimeDuration), nameof(IsPlayhead), nameof(ErrorMessage), nameof(CanSeek), nameof(MeterDb), nameof(Clipped),
+        nameof(IsFadingOut),
     };
 
     private static readonly HashSet<string> DerivedProperties = new()
     {
         nameof(Summary), nameof(DurationText), nameof(ContinueSymbol), nameof(LinkText), nameof(HasLink), nameof(TypeName),
+        nameof(ListVolumeDb), nameof(ListOpacity), "HasOwnGo",
     };
 
     private string _number = "";
@@ -77,6 +79,7 @@ public abstract class Cue : ObservableObject
     private bool _canSeek;
     private double _meterDb = Decibels.Floor;
     private bool _clipped;
+    private bool _isFadingOut;
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Number { get => _number; set => SetField(ref _number, value ?? ""); }
@@ -154,6 +157,15 @@ public abstract class Cue : ObservableObject
     /// <summary>Latched: the cue reached digital full scale (0 dBFS). Reset on the next GO of the cue.</summary>
     [JsonIgnore] public bool Clipped { get => _clipped; set => SetField(ref _clipped, value); }
 
+    /// <summary>The cue is fading out to a stop (Fade cue button, Stop/Panic with fade, Fade cue, Fade out link).</summary>
+    [JsonIgnore] public bool IsFadingOut { get => _isFadingOut; set => SetField(ref _isFadingOut, value); }
+
+    /// <summary>Volume shown in the list: the cue's own, or the one a Fade cue gives its target; null = none.</summary>
+    [JsonIgnore] public virtual double? ListVolumeDb => null;
+
+    /// <summary>Opacity shown in the list: the cue's own, or the one a Fade cue gives its target; null = none.</summary>
+    [JsonIgnore] public virtual double? ListOpacity => null;
+
     [JsonIgnore]
     public double ElapsedSeconds
     {
@@ -190,6 +202,8 @@ public abstract class Cue : ObservableObject
         base.OnPropertyChanged(nameof(DurationText));
         base.OnPropertyChanged(nameof(ContinueSymbol));
         base.OnPropertyChanged(nameof(LinkText));
+        base.OnPropertyChanged(nameof(ListVolumeDb));
+        base.OnPropertyChanged(nameof(ListOpacity));
         base.OnPropertyChanged(nameof(HasLink));
     }
 

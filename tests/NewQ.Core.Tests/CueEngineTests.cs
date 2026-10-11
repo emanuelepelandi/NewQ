@@ -515,4 +515,5 @@ public class PauseAndSeekTests
         _scheduler.Advance(0.2);
         Assert.Equal(new[] { "2" }, _player.StartedNumbers);
     }
+
 }

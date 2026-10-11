@@ -62,6 +62,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Columns.Changed += () => { _settings.CueColumns = Columns.Visible; TrySaveSettings(); };
         _inspectorCollapsed = _settings.InspectorCollapsed;
         _timelineVisible = _settings.TimelineVisible;
+        _runningPanelVisible = _settings.RunningPanelVisible;
         _timelineDebounce = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromMilliseconds(250) };
         _timelineDebounce.Tick += (_, _) => { _timelineDebounce.Stop(); RebuildTimeline(); };
         Thumbnails = new MediaThumbnails(dispatcher, () => Engine is not null && Engine.Running.Count > 0);
@@ -139,6 +140,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ShowCheckCommand = new RelayCommand(OpenShowCheck);
         ToggleInspectorCommand = new RelayCommand(() => IsInspectorCollapsed = !IsInspectorCollapsed);
         ToggleTimelineCommand = new RelayCommand(() => IsTimelineVisible = !IsTimelineVisible);
+        RebuildTimelineCommand = new RelayCommand(RebuildTimelineNow);
         ResetColumnsCommand = new RelayCommand(() => Columns.ResetToDefaults());
 
         VlcRuntime.WarmUp(); // libVLC loads its plugins in background (~1 s)
@@ -283,6 +285,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         set
         {
             if (!SetField(ref _isSafeMode, value)) return;
+            if (value)
+            {
+                _inspectorBeforeSafe = IsInspectorCollapsed;
+                IsInspectorCollapsed = true;
+            }
+            else if (_inspectorBeforeSafe is bool before)
+            {
+                _inspectorBeforeSafe = null;
+                IsInspectorCollapsed = before;
+            }
             OnPropertyChanged(nameof(CanEdit));
             OnPropertyChanged(nameof(WindowTitle));
             if (value) StopTestSignals(); // nothing from the setup tools may stay on during the show
@@ -553,8 +565,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ScheduleTimeline(); // the "Fade cue" time is also the length of Fade out links
     }
 
+    /// <summary>Something the timeline draws changed without a rebuild (a cue started or stopped fading out).</summary>
+    public event Action? TimelineStateChanged;
+
     private void OnCuePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(Cue.IsFadingOut)) TimelineStateChanged?.Invoke();
         if (!Cue.IsPersistentProperty(e.PropertyName)) return;
         if (sender is Cue changed && !GuardLinkLoop(changed, e.PropertyName)) return; // undone: it closed a loop
         IsDirty = true;
@@ -759,6 +775,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void DeleteSelected()
     {
         if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
+        var label = $"{cue.Number} {cue.Name}".Trim();
+        if (MessageBox.Show($"Eliminare la cue «{label}»?", "Elimina cue", MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes) return;
         var index = Workspace.Cues.IndexOf(cue);
         Engine.Stop(cue, TimeSpan.Zero);
         Workspace.Cues.Remove(cue);
@@ -891,14 +910,39 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private bool _inspectorCollapsed;
 
-    /// <summary>The cue properties panel is folded to a strip on the right (saved per machine).</summary>
+    private bool? _inspectorBeforeSafe; // state to restore when Safe mode ends (null = Safe off)
+
+    /// <summary>
+    /// The cue properties panel is hidden on the right (saved per machine). Safe mode hides it; if the operator opens
+    /// it again during Safe, it stays open. Leaving Safe brings back the state from before.
+    /// </summary>
     public bool IsInspectorCollapsed
     {
         get => _inspectorCollapsed;
         set
         {
             if (!SetField(ref _inspectorCollapsed, value)) return;
+            if (_inspectorBeforeSafe is not null) return; // Safe mode: not a preference
             _settings.InspectorCollapsed = value;
+            TrySaveSettings();
+        }
+    }
+
+    // ------------------------------------------------------------------ running cues / log panel
+
+    private bool _runningPanelVisible;
+
+    public ICommand ToggleRunningPanelCommand => _toggleRunningPanel ??= new RelayCommand(() => IsRunningPanelVisible = !IsRunningPanelVisible);
+    private ICommand? _toggleRunningPanel;
+
+    /// <summary>The "In esecuzione" / "Log" panel under the cue list (saved per machine).</summary>
+    public bool IsRunningPanelVisible
+    {
+        get => _runningPanelVisible;
+        set
+        {
+            if (!SetField(ref _runningPanelVisible, value)) return;
+            _settings.RunningPanelVisible = value;
             TrySaveSettings();
         }
     }
@@ -935,6 +979,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             TrySaveSettings();
             if (value) ScheduleTimeline();
         }
+    }
+
+    public ICommand RebuildTimelineCommand { get; }
+
+    /// <summary>"Ricalcola": lengths and previews read again from the files, then the timeline rebuilt at once.</summary>
+    private void RebuildTimelineNow()
+    {
+        _timelineDebounce.Stop();
+        Thumbnails.Forget(Workspace.Cues.OfType<MediaCue>()
+            .Where(c => c is VideoCue or ImageCue && !string.IsNullOrWhiteSpace(c.FilePath))
+            .Select(c => Workspace.ResolvePath(c.FilePath)));
+        foreach (var cue in Workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
+        RebuildTimeline();
     }
 
     /// <summary>Saves a timeline preference (lanes, zoom, follow, height).</summary>
@@ -1150,7 +1207,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         cue.DeviceName = VideoCaptureDevices.FirstOrDefault() ?? "";
         AddCue(cue);
         if (VideoCaptureDevices.Count == 0)
-            AddLog(EngineLogLevel.Warning, "Nessuna sorgente live trovata.");
+            AddLog(EngineLogLevel.Warning, "Nessuna sorgente di cattura trovata.");
     }
 
     private void FadeOut(Cue cue)

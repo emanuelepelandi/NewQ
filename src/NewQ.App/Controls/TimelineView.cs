@@ -136,7 +136,7 @@ public sealed class TimelineView : FrameworkElement
     {
         BuildLanes();
         _blockX = new double[_timeline.Blocks.Count];
-        var x = 0.0;
+        var x = StartGap;
         for (var b = 0; b < _timeline.Blocks.Count; b++)
         {
             x += GapWidth; // the GO that opens the block
@@ -215,7 +215,7 @@ public sealed class TimelineView : FrameworkElement
     public void ZoomToFit()
     {
         var seconds = _timeline.Blocks.Sum(b => Math.Max(MinBlockSeconds, b.Length));
-        var room = ViewportWidth - _timeline.Blocks.Count * GapWidth - OpenTail;
+        var room = ViewportWidth - _timeline.Blocks.Count * GapWidth - StartGap - OpenTail;
         if (seconds <= 0 || room <= 50) return;
         PixelsPerSecond = room / seconds;
         HorizontalOffset = 0;
@@ -229,7 +229,7 @@ public sealed class TimelineView : FrameworkElement
 
         var videoRoutes = _workspace.VideoRoutes.ToList();
         var audioRoutes = _workspace.AudioRoutes.ToList();
-        string[] typeOrder = { "Video", "Live", "Immagine", "Audio", "MIDI", "Rete", "Attesa", "Fade", "Stop" };
+        string[] typeOrder = { "Video", "Cattura", "Immagine", "Audio", "MIDI", "Rete", "Attesa", "Fade", "Stop" };
 
         Lane LaneFor(Cue cue)
         {
@@ -361,10 +361,17 @@ public sealed class TimelineView : FrameworkElement
 
     private static readonly Dictionary<(string, byte), SolidColorBrush> TypeBrushes = new();
 
+    /// <summary>Colour key of a bar: its type, or "fading" (amber) while the cue fades out to a stop.</summary>
+    private const string FadingKey = "\u0001fading";
+
+    private static string ColorKeyOf(Cue cue) => cue.IsFadingOut ? FadingKey : cue.TypeName;
+
     private static Brush TypeBrush(string type, byte alpha)
     {
         if (TypeBrushes.TryGetValue((type, alpha), out var brush)) return brush;
-        var c = CueTypeBrushConverter.ColorOf(type);
+        var c = type == FadingKey
+            ? ((SolidColorBrush)Application.Current.FindResource("WarningBrush")).Color
+            : CueTypeBrushConverter.ColorOf(type);
         brush = new SolidColorBrush(Color.FromArgb(alpha, c.R, c.G, c.B));
         brush.Freeze();
         return TypeBrushes[(type, alpha)] = brush;
@@ -403,7 +410,18 @@ public sealed class TimelineView : FrameworkElement
         var line = new Pen(B("BorderSubtleBrush"), 1);
         line.Freeze();
         var content = new Rect(GutterWidth, RulerHeight, Math.Max(0, w - GutterWidth), Math.Max(0, h - RulerHeight));
-        var playheadBlock = PlayheadCue is null ? -1 : _timeline.BlockOf(PlayheadCue);
+        // Which GOs are past (grey), next (solid green) and future (tinted green), from the playhead.
+        var onStart = PlayheadCue is ShowMarkerCue { IsStart: true };
+        var playheadBlock = PlayheadCue switch
+        {
+            null => -1,
+            ShowMarkerCue { IsEnd: true } => _timeline.Blocks.Count, // all GOs are behind
+            _ when onStart && _timeline.StartHasGo => -1,             // the next GO is START's
+            _ => _timeline.BlockOf(PlayheadCue),
+        };
+        GoState StateOf(int block) => playheadBlock < 0 && !onStart ? GoState.Future
+            : block < playheadBlock ? GoState.Past : block == playheadBlock ? GoState.Next : GoState.Future;
+        var startState = onStart ? GoState.Next : GoState.Past;
 
         // ---- content: lanes, blocks, cues
         dc.PushClip(new RectangleGeometry(content));
@@ -416,8 +434,9 @@ public sealed class TimelineView : FrameworkElement
 
         // GO gaps: the wait for the operator's GO, hatched, with the GO line in the middle
         // (drawn over the cues that keep running through them, which look dimmed there).
+        if (_timeline.StartHasGo) DrawGap(dc, 0, startState, h);
         for (var b = 0; b < _blockX.Length; b++)
-            DrawGoGap(dc, b, b == playheadBlock, h);
+            DrawGap(dc, _blockX[b] - GapWidth, StateOf(b), h);
         dc.Pop();
         dc.Pop();
 
@@ -430,7 +449,7 @@ public sealed class TimelineView : FrameworkElement
         {
             var x0 = GutterWidth + _blockX[b] - _horizontalOffset;
             var width = BlockWidth(b);
-            DrawGoBadge(dc, b, b == playheadBlock);
+            DrawBadge(dc, _blockX[b] - GapWidth / 2, $"GO {b + 1}", StateOf(b));
             if (x0 > w || x0 + width < GutterWidth) continue;
             for (var t = step; t * _pixelsPerSecond < width - 10; t += step)
             {
@@ -440,6 +459,7 @@ public sealed class TimelineView : FrameworkElement
                 dc.DrawText(Text(FormatTime(t), 10, B("TextMutedBrush")), new Point(x + 3, 6));
             }
         }
+        if (_timeline.StartHasGo) DrawBadge(dc, GapWidth / 2, "START", startState);
         dc.Pop();
 
         // ---- gutter: lane names
@@ -464,10 +484,16 @@ public sealed class TimelineView : FrameworkElement
 
     private static T Freeze<T>(T f) where T : Freezable { f.Freeze(); return f; }
 
-    private void DrawGoGap(DrawingContext dc, int block, bool next, double height)
+    private enum GoState { Past, Next, Future }
+
+    /// <summary>Room before GO 1 for START's own GO.</summary>
+    private double StartGap => _timeline.StartHasGo ? GapWidth : 0;
+
+    /// <summary>A GO gap starting at content X <paramref name="left"/>: hatched, with the GO line in the middle.</summary>
+    private void DrawGap(DrawingContext dc, double left, GoState state, double height)
     {
-        var right = _blockX[block];
-        var left = right - GapWidth;
+        var right = left + GapWidth;
+        var next = state == GoState.Next;
         if (right < _horizontalOffset || left > _horizontalOffset + ActualWidth) return;
         var top = _verticalOffset;
         var area = new Rect(left, top, GapWidth, height);
@@ -480,21 +506,35 @@ public sealed class TimelineView : FrameworkElement
             dc.DrawLine(hatch, new Point(left + d, top + height), new Point(left + d + height, top));
         dc.Pop();
 
-        var center = new Pen(B("GoBrush"), next ? 2 : 1.5) { DashStyle = next ? DashStyles.Solid : DashStyles.Dash };
+        var center = new Pen(state == GoState.Past ? B("TextMutedBrush") : B("GoBrush"), next ? 2 : 1.5)
+        {
+            DashStyle = next ? DashStyles.Solid : DashStyles.Dash,
+        };
         dc.DrawLine(center, new Point(left + GapWidth / 2, top), new Point(left + GapWidth / 2, top + height));
         dc.DrawLine(new Pen(B("BorderStrongBrush"), 1), new Point(right + 0.5, top), new Point(right + 0.5, top + height));
     }
 
-    /// <summary>"GO n" pill in the ruler, over the gap (the next GO is solid green, the others tinted).</summary>
-    private void DrawGoBadge(DrawingContext dc, int block, bool next)
+    /// <summary>GO pill in the ruler over a gap (content X of its middle): next solid green, future tinted, past grey.</summary>
+    private void DrawBadge(DrawingContext dc, double contentCenter, string label, GoState state)
     {
-        var center = GutterWidth + _blockX[block] - GapWidth / 2 - _horizontalOffset;
+        var center = GutterWidth + contentCenter - _horizontalOffset;
         if (center < GutterWidth - GapWidth || center > ActualWidth + GapWidth) return;
-        var text = Text($"GO {block + 1}", 11, next ? B("TextOnAccentBrush") : B("TextPrimaryBrush"), FontWeights.SemiBold);
+        var textBrush = state switch
+        {
+            GoState.Next => B("TextOnAccentBrush"),
+            GoState.Past => B("TextMutedBrush"),
+            _ => B("TextPrimaryBrush"),
+        };
+        var text = Text(label, 11, textBrush, FontWeights.SemiBold);
         var width = Math.Max(text.Width + 14, 40);
         var pill = new Rect(center - width / 2, 3, width, RulerHeight - 7);
-        var fill = next ? B("GoBrush") : TintOf("GoBrush", 0x4D);
-        dc.DrawRoundedRectangle(fill, new Pen(B("GoBrush"), 1), pill, pill.Height / 2, pill.Height / 2);
+        var (fill, edge) = state switch
+        {
+            GoState.Next => (B("GoBrush"), B("GoBrush")),
+            GoState.Past => (B("RaisedBrush"), B("BorderStrongBrush")),
+            _ => (TintOf("GoBrush", 0x4D), B("GoBrush")),
+        };
+        dc.DrawRoundedRectangle(fill, new Pen(edge, 1), pill, pill.Height / 2, pill.Height / 2);
         dc.DrawText(text, new Point(center - text.Width / 2, pill.Y + (pill.Height - text.Height) / 2));
     }
 
@@ -509,7 +549,7 @@ public sealed class TimelineView : FrameworkElement
         var item = p.Item;
         var r = p.Bounds;
         if (r.Right < _horizontalOffset - 20 || r.Left > _horizontalOffset + ActualWidth) return; // off screen
-        var type = item.Cue.TypeName;
+        var type = ColorKeyOf(item.Cue);
         var selected = ReferenceEquals(item.Cue, SelectedCue);
         if (item.Disarmed) dc.PushOpacity(0.35);
 

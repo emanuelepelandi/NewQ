@@ -22,12 +22,18 @@ public sealed class MediaThumbnails : IDisposable
     public const int Width = 192;
     private static readonly TimeSpan FrameTimeout = TimeSpan.FromSeconds(6);
 
+    // A read that comes back without a frame or a length (libVLC busy: several files added at once, preloads)
+    // is tried again a little later, a few times, instead of being kept as "nothing".
+    private const int MaxAttempts = 3;
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(4);
+
     private sealed record Entry(ImageSource? Image, double? Length, DateTime Stamp);
 
     private readonly Dispatcher _dispatcher;
     private readonly Func<bool> _showIsPlaying;
     private readonly ConcurrentDictionary<string, Entry> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, bool> _queued = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, int> _attempts = new(StringComparer.OrdinalIgnoreCase);
     private readonly BlockingCollection<(string Path, bool IsVideo)> _work = new();
     private readonly Thread _worker;
 
@@ -55,6 +61,16 @@ public sealed class MediaThumbnails : IDisposable
         _work.Add((path, isVideo));
     }
 
+    /// <summary>Drops what is known about these files: the next request reads them again ("Ricalcola").</summary>
+    public void Forget(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            _cache.TryRemove(path, out _);
+            _attempts.TryRemove(path, out _);
+        }
+    }
+
     private Entry? Current(string path)
     {
         if (!_cache.TryGetValue(path, out var entry)) return null;
@@ -72,19 +88,44 @@ public sealed class MediaThumbnails : IDisposable
                 if (!File.Exists(path)) continue;
                 var stamp = File.GetLastWriteTimeUtc(path);
                 var entry = isVideo ? GrabVideo(path, stamp) : LoadImage(path, stamp);
-                _cache[path] = entry;
-                _dispatcher.BeginInvoke(() => Updated?.Invoke());
+                if (isVideo && (entry.Image is null || entry.Length is null) && RetryLater(path, isVideo)) continue;
+                Keep(path, entry);
             }
             catch (Exception ex)
             {
                 VlcRuntime.Debug($"thumbnail {path}: {ex.Message}");
-                _cache[path] = new Entry(null, null, DateTime.MinValue); // don't retry a broken file over and over
+                if (RetryLater(path, isVideo)) continue;
+                // Broken file: not read again until it changes (or "Ricalcola").
+                DateTime stamp;
+                try { stamp = File.GetLastWriteTimeUtc(path); } catch { stamp = DateTime.MinValue; }
+                Keep(path, new Entry(null, null, stamp));
             }
             finally
             {
                 _queued.TryRemove(path, out _);
             }
         }
+    }
+
+    private void Keep(string path, Entry entry)
+    {
+        _cache[path] = entry;
+        _attempts.TryRemove(path, out _);
+        _dispatcher.BeginInvoke(() => Updated?.Invoke());
+    }
+
+    /// <summary>Queues another try in a few seconds; false once the attempts are used up.</summary>
+    private bool RetryLater(string path, bool isVideo)
+    {
+        if (_attempts.AddOrUpdate(path, 1, (_, n) => n + 1) >= MaxAttempts) return false;
+        VlcRuntime.Debug($"thumbnail {path}: incomplete, trying again");
+        System.Threading.Tasks.Task.Delay(RetryDelay).ContinueWith(_ =>
+        {
+            if (_work.IsAddingCompleted) return;
+            _queued.TryRemove(path, out var __);
+            Request(path, isVideo);
+        });
+        return true;
     }
 
     private bool IsPlaying()

@@ -123,7 +123,7 @@
 
         <DataTemplate DataType="{x:Type m:LiveCue}">
             <StackPanel>
-                <TextBlock Text="SORGENTE LIVE" Style="{StaticResource SectionHeader}" />
+                <TextBlock Text="CATTURA" Style="{StaticResource SectionHeader}" />
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="&#xE72C;"
                             VerticalAlignment="Bottom" Margin="0,0,8,12" ToolTip="Aggiorna sorgenti"
@@ -239,8 +239,7 @@
                 <TextBlock Text="{Binding Name}" Style="{StaticResource SectionHeaderFirst}" />
                 <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}"
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
-                <ComboBox ui:ControlHelper.Header="Follow" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
-                          SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}"
+                <CheckBox Content="GO dedicato" IsChecked="{Binding HasOwnGo}"
                           Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}" />
             </StackPanel>
         </DataTemplate>
@@ -272,7 +271,7 @@
                 <MenuItem Header="Nuova cue Audio" Command="{Binding AddCueCommand}" CommandParameter="audio" />
                 <MenuItem Header="Nuova cue Video" Command="{Binding AddCueCommand}" CommandParameter="video" />
                 <MenuItem Header="Nuova cue Immagine" Command="{Binding AddCueCommand}" CommandParameter="image" />
-                <MenuItem Header="Nuova cue Live" Command="{Binding AddCueCommand}" CommandParameter="live" />
+                <MenuItem Header="Nuova cue Cattura" Command="{Binding AddCueCommand}" CommandParameter="live" />
                 <MenuItem Header="Nuova cue MIDI" Command="{Binding AddCueCommand}" CommandParameter="midi" />
                 <MenuItem Header="Nuova cue Rete (OSC/UDP/TCP)" Command="{Binding AddCueCommand}" CommandParameter="network" />
                 <MenuItem Header="Nuova cue Attesa" Command="{Binding AddCueCommand}" CommandParameter="wait" />
@@ -297,6 +296,7 @@
                           InputGestureText="{Binding ShortcutText[ToggleInspector]}" />
                 <MenuItem Header="Timeline" IsCheckable="True" IsChecked="{Binding IsTimelineVisible, Mode=TwoWay}"
                           InputGestureText="{Binding ShortcutText[ToggleTimeline]}" />
+                <MenuItem Header="In esecuzione e Log" IsCheckable="True" IsChecked="{Binding IsRunningPanelVisible, Mode=TwoWay}" />
                 <Separator />
                 <MenuItem Header="Colonne della lista">
                     <MenuItem Header="Destinazione" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[target], Mode=TwoWay}" />
@@ -489,8 +489,8 @@
                             ctl:ButtonIcon.Glyph="{StaticResource IconVideo}" ToolTip="Nuova cue video" />
                     <Button Style="{StaticResource ToolButton}" Content="Immagine" Command="{Binding AddCueCommand}" CommandParameter="image"
                             ctl:ButtonIcon.Glyph="{StaticResource IconImage}" ToolTip="Nuova cue immagine" />
-                    <Button Style="{StaticResource ToolButton}" Content="Live" Command="{Binding AddCueCommand}" CommandParameter="live"
-                            ctl:ButtonIcon.Glyph="{StaticResource IconLive}" ToolTip="Nuova cue live" />
+                    <Button Style="{StaticResource ToolButton}" Content="Cattura" Command="{Binding AddCueCommand}" CommandParameter="live"
+                            ctl:ButtonIcon.Glyph="{StaticResource IconLive}" ToolTip="Nuova cue cattura" />
                     <Button Style="{StaticResource ToolButton}" Content="MIDI" Command="{Binding AddCueCommand}" CommandParameter="midi"
                             ctl:ButtonIcon.Glyph="{StaticResource IconMidi}" ToolTip="Nuova cue MIDI" />
                     <Button Style="{StaticResource ToolButton}" Content="Rete" Command="{Binding AddCueCommand}" CommandParameter="network"
@@ -562,7 +562,7 @@
         <Grid Background="{StaticResource PanelBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="500" />
-                <ColumnDefinition Width="5" />
+                <ColumnDefinition x:Name="InspectorSplitterColumn" Width="5" />
                 <ColumnDefinition x:Name="InspectorColumn" Width="400" MinWidth="320" />
             </Grid.ColumnDefinitions>
 
@@ -570,8 +570,8 @@
                 <!-- List and running cues share the height (the timeline below takes its own): neither can vanish. -->
                 <Grid.RowDefinitions>
                     <RowDefinition Height="2*" MinHeight="110" />
-                    <RowDefinition Height="5" />
-                    <RowDefinition Height="*" MinHeight="90" />
+                    <RowDefinition x:Name="RunningSplitterRow" Height="5" />
+                    <RowDefinition x:Name="RunningRow" Height="*" MinHeight="90" />
                 </Grid.RowDefinitions>
 
                 <!-- Cue list -->
@@ -606,6 +606,8 @@
                     </DataGrid.ColumnHeaderStyle>
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
+                            <!-- Right click: select the cue and open its properties. -->
+                            <EventSetter Event="PreviewMouseRightButtonDown" Handler="OnCueRowRightClick" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Armed}" Value="False">
                                     <Setter Property="Opacity" Value="0.45" />
@@ -687,8 +689,8 @@
                                 </MultiBinding>
                             </DataGridTextColumn.Binding>
                         </DataGridTextColumn>
-                        <DataGridTextColumn x:Name="ColVolume" Header="Volume" Binding="{Binding VolumeDb, StringFormat='0.# dB', FallbackValue=''}" Width="80" MinWidth="80" IsReadOnly="True" />
-                        <DataGridTextColumn x:Name="ColOpacity" Header="Opacità" Binding="{Binding Opacity, StringFormat='0.##', FallbackValue=''}" Width="76" MinWidth="76" IsReadOnly="True" />
+                        <DataGridTextColumn x:Name="ColVolume" Header="Volume" Binding="{Binding ListVolumeDb, StringFormat='0.# dB', TargetNullValue=''}" Width="80" MinWidth="80" IsReadOnly="True" />
+                        <DataGridTextColumn x:Name="ColOpacity" Header="Opacità" Binding="{Binding ListOpacity, StringFormat='0.##', TargetNullValue=''}" Width="76" MinWidth="76" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColLayer" Header="Layer" Binding="{Binding Layer, FallbackValue=''}" Width="60" MinWidth="60" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColPrewait" Header="Pre" Binding="{Binding PreWait, StringFormat='0.##'}" Width="52" MinWidth="52" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="ColDuration" Header="Durata" Binding="{Binding DurationText, Mode=OneWay}" Width="80" MinWidth="80" IsReadOnly="True" />
@@ -739,10 +741,10 @@
                     </TextBlock.Style>
                 </TextBlock>
 
-                <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows" />
+                <GridSplitter x:Name="RunningSplitter" Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows" />
 
-                <!-- Active cues + log -->
-                <TabControl Grid.Row="2" Padding="8,0">
+                <!-- Active cues + log (Visualizza → In esecuzione e Log) -->
+                <TabControl x:Name="RunningPanel" Grid.Row="2" Padding="8,0">
                     <TabItem Header="In esecuzione">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="16,8,12,8">
@@ -938,22 +940,6 @@
                 </Grid>
             </DockPanel>
 
-            <!-- Folded properties panel: a strip with the expand button; a click anywhere on it opens the panel. -->
-            <Border x:Name="InspectorStrip" Grid.Column="2" Visibility="Collapsed" Background="Transparent" Cursor="Hand"
-                    ToolTip="{Binding ShortcutHint[ToggleInspector], Converter={StaticResource Format}, ConverterParameter='Mostra il pannello Proprietà cue ({0})'}">
-                <Border.InputBindings>
-                    <MouseBinding MouseAction="LeftClick" Command="{Binding ToggleInspectorCommand}" />
-                </Border.InputBindings>
-                <StackPanel>
-                    <Button Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE76B;" Command="{Binding ToggleInspectorCommand}"
-                            Margin="0,2,0,12" HorizontalAlignment="Center" ToolTip="Mostra Proprietà cue" />
-                    <TextBlock Text="PROPRIETÀ CUE" Style="{StaticResource SectionHeaderFirst}" Margin="0" HorizontalAlignment="Center">
-                        <TextBlock.LayoutTransform>
-                            <RotateTransform Angle="90" />
-                        </TextBlock.LayoutTransform>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
         </Grid>
 
         <GridSplitter x:Name="TimelineSplitter" Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows"

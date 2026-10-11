@@ -26,6 +26,9 @@
                             ToolTip="Tutto lo show nella vista" />
                     <ToggleButton x:Name="Follow" Content="Segui il playhead" Style="{StaticResource SubtleToggle}" MinHeight="28" Height="28"
                                   Margin="4,0,0,0" Checked="OnFollow" Unchecked="OnFollow" ToolTip="Mostra sempre il prossimo GO" />
+                    <Rectangle Style="{StaticResource ToolbarDivider}" Height="20" />
+                    <Button Style="{StaticResource SubtleButton}" Content="Ricalcola" Command="{Binding RebuildTimelineCommand}"
+                            ctl:ButtonIcon.Glyph="&#xE72C;" MinHeight="28" Height="28" ToolTip="Rileggi i file e ricalcola la timeline" />
                 </StackPanel>
             </DockPanel>
         </Border>

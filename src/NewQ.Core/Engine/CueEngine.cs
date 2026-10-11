@@ -31,6 +31,9 @@ public sealed class RunningCue
     internal IDisposable? PreWaitTimer { get; set; }
     internal IDisposable? SafetyTimer { get; set; }
     internal bool StoppedManually { get; set; }
+
+    /// <summary>Fading out to a stop (Stop/Panic with fade, Fade cue that stops, Fade out link).</summary>
+    public bool IsFadingOut { get; internal set; }
     public bool IsPaused { get; internal set; }
 }
 
@@ -395,6 +398,8 @@ public sealed class CueEngine
             if (fade.StopWhenDone)
             {
                 target.StoppedManually = true;
+                target.IsFadingOut = true;
+                RefreshState(target.Cue);
                 ArmSafetyTimer(target, duration);
             }
         }
@@ -428,7 +433,11 @@ public sealed class CueEngine
         if (fade <= TimeSpan.Zero)
             Complete(rc);                // don't wait for the player to confirm a hard stop
         else
+        {
+            rc.IsFadingOut = true;
+            RefreshState(rc.Cue);
             ArmSafetyTimer(rc, fade);    // ...and never wait forever for a fade either
+        }
     }
 
     private void ArmSafetyTimer(RunningCue rc, TimeSpan fade)
@@ -565,6 +574,7 @@ public sealed class CueEngine
             cue.RunState = CueRunState.PreWait;
 
         cue.CanSeek = instances.Any(r => r.IsPaused && r.Handle is { CanSeek: true } && r.Handle.Duration is not null);
+        cue.IsFadingOut = instances.Any(r => r.IsFadingOut);
     }
 
     private Cue? NextCue(Cue cue)

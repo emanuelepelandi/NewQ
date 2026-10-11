@@ -259,7 +259,7 @@ public static class ShowChecker
     private static void CheckLiveSource(LiveCue live, IShowCheckEnvironment env, List<CheckIssue> issues)
     {
         if (string.IsNullOrWhiteSpace(live.DeviceName))
-            issues.Add(new(CheckSeverity.Error, live, "Nessuna sorgente live selezionata."));
+            issues.Add(new(CheckSeverity.Error, live, "Nessuna sorgente di cattura selezionata."));
         else if (!env.VideoCaptureDevices.Contains(live.DeviceName, StringComparer.OrdinalIgnoreCase))
             issues.Add(new(CheckSeverity.Error, live, $"La sorgente \"{live.DeviceName}\" non è collegata."));
 

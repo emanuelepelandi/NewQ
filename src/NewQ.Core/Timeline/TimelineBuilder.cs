@@ -22,6 +22,7 @@ public static class TimelineBuilder
     public static ShowTimeline Build(IReadOnlyList<Cue> cues, Func<Cue, double?>? lengthOf = null, double linkFadeSeconds = 3)
     {
         lengthOf ??= c => c.Duration;
+        var startHasGo = cues.Count > 0 && cues[0] is ShowMarkerCue { IsStart: true, HasOwnGo: true };
         cues = cues.Where(c => !c.IsShowMarker).ToList(); // --SHOW START-- / --SHOW END-- take no time and fire nothing
         var items = new List<TimelineItem>();
         var blocks = new List<TimelineBlock>();
@@ -84,7 +85,7 @@ public static class TimelineBuilder
             while (i < cues.Count && placed.Contains(cues[i])) i++;
         }
 
-        return new ShowTimeline(blocks, items);
+        return new ShowTimeline(blocks, items) { StartHasGo = startHasGo };
     }
 
     private static TimelineItem CreateItem(Cue cue, TimelinePoint start, bool startsBlock, Func<Cue, double?> lengthOf)

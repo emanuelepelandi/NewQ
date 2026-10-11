@@ -106,7 +106,7 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
 
     private static VideoSource LiveSource(LiveCue live)
     {
-        if (string.IsNullOrWhiteSpace(live.DeviceName)) throw new InvalidOperationException("Nessuna sorgente live selezionata.");
+        if (string.IsNullOrWhiteSpace(live.DeviceName)) throw new InvalidOperationException("Nessuna sorgente di cattura selezionata.");
         return VideoSource.Capture(live.DeviceName, live.AudioDeviceName, live.Resolution, live.FrameRate);
     }
 
@@ -493,13 +493,13 @@ internal sealed class LiveLayer : VisualLayer
 
     private void OnEnded()
     {
-        Context.Error("sorgente live interrotta");
+        Context.Error("cattura interrotta");
         Finish();
     }
 
     private void OnFailed(string message)
     {
-        Context.Error($"sorgente live \"{_cue.DeviceName}\": {message}");
+        Context.Error($"cattura \"{_cue.DeviceName}\": {message}");
         Finish();
     }
 

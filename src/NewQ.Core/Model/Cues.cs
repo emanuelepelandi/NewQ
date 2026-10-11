@@ -37,6 +37,7 @@ public sealed class AudioCue : MediaCue
     public Guid? AudioRouteId { get => _audioRouteId; set => SetField(ref _audioRouteId, value); }
 
     public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
+    public override double? ListVolumeDb => VolumeDb;
 
     /// <summary>Playback starts from this position (seconds).</summary>
     public double StartTime { get => _startTime; set => SetField(ref _startTime, Math.Max(0, value)); }
@@ -88,6 +89,7 @@ public abstract class VisualCue : MediaCue
     public FitMode FitMode { get => _fitMode; set => SetField(ref _fitMode, value); }
 
     public double Opacity { get => _opacity; set => SetField(ref _opacity, Math.Clamp(value, 0, 1)); }
+    public override double? ListOpacity => Opacity;
 }
 
 public sealed class VideoCue : VisualCue
@@ -102,6 +104,7 @@ public sealed class VideoCue : VisualCue
     public Guid? AudioRouteId { get => _audioRouteId; set => SetField(ref _audioRouteId, value); }
 
     public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
+    public override double? ListVolumeDb => VolumeDb;
     public bool Loop { get => _loop; set => SetField(ref _loop, value); }
 }
 
@@ -130,7 +133,7 @@ public sealed class LiveCue : VisualCue
     private Guid? _audioRouteId;
     private double _volumeDb;
 
-    public override string TypeName => "Live";
+    public override string TypeName => "Cattura";
 
     /// <summary>Video capture device, by its Windows name (as listed by DirectShow).</summary>
     public string DeviceName { get => _deviceName; set => SetField(ref _deviceName, value?.Trim() ?? ""); }
@@ -148,6 +151,7 @@ public sealed class LiveCue : VisualCue
     public Guid? AudioRouteId { get => _audioRouteId; set => SetField(ref _audioRouteId, value); }
 
     public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
+    public override double? ListVolumeDb => VolumeDb;
 
     /// <summary>A live source never ends by itself.</summary>
     public override double? Duration => null;
@@ -303,6 +307,10 @@ public sealed class FadeCue : Cue
     public double TargetVolumeDb { get => _targetVolumeDb; set => SetField(ref _targetVolumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
     public bool FadeOpacity { get => _fadeOpacity; set => SetField(ref _fadeOpacity, value); }
     public double TargetOpacity { get => _targetOpacity; set => SetField(ref _targetOpacity, Math.Clamp(value, 0, 1)); }
+
+    /// <summary>The list shows the level the fade gives its target.</summary>
+    public override double? ListVolumeDb => FadeVolume ? TargetVolumeDb : null;
+    public override double? ListOpacity => FadeOpacity ? TargetOpacity : null;
     public bool StopWhenDone { get => _stopWhenDone; set => SetField(ref _stopWhenDone, value); }
 
     public override double? Duration => FadeDuration;
@@ -342,10 +350,33 @@ public sealed class ShowMarkerCue : Cue
     public ShowMarkerKind Kind { get; set; }
 
     public override string TypeName => "Show";
+
+    /// <summary>
+    /// --SHOW START-- only: true = it has a GO of its own (the first GO does nothing, the next one starts the show);
+    /// false = the first GO already starts the first cue (it auto-follows).
+    /// </summary>
+    [JsonIgnore]
+    public bool HasOwnGo
+    {
+        get => ContinueMode == ContinueMode.DoNotContinue;
+        set => ContinueMode = value ? ContinueMode.DoNotContinue : ContinueMode.AutoFollow;
+    }
+
+    protected override void OnPropertyChanged(string? propertyName = null)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (propertyName == nameof(ContinueMode)) base.OnPropertyChanged(nameof(HasOwnGo));
+    }
     public override bool IsShowMarker => true;
     [JsonIgnore] public bool IsStart => Kind == ShowMarkerKind.Start;
     [JsonIgnore] public bool IsEnd => Kind == ShowMarkerKind.End;
 
+    /// <summary>A new START has no GO of its own: the first GO starts the show.</summary>
     public static ShowMarkerCue Create(ShowMarkerKind kind)
-        => new() { Kind = kind, Name = kind == ShowMarkerKind.Start ? StartName : EndName };
+        => new()
+        {
+            Kind = kind,
+            Name = kind == ShowMarkerKind.Start ? StartName : EndName,
+            ContinueMode = kind == ShowMarkerKind.Start ? ContinueMode.AutoFollow : ContinueMode.DoNotContinue,
+        };
 }

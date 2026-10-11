@@ -45,8 +45,11 @@ public sealed class AppSettings
     /// <summary>Optional columns shown in the cue list (menu Visualizza); null = the default set.</summary>
     public List<string>? CueColumns { get; set; }
 
-    /// <summary>Cue properties panel folded to a strip on the right.</summary>
+    /// <summary>Cue properties panel hidden on the right.</summary>
     public bool InspectorCollapsed { get; set; }
+
+    /// <summary>"In esecuzione" / "Log" panel under the cue list.</summary>
+    public bool RunningPanelVisible { get; set; } = true;
 
     /// <summary>Width of the cue properties panel when open.</summary>
     public double InspectorWidth { get; set; } = 400;

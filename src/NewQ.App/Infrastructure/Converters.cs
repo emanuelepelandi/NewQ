@@ -82,7 +82,7 @@ public sealed class CueTypeBrushConverter : IValueConverter
         ["Audio"] = "CueAudioColor",
         ["Video"] = "CueVideoColor",
         ["Immagine"] = "CueImageColor",
-        ["Live"] = "CueLiveColor",
+        ["Cattura"] = "CueLiveColor",
         ["MIDI"] = "CueMidiColor",
         ["Rete"] = "CueNetworkColor",
         ["Attesa"] = "CueWaitColor",

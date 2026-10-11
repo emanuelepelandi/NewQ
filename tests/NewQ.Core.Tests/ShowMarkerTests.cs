@@ -75,6 +75,7 @@ public class ShowMarkerTests
     public void Show_opens_on_start_and_GO_on_start_only_moves_on()
     {
         var engine = CreateShow(Audio("1"), Audio("2"));
+        engine.Workspace.ShowStart!.HasOwnGo = true;
         Assert.Same(engine.Workspace.ShowStart, engine.Playhead);
 
         Assert.True(engine.Go());
@@ -102,6 +103,7 @@ public class ShowMarkerTests
     public void After_the_last_cue_the_playhead_rests_on_end_and_stays_there()
     {
         var engine = CreateShow(Audio("1"));
+        engine.Workspace.ShowStart!.HasOwnGo = true;
         engine.Go(); // START
         engine.Go(); // 1
         Assert.Same(engine.Workspace.ShowEnd, engine.Playhead);
@@ -171,5 +173,32 @@ public class ShowMarkerTests
         Assert.DoesNotContain(timeline.Items, i => i.Cue.IsShowMarker);
         Assert.Equal(0, timeline.BlockOf(engine.Workspace.ShowStart!));
         Assert.Equal(-1, timeline.BlockOf(engine.Workspace.ShowEnd!));
+    }
+
+    [Fact]
+    public void New_start_has_no_GO_of_its_own_so_the_first_GO_starts_the_show()
+    {
+        var engine = CreateShow(Audio("1"), Audio("2"));
+        Assert.False(engine.Workspace.ShowStart!.HasOwnGo);
+
+        engine.Go();
+        _scheduler.Advance(0.01);
+
+        Assert.Equal(new[] { "1" }, _player.StartedNumbers);
+        Assert.Equal("2", engine.Playhead?.Number);
+        Assert.False(TimelineBuilder.Build(engine.Workspace.Cues).StartHasGo);
+    }
+
+    [Fact]
+    public void A_dedicated_start_GO_shows_in_the_timeline_but_is_not_counted()
+    {
+        var engine = CreateShow(Audio("1"), Audio("2"));
+        engine.Workspace.ShowStart!.HasOwnGo = true;
+        Assert.Equal(ContinueMode.DoNotContinue, engine.Workspace.ShowStart.ContinueMode);
+
+        var t = TimelineBuilder.Build(engine.Workspace.Cues);
+        Assert.True(t.StartHasGo);
+        Assert.Equal(2, t.Blocks.Count);                 // GO 1 and GO 2 are still cue 1 and cue 2
+        Assert.Equal("1", t.Blocks[0].FirstCue.Number);
     }
 }

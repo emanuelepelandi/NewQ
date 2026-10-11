@@ -34,8 +34,6 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ view: list columns, properties panel
 
-    private const double InspectorStripWidth = 36;
-
     private Dictionary<string, DataGridColumn> OptionalColumns() => new()
     {
         ["target"] = ColTarget, ["videoRoute"] = ColVideoRoute, ["audioRoute"] = ColAudioRoute, ["volume"] = ColVolume,
@@ -51,9 +49,11 @@ public partial class MainWindow : Window
         {
             if (e.PropertyName == nameof(MainViewModel.IsInspectorCollapsed)) ApplyInspector();
             if (e.PropertyName == nameof(MainViewModel.IsTimelineVisible)) ApplyTimeline();
+            if (e.PropertyName == nameof(MainViewModel.IsRunningPanelVisible)) ApplyRunningPanel();
         };
         ApplyColumns();
         ApplyInspector();
+        ApplyRunningPanel();
         TimelineArea.Initialize(ViewModel);
         ApplyTimeline();
     }
@@ -64,26 +64,47 @@ public partial class MainWindow : Window
             column.Visibility = ViewModel.Columns[key] ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>Folds the properties panel to a strip on the right (the list gets the space), or opens it again.</summary>
+    /// <summary>
+    /// Hides the properties panel completely (the list gets the space), or opens it again. It comes back from
+    /// Visualizza, its shortcut, or a right click on a cue.
+    /// </summary>
     private void ApplyInspector()
     {
         var collapsed = ViewModel.IsInspectorCollapsed;
         if (collapsed)
         {
             if (InspectorPanel.IsKeyboardFocusWithin) CueGrid.Focus(); // never leave the focus in a hidden field
-            if (InspectorColumn.ActualWidth > InspectorStripWidth) ViewModel.SaveInspectorWidth(InspectorColumn.ActualWidth);
+            if (InspectorColumn.ActualWidth > 0) ViewModel.SaveInspectorWidth(InspectorColumn.ActualWidth);
             InspectorColumn.MinWidth = 0;
-            InspectorColumn.Width = new GridLength(InspectorStripWidth);
+            InspectorColumn.Width = new GridLength(0);
         }
         else
         {
             InspectorColumn.MinWidth = 320;
             InspectorColumn.Width = new GridLength(Math.Max(320, ViewModel.Settings.InspectorWidth));
         }
+        InspectorSplitterColumn.Width = new GridLength(collapsed ? 0 : 5);
         InspectorPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        InspectorStrip.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
-        InspectorSplitter.IsEnabled = !collapsed;
-        InspectorSplitter.Cursor = collapsed ? Cursors.Arrow : null;
+        InspectorSplitter.Visibility = InspectorPanel.Visibility;
+    }
+
+    /// <summary>Shows or hides the "In esecuzione" / "Log" panel under the list (the list gets the height).</summary>
+    private void ApplyRunningPanel()
+    {
+        var visible = ViewModel.IsRunningPanelVisible;
+        RunningRow.MinHeight = visible ? 90 : 0;
+        RunningRow.Height = visible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        RunningSplitterRow.Height = new GridLength(visible ? 5 : 0);
+        RunningPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        RunningSplitter.Visibility = RunningPanel.Visibility;
+    }
+
+    /// <summary>Right click on a cue: select it and open its properties.</summary>
+    private void OnCueRowRightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGridRow { Item: Core.Model.Cue cue }) return;
+        ViewModel.SelectedCue = cue;
+        ViewModel.IsInspectorCollapsed = false;
     }
 
     /// <summary>Shows the timeline under the list (at its saved height) or hides it completely.</summary>
