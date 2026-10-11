@@ -37,6 +37,10 @@ public sealed class AppSettings
     public bool OscInputEnabled { get; set; } = true;
     public int OscInputPort { get; set; } = 53000;
 
+    /// <summary>Web remote: a control page for phones and tablets on the local network (off until enabled).</summary>
+    public bool WebRemoteEnabled { get; set; }
+    public int WebRemotePort { get; set; } = 8080;
+
     public string? LastWorkspace { get; set; }
 
     /// <summary>Keyboard shortcuts that differ from the defaults: action name → gesture ("" = none).</summary>

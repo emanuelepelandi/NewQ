@@ -127,3 +127,40 @@ Stesso scenario da 72 GO (12 giri da 6, 350 ms), con i fade dei Panic che colora
 | Thread | inizio 70 - fine 54 |
 | Oggetti GDI / USER | inizio 37 / 65 - fine 37 / 66 |
 | Working set a fine giro, MB | 355 351 350 357 354 355 360 345 346 353 359 310 |
+
+## 2026-10-11 16:21 - go-overlap - controllo web (spento), layout timeline condiviso
+
+- Commit: `aeabb13+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.7 - p95 6.8 - max 10.7 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 30.7 - p99 medio 18.3 - max assoluto 109.0 |
+| Rendering timeline, ms | media 3.2 - max 16.6 (9 campioni) |
+| Ricostruzione timeline, ms | media 9.1 - max 16.2 (2) |
+| CPU per giro, % (tutti i core) | media 15.1 - max 16.3 |
+| Working set, MB | inizio 259 - picco 455 - fine 249 |
+| Private bytes, MB | inizio 263 - fine 244 |
+| Memoria gestita, MB (fine) | 23 |
+| GC gen0 / gen2 (totale) | 159 / 100 |
+| Handle | inizio 1239 - fine 1163 |
+| Thread | inizio 71 - fine 55 |
+| Oggetti GDI / USER | inizio 37 / 65 - fine 37 / 66 |
+| Working set a fine giro, MB | 341 362 355 349 346 358 354 348 368 352 455 343 |
+
+### 2026-10-11 - Controllo web (prova specifica, non standard)
+
+Istanza di prova con il controllo web attivo (porta 8090), workspace di 2 video + 1 Fade, 10 pagine collegate al flusso di stato (`/api/events`), 400 comandi `up`/`down` via `POST /api/cmd/...` a 20 ms di distanza.
+
+| Misura | Valore |
+|---|---|
+| Latenza comando HTTP, ms | media 1,0 - p95 1,3 - max 15,9 |
+| Comandi falliti | 0 / 400 |
+| Ritardo thread UI durante la prova, ms | p99 39-45, max 46 (playhead spostato 400 volte) |
+| Working set | 229 -> 244 MB |
+| Handle / thread | 1110 -> 1134 / 49 -> 52 |
+| GO dalla pagina (playhead su 1, GO, E-STOP) | 10 / 10 andati a buon fine |
+

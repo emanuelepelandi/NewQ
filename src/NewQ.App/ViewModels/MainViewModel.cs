@@ -46,6 +46,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly OutputWindowManager _outputs;
     private readonly NAudioMidiOutput _midi = new();
     private OscRemoteListener? _oscListener;
+    private NewQ.App.Remote.WebRemoteServer? _webServer;
+    private NewQ.App.Remote.WebRemoteHost? _webHost;
     private AppSettings _settings;
     private bool _isDirty;
     private string _statusText = "Pronto";
@@ -212,6 +214,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     /// <summary>The OSC remote input is listening (status bar light).</summary>
     public bool IsOscListening => _oscListener is not null;
     public string OscStatus => _oscListener is null ? "OSC in: off" : $"OSC in: UDP {_oscListener.Port}";
+
+    /// <summary>The web remote is serving its page (status bar light).</summary>
+    public bool IsWebRemoteOn => _webServer is not null;
+    public string WebStatus => _webServer is null ? "Web: off"
+        : "Web: " + (_webServer.Addresses().FirstOrDefault() ?? $"porta {_webServer.Port}");
     public bool IsPaused => Engine.IsPaused;
 
     public IReadOnlyList<string> MidiDevices { get => _midiDevices; private set => SetField(ref _midiDevices, value); }
@@ -1031,7 +1038,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void RebuildTimeline()
     {
-        if (!_timelineVisible) return;
+        if (!_timelineVisible && _webServer is null) return;
         var cues = Workspace.Cues.ToList();
         foreach (var cue in cues)
         {
@@ -1283,6 +1290,27 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         OnPropertyChanged(nameof(OscStatus));
         OnPropertyChanged(nameof(IsOscListening));
+
+        _webServer?.Dispose();
+        _webServer = null;
+        if (_settings.WebRemoteEnabled)
+        {
+            try
+            {
+                _webHost ??= new NewQ.App.Remote.WebRemoteHost(this, _dispatcher, message => AddLog(EngineLogLevel.Info, message));
+                _webServer = new NewQ.App.Remote.WebRemoteServer(_settings.WebRemotePort, _webHost);
+                var server = _webServer;
+                _webHost.AttachClients(() => server.Clients);
+                AddLog(EngineLogLevel.Info, "Controllo web: " + string.Join("  ", server.Addresses().DefaultIfEmpty($"porta {server.Port}")));
+                ScheduleTimeline(); // the page shows the timeline even when the panel is hidden
+            }
+            catch (Exception ex)
+            {
+                AddLog(EngineLogLevel.Error, $"Porta web {_settings.WebRemotePort} non disponibile: {ex.Message}");
+            }
+        }
+        OnPropertyChanged(nameof(WebStatus));
+        OnPropertyChanged(nameof(IsWebRemoteOn));
     }
 
     private void HandleRemote(OscMessage message, string from)
@@ -1313,6 +1341,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _progressTimer.Stop();
         Engine.StopAll(TimeSpan.Zero);
         _oscListener?.Dispose();
+        _webServer?.Dispose();
+        _webHost?.Dispose();
         _outputs.Dispose();
         _audio.Dispose();
         _midi.Dispose();

@@ -539,6 +539,21 @@
                             <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDot}">
                                 <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
                                 <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsWebRemoteOn}" Value="False">
+                                        <Setter Property="Fill" Value="{StaticResource TextMutedBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding WebStatus}" Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0">
+                    <Ellipse>
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDot}">
+                                <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
+                                <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsAudioReady}" Value="False">
                                         <Setter Property="Fill" Value="{StaticResource ErrorBrush}" />
                                     </DataTrigger>

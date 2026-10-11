@@ -48,6 +48,12 @@ Un doppio clic su un problema seleziona la cue interessata.
 **Controllo remoto OSC** (UDP, porta 53000 di default), con indirizzi compatibili QLab:
 `/go`, `/stop` (E-STOP), `/panic` (Stop), `/pause`, `/resume`, `/playhead/next`, `/playhead/previous`, `/cue/{n}/start`, `/cue/{n}/stop`, `/cue/{n}/select` (accettato anche il prefisso `/newq`).
 
+### Controllo web
+
+*Impostazioni → Generale → Controllo web* (spento all'inizio): NewQ serve una pagina per telefoni e tablet sulla rete locale, all'indirizzo mostrato nella barra di stato (es. `http://192.168.1.10:8080`). La pagina mostra la prossima cue e la timeline dello show con gli stessi colori, stati dei GO e cursori dell'app (con *Segui*, zoom e trascinamento), e ha i tasti GO, Pausa/Riprendi, Fade cue, Stop, E-STOP e le frecce del playhead (anche da tastiera: frecce, Spazio, Esc). I comandi arrivano come dai tasti dell'app e sono registrati nel log; funzionano anche in modalità Safe. Chiunque sulla stessa rete può aprire la pagina: usarla su una rete dello show, non su una pubblica. La prima volta Windows può chiedere il permesso del firewall per le reti private.
+
+Tecnica: server HTTP integrato (`src/NewQ.App/Remote`), senza dipendenze; stato in tempo reale con Server-Sent Events (`/api/events`, 10 Hz quando cambia), timeline in `/api/timeline`, comandi con `POST /api/cmd/{go|pause|fade|stop|estop|up|down}`.
+
 ### Route, test e configurazione delle uscite
 
 Le cue non scelgono più un monitor o una scheda audio: scelgono una **route**. Le route si configurano in **Strumenti → Impostazioni** (o direttamente dalle voci *Route audio…*, *Route video…*, *Test pattern video…*, *Test tone e rumore rosa…*). Le modifiche si applicano subito e si salvano con il workspace; i file della versione precedente vengono convertiti all'apertura.

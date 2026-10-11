@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#111317">
+<title>NewQ Remote</title>
+<style>
+  :root {
+    --window: #111317; --panel: #16191e; --raised: #1b1e24; --control: #23272e; --control-hover: #2b3038;
+    --inset: #0d0f12; --border: #262a31; --border-strong: #373c46;
+    --text: #e4e7ec; --text-2: #a9afb9; --muted: #7a818d;
+    --accent: #5b8dd6; --success: #4cb27e; --warning: #e2a945; --error: #e2625d; --paused: #7fa6e2;
+    --go: #2f8f5e; --go-hover: #36a069; --go-pressed: #287a50; --playhead: #e8c468; --safe: #7ab4e6;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--window); color: var(--text); overflow: hidden;
+    font: 14px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* ---- header: what the next GO fires */
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    background: var(--raised); border-bottom: 1px solid var(--border); min-height: 56px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.on { background: var(--success); }
+  .next { min-width: 0; flex: 1; }
+  .caption { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+  .next-line { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .next-number { font-size: 22px; font-weight: 600; color: var(--playhead); }
+  .next-name { font-size: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--control); color: var(--text-2); white-space: nowrap; }
+  .badge.safe { background: rgba(122,180,230,.15); color: var(--safe); }
+  .badge.paused { background: rgba(127,166,226,.18); color: var(--paused); }
+
+  /* ---- timeline */
+  .tl-bar {
+    display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 16px; min-height: 38px;
+    background: var(--raised); border-bottom: 1px solid var(--border);
+  }
+  .tl-bar .caption { flex: 1; }
+  #timelineBox { flex: 1; min-height: 120px; position: relative; background: var(--panel); border-bottom: 1px solid var(--border); }
+  #timeline { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+  /* ---- controls */
+  .controls { display: grid; gap: 8px; padding: 10px 12px 12px; background: var(--raised); }
+  .row { display: grid; gap: 8px; }
+  .row.main { grid-template-columns: 1fr 1fr 2.2fr; }
+  .row.transport { grid-template-columns: repeat(4, 1fr); }
+  button {
+    font: inherit; font-weight: 600; color: var(--text); background: var(--control);
+    border: 1px solid var(--border-strong); border-radius: var(--radius); min-height: 52px; padding: 0 10px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; user-select: none;
+    touch-action: manipulation;
+  }
+  button:hover { background: var(--control-hover); }
+  button:active, button.sent { filter: brightness(.82); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .4; cursor: default; }
+  button svg { width: 18px; height: 18px; flex: none; }
+  .row.transport button { white-space: nowrap; }
+  .small { min-height: 30px; padding: 0 10px; font-size: 12px; font-weight: 600; background: rgba(35,39,46,.92); }
+  .small.on { border-color: var(--accent); background: rgba(46,91,141,.35); }
+  .go { background: var(--go); border-color: var(--go); color: #fff; font-size: 30px; letter-spacing: .04em; min-height: 112px; grid-row: span 1; }
+  .go:hover { background: var(--go-hover); }
+  .go:active, .go.sent { background: var(--go-pressed); filter: none; }
+  .arrow svg { width: 26px; height: 26px; }
+  .pause svg { color: var(--paused); }
+  .pause.paused { border-color: var(--accent); background: rgba(91,141,214,.18); }
+  .fade svg, .stop svg { color: var(--error); }
+  .fade svg { color: var(--paused); }
+  .estop { border-color: var(--error); color: var(--text); }
+  .estop svg { color: var(--error); }
+
+  /* ---- connection lost */
+  #offline {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(13,15,18,.78); font-size: 16px; font-weight: 600; color: var(--warning); z-index: 10;
+  }
+  body.offline #offline { display: flex; }
+
+  /* phones: icon above the label, so every button keeps its label on one line */
+  @media (max-width: 520px) {
+    .row.transport button { flex-direction: column; gap: 4px; font-size: 13px; min-height: 64px; padding: 0 4px; }
+    .tl-bar .caption { font-size: 10px; }
+  }
+
+  @media (orientation: landscape) and (min-width: 900px) {
+    body { flex-direction: column; }
+    .controls { grid-template-columns: 1fr 1.6fr; align-items: stretch; }
+    .row.main { grid-template-columns: 1fr 1fr 2fr; }
+    .go { min-height: 112px; }
+    .row.transport button { min-height: 112px; }
+  }
+</style>
+</head>
+<body class="offline">
+  <header>
+    <span class="dot" id="dot"></span>
+    <div class="next">
+      <div class="caption">Prossima cue</div>
+      <div class="next-line">
+        <span class="next-number" id="nextNumber"></span>
+        <span class="next-name" id="nextName">-</span>
+        <span class="badge" id="nextType" hidden></span>
+      </div>
+    </div>
+    <span class="badge paused" id="pausedBadge" hidden>IN PAUSA</span>
+    <span class="badge safe" id="safeBadge" hidden>SAFE</span>
+  </header>
+
+  <div class="tl-bar">
+    <span class="caption">Timeline</span>
+    <button class="small" id="zoomOut" aria-label="Riduci">−</button>
+    <button class="small" id="zoomIn" aria-label="Ingrandisci">+</button>
+    <button class="small" id="fit">Adatta</button>
+    <button class="small on" id="follow">Segui</button>
+  </div>
+  <div id="timelineBox">
+    <canvas id="timeline" aria-label="Timeline dello show"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="row main">
+      <button class="arrow" data-cmd="up" aria-label="Playhead alla cue precedente">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <button class="arrow" data-cmd="down" aria-label="Playhead alla cue successiva">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button class="go" data-cmd="go">GO</button>
+    </div>
+    <div class="row transport">
+      <button class="pause" data-cmd="pause" id="pauseButton">
+        <svg viewBox="0 0 16 16" fill="currentColor" id="pauseIcon"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>
+        <span id="pauseLabel">Pausa</span>
+      </button>
+      <button class="fade" data-cmd="fade">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5H5L12 13H15"/></svg>
+        Fade cue
+      </button>
+      <button class="stop" data-cmd="stop">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="11" height="11" rx="1"/></svg>
+        Stop
+      </button>
+      <button class="estop" data-cmd="estop">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 1.8L15 14H1Z"/><path d="M8 6v3.6M8 11.6v.1" stroke-linecap="round"/></svg>
+        E&#8209;STOP
+      </button>
+    </div>
+  </div>
+
+  <div id="offline">Connessione a NewQ persa: riprovo…</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- data
+let timeline = null;   // lanes, blocks, items (rebuilt by NewQ when the show changes)
+let state = null;      // live: cursors, playhead, pause...
+let loading = false;
+
+async function loadTimeline() {
+  if (loading) return;
+  loading = true;
+  try {
+    const r = await fetch("/api/timeline", { cache: "no-store" });
+    timeline = await r.json();
+    layout();
+    if (autoFit) fit();
+    draw();
+  } catch (e) { /* the event stream reconnects and asks again */ }
+  finally { loading = false; }
+}
+
+function connect() {
+  const events = new EventSource("/api/events");
+  events.onopen = () => { document.body.classList.remove("offline"); document.getElementById("dot").classList.add("on"); };
+  events.onerror = () => { document.body.classList.add("offline"); document.getElementById("dot").classList.remove("on"); };
+  events.onmessage = e => {
+    state = JSON.parse(e.data);
+    if (!timeline || timeline.rev !== state.rev) loadTimeline();
+    showState();
+    follow();
+    draw();
+  };
+}
+
+function showState() {
+  const n = state.next;
+  document.getElementById("nextNumber").textContent = n ? n.number : "";
+  document.getElementById("nextName").textContent = n ? n.name : "-";
+  const type = document.getElementById("nextType");
+  type.hidden = !n; type.textContent = n ? n.type : "";
+  document.getElementById("pausedBadge").hidden = !state.paused;
+  document.getElementById("safeBadge").hidden = !state.safe;
+  const pause = document.getElementById("pauseButton");
+  pause.classList.toggle("paused", state.paused);
+  document.getElementById("pauseLabel").textContent = state.paused ? "Riprendi" : "Pausa";
+  document.getElementById("pauseIcon").innerHTML = state.paused
+    ? '<path d="M4 2.5v11l9.5-5.5z"/>'
+    : '<rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/>';
+}
+
+// ---------------------------------------------------------------- commands
+async function send(cmd, button) {
+  if (button) { button.classList.add("sent"); setTimeout(() => button.classList.remove("sent"), 160); }
+  try { await fetch("/api/cmd/" + cmd, { method: "POST" }); } catch (e) { /* shown by the offline state */ }
+}
+document.querySelectorAll("[data-cmd]").forEach(b => b.addEventListener("click", () => send(b.dataset.cmd, b)));
+document.addEventListener("keydown", e => {
+  const keys = { ArrowUp: "up", ArrowDown: "down", " ": "go", Escape: "stop" };
+  if (keys[e.key]) { e.preventDefault(); send(keys[e.key]); }
+});
+
+// ---------------------------------------------------------------- timeline drawing (as in NewQ)
+const canvas = document.getElementById("timeline");
+const ctx = canvas.getContext("2d");
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const C = {
+  panel: css("--panel"), raised: css("--raised"), inset: css("--inset"), border: css("--border"), strong: css("--border-strong"),
+  text: css("--text"), text2: css("--text-2"), muted: css("--muted"), go: css("--go"), success: css("--success"),
+  warning: css("--warning"), accent: css("--accent"),
+};
+const RULER = 24, MIN_BLOCK = 2;
+let gutter = 92, gap = 48, pps = 24, offset = 0, autoFit = true, followOn = true;
+let blockX = [], contentWidth = 0, laneTop = [], trackH = [];
+
+function rgba(hex, a) {
+  const v = parseInt(hex.slice(1), 16);
+  return `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${a})`;
+}
+
+function layout() {
+  if (!timeline) return;
+  const small = canvas.clientWidth < 600;
+  gutter = small ? 72 : 110; gap = small ? 40 : 52;
+  let x = timeline.startHasGo ? gap : 0;
+  blockX = timeline.blocks.map(len => { x += gap; const bx = x; x += Math.max(MIN_BLOCK, len) * pps; return bx; });
+  contentWidth = x + 80;
+  let y = 0;
+  laneTop = []; trackH = [];
+  timeline.lanes.forEach((l, i) => { laneTop[i] = y; trackH[i] = l.visual ? 36 : 28; y += l.tracks * trackH[i]; });
+  clampOffset();
+}
+
+const viewWidth = () => canvas.clientWidth - gutter;
+const xOf = (b, t) => (b < 0 || b >= blockX.length) ? 0 : blockX[b] + Math.max(0, t) * pps;
+const screenX = (b, t) => gutter + xOf(b, t) - offset;
+const goX = b => gutter + (b < blockX.length ? blockX[b] - gap / 2
+  : blockX.length ? blockX[blockX.length - 1] + Math.max(MIN_BLOCK, timeline.blocks[blockX.length - 1]) * pps + gap / 2 : gap / 2) - offset;
+function clampOffset() { offset = Math.max(0, Math.min(offset, Math.max(0, contentWidth - viewWidth()))); }
+
+function fit() {
+  if (!timeline || !timeline.blocks.length) return;
+  const seconds = timeline.blocks.reduce((s, l) => s + Math.max(MIN_BLOCK, l), 0);
+  const room = viewWidth() - timeline.blocks.length * gap - (timeline.startHasGo ? gap : 0) - 80;
+  if (seconds > 0 && room > 40) pps = room / seconds;
+  offset = 0;
+  layout(); draw();
+}
+
+function zoom(f) {
+  autoFit = false;
+  const center = offset + viewWidth() / 2;
+  const before = pps;
+  pps = Math.max(1, Math.min(400, pps * f));
+  layout();
+  offset = center * (pps / before) - viewWidth() / 2; // roughly keeps the middle
+  clampOffset(); draw();
+}
+
+function goState(b) {
+  if (state.playheadBlock < 0 && !state.onStart) return "future";
+  return b < state.playheadBlock ? "past" : b === state.playheadBlock ? "next" : "future";
+}
+
+function resize() {
+  const r = window.devicePixelRatio || 1;
+  canvas.width = Math.round(canvas.clientWidth * r);
+  canvas.height = Math.round(canvas.clientHeight * r);
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  layout();
+  if (autoFit) fit();
+  draw();
+}
+
+function draw() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  ctx.fillStyle = C.panel; ctx.fillRect(0, 0, w, h);
+  if (!timeline || !state) return;
+  if (!timeline.blocks.length) {
+    ctx.fillStyle = C.muted; ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
+    ctx.fillText("Nessuna cue", gutter + 16, RULER + 24);
+    return;
+  }
+
+  // content
+  ctx.save();
+  ctx.beginPath(); ctx.rect(gutter, RULER, w - gutter, h - RULER); ctx.clip();
+  timeline.lanes.forEach((l, i) => {
+    const y = RULER + laneTop[i] + l.tracks * trackH[i] - .5;
+    ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gutter, y); ctx.lineTo(w, y); ctx.stroke();
+  });
+  const fading = new Set(state.fading);
+  timeline.items.forEach((item, i) => drawItem(item, fading.has(i), h));
+  if (timeline.startHasGo) drawGap(0, state.onStart ? "next" : "past", h);
+  blockX.forEach((bx, b) => drawGap(bx - gap, goState(b), h));
+  ctx.restore();
+
+  // ruler
+  ctx.fillStyle = C.raised; ctx.fillRect(0, 0, w, RULER);
+  ctx.strokeStyle = C.border; ctx.beginPath(); ctx.moveTo(0, RULER - .5); ctx.lineTo(w, RULER - .5); ctx.stroke();
+  ctx.save(); ctx.beginPath(); ctx.rect(gutter, 0, w - gutter, RULER); ctx.clip();
+  if (timeline.startHasGo) drawPill(gutter + gap / 2 - offset, "START", state.onStart ? "next" : "past");
+  blockX.forEach((bx, b) => drawPill(gutter + bx - gap / 2 - offset, "GO " + (b + 1), goState(b)));
+  ctx.restore();
+
+  // gutter
+  ctx.fillStyle = C.raised; ctx.fillRect(0, RULER, gutter, h - RULER);
+  ctx.strokeStyle = C.border; ctx.beginPath(); ctx.moveTo(gutter - .5, 0); ctx.lineTo(gutter - .5, h); ctx.stroke();
+  ctx.font = "12px 'Segoe UI', system-ui, sans-serif"; ctx.textBaseline = "middle";
+  timeline.lanes.forEach((l, i) => {
+    ctx.fillStyle = C.text2;
+    ctx.fillText(ellipsize(l.label, gutter - 16), 8, RULER + laneTop[i] + trackH[i] / 2);
+  });
+
+  // cursors
+  state.cursors.forEach(([b, t, waiting]) => {
+    const x = waiting ? goX(b + 1) : screenX(b, t);
+    if (x < gutter - gap / 2 || x > w) return;
+    ctx.strokeStyle = ctx.fillStyle = waiting ? C.warning : C.success;
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, RULER); ctx.lineTo(x, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 5, RULER); ctx.lineTo(x + 5, RULER); ctx.lineTo(x, RULER + 7); ctx.closePath(); ctx.fill();
+  });
+}
+
+function ellipsize(text, width) {
+  if (ctx.measureText(text).width <= width) return text;
+  while (text.length > 1 && ctx.measureText(text + "…").width > width) text = text.slice(0, -1);
+  return text + "…";
+}
+
+function drawGap(contentLeft, st, h) {
+  const left = gutter + contentLeft - offset;
+  if (left + gap < gutter || left > canvas.clientWidth) return;
+  ctx.fillStyle = "rgba(13,15,18,.78)"; ctx.fillRect(left, RULER, gap, h - RULER);
+  ctx.save(); ctx.beginPath(); ctx.rect(left, RULER, gap, h - RULER); ctx.clip();
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+  for (let d = -h; d < gap; d += 10) { ctx.beginPath(); ctx.moveTo(left + d, h); ctx.lineTo(left + d + h, RULER); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle = st === "past" ? C.muted : C.go; ctx.lineWidth = st === "next" ? 2 : 1.5;
+  ctx.setLineDash(st === "next" ? [] : [4, 3]);
+  ctx.beginPath(); ctx.moveTo(left + gap / 2, RULER); ctx.lineTo(left + gap / 2, h); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = C.strong; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(left + gap + .5, RULER); ctx.lineTo(left + gap + .5, h); ctx.stroke();
+}
+
+function drawPill(center, label, st) {
+  ctx.font = "600 11px 'Segoe UI', system-ui, sans-serif"; ctx.textBaseline = "middle";
+  const width = Math.max(ctx.measureText(label).width + 14, 40), height = RULER - 7, x = center - width / 2, y = 3;
+  ctx.fillStyle = st === "next" ? C.go : st === "past" ? C.raised : rgba(C.go, .3);
+  ctx.strokeStyle = st === "past" ? C.strong : C.go; ctx.lineWidth = 1;
+  roundRect(x, y, width, height, height / 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = st === "next" ? "#fff" : st === "past" ? C.muted : C.text;
+  ctx.textAlign = "center"; ctx.fillText(label, center, y + height / 2 + .5); ctx.textAlign = "left";
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+function drawItem(item, isFading, h) {
+  const th = trackH[item.lane];
+  const x0 = gutter + xOf(item.start[0], item.start[1]) - offset;
+  let x1 = item.end ? gutter + xOf(item.end[0], item.end[1]) - offset : gutter + contentWidth - offset;
+  if (x1 - x0 < 10) x1 = x0 + 10;
+  if (x1 < gutter - 20 || x0 > canvas.clientWidth) return;
+  const y = RULER + laneTop[item.lane] + item.track * th + 3, bh = th - 6;
+  const color = isFading ? C.warning : item.color;
+  ctx.save();
+  if (item.disarmed) ctx.globalAlpha = .35;
+  ctx.font = "600 11px 'Segoe UI', system-ui, sans-serif"; ctx.textBaseline = "top";
+
+  if (item.kind === "instant") {
+    const cy = y + bh / 2;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(x0, cy - 6); ctx.lineTo(x0 + 6, cy); ctx.lineTo(x0, cy + 6); ctx.lineTo(x0 - 6, cy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = C.text2; ctx.textBaseline = "middle"; ctx.fillText(item.label, x0 + 10, cy);
+    ctx.restore(); return;
+  }
+  if (item.kind === "control") {
+    ctx.fillStyle = rgba(color, .44); ctx.strokeStyle = rgba(color, .7); ctx.lineWidth = 1;
+    roundRect(x0, y, x1 - x0, bh, 3); ctx.fill(); ctx.stroke();
+  } else {
+    ctx.fillStyle = rgba(color, .12); roundRect(x0, y, x1 - x0, bh, 3); ctx.fill();
+    // level: fill under the line, then the line
+    const Y = level => y + bh - 2 - Math.min(Math.max(level, 0), 1.25) / 1.25 * (bh - 6);
+    const pts = (item.level || []).map(([b, t, l]) => [gutter + xOf(b, t) - offset, Y(l)]);
+    if (pts.length) {
+      if (!item.end) pts.push([x1, pts[pts.length - 1][1]]);
+      ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, bh); ctx.clip();
+      ctx.beginPath(); ctx.moveTo(pts[0][0], y + bh); pts.forEach(p => ctx.lineTo(p[0], p[1])); ctx.lineTo(pts[pts.length - 1][0], y + bh); ctx.closePath();
+      ctx.fillStyle = rgba(color, .33); ctx.fill();
+      ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.strokeStyle = rgba(color, .56); ctx.lineWidth = 1;
+    if (!item.end) ctx.setLineDash([4, 3]);
+    roundRect(x0, y, x1 - x0, bh, 3); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, bh); ctx.clip();
+  ctx.fillStyle = C.text; ctx.fillText(item.label, Math.max(x0, gutter) + 6, y + 3);
+  ctx.restore();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- follow, pan, zoom
+function follow() {
+  if (!followOn || !timeline || !state || !state.cursors.length) return;
+  // the latest GO: the cursor furthest on (the wait for a GO counts as the start of that GO)
+  let lead = null, key = -Infinity;
+  state.cursors.forEach(([b, t, waiting]) => {
+    const k = waiting ? (b + 1) * 1e6 - 1 : b * 1e6 + t;
+    if (k > key) { key = k; lead = waiting ? goX(b + 1) : screenX(b, t); }
+  });
+  if (lead === null) return;
+  if (lead >= gutter && lead <= canvas.clientWidth - 8) return;
+  offset += lead - (gutter + viewWidth() * .15);
+  clampOffset();
+}
+
+let drag = null;
+canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, offset }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener("pointermove", e => {
+  if (!drag) return;
+  offset = drag.offset - (e.clientX - drag.x); clampOffset(); draw();
+  if (Math.abs(e.clientX - drag.x) > 8) autoFit = false;
+  if (Math.abs(e.clientX - drag.x) > 8) setFollow(false); // looking around: stop following
+});
+canvas.addEventListener("pointerup", () => drag = null);
+canvas.addEventListener("pointercancel", () => drag = null);
+canvas.addEventListener("wheel", e => { e.preventDefault(); if (e.ctrlKey) zoom(e.deltaY < 0 ? 1.25 : .8); else { offset += e.deltaX || e.deltaY; clampOffset(); draw(); } }, { passive: false });
+
+function setFollow(on) { followOn = on; document.getElementById("follow").classList.toggle("on", on); }
+document.getElementById("follow").addEventListener("click", () => { setFollow(!followOn); follow(); draw(); });
+document.getElementById("fit").addEventListener("click", () => { autoFit = true; fit(); });
+document.getElementById("zoomIn").addEventListener("click", () => zoom(1.5));
+document.getElementById("zoomOut").addEventListener("click", () => zoom(1 / 1.5));
+window.addEventListener("resize", resize);
+
+resize();
+connect();
+</script>
+</body>
+</html>

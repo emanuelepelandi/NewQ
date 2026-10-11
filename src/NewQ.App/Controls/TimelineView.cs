@@ -27,18 +27,29 @@ public sealed class TimelineView : FrameworkElement
     private const double VisualTrackHeight = 42;
     private const double OpenTail = 120;
     private const double MinBlockSeconds = 2;
-    private const double InstantSeconds = 0.6;
-
-    private sealed record Lane(string Key, string Label, int Order, bool Visual)
+    /// <summary>A lane of the shared layout (<see cref="TimelineLayout"/>) with its place on screen.</summary>
+    private sealed class Lane
     {
-        public int Tracks { get; set; } = 1;
+        public Lane(TimelineLane info) => Info = info;
+        public TimelineLane Info { get; }
+        public string Label => Info.Label;
         public double Top { get; set; }
-        public double Height => Tracks * (Visual ? VisualTrackHeight : TrackHeight);
-        public double TrackH => Visual ? VisualTrackHeight : TrackHeight;
+        public double Height => Info.Tracks * TrackH;
+        public double TrackH => Info.Visual ? VisualTrackHeight : TrackHeight;
     }
 
-    private sealed record Placed(TimelineItem Item, Lane Lane, int Track)
+    private sealed class Placed
     {
+        public Placed(TimelineItem item, Lane lane, int track)
+        {
+            Item = item;
+            Lane = lane;
+            Track = track;
+        }
+
+        public TimelineItem Item { get; }
+        public Lane Lane { get; }
+        public int Track { get; }
         public Rect Bounds { get; set; }
     }
 
@@ -223,61 +234,10 @@ public sealed class TimelineView : FrameworkElement
 
     private void BuildLanes()
     {
-        var lanes = new Dictionary<string, Lane>();
-        _placed = new List<Placed>();
-        if (_workspace is null) { _lanes = new(); return; }
-
-        var videoRoutes = _workspace.VideoRoutes.ToList();
-        var audioRoutes = _workspace.AudioRoutes.ToList();
-        string[] typeOrder = { "Video", "Cattura", "Immagine", "Audio", "MIDI", "Rete", "Attesa", "Fade", "Stop" };
-
-        Lane LaneFor(Cue cue)
-        {
-            string key, label;
-            int order;
-            var visual = cue is VisualCue;
-            if (LanesByRoute)
-            {
-                switch (cue)
-                {
-                    case VisualCue v:
-                        var vr = videoRoutes.FirstOrDefault(r => r.Id == v.VideoRouteId) ?? videoRoutes.FirstOrDefault();
-                        key = "v:" + vr?.Id; label = vr?.Name ?? "Video"; order = vr is null ? 0 : videoRoutes.IndexOf(vr);
-                        break;
-                    case AudioCue a:
-                        var ar = audioRoutes.FirstOrDefault(r => r.Id == a.AudioRouteId) ?? audioRoutes.FirstOrDefault();
-                        key = "a:" + ar?.Id; label = ar?.Name ?? "Audio"; order = 100 + (ar is null ? 0 : audioRoutes.IndexOf(ar));
-                        break;
-                    case MidiCue: key = "midi"; label = "MIDI"; order = 200; break;
-                    case NetworkCue: key = "net"; label = "Rete"; order = 201; break;
-                    default: key = "ctrl"; label = "Controllo"; order = 202; break;
-                }
-            }
-            else
-            {
-                key = cue.TypeName; label = cue.TypeName;
-                order = Array.IndexOf(typeOrder, cue.TypeName) is var i and >= 0 ? i : 99;
-            }
-            if (!lanes.TryGetValue(key, out var lane)) lanes[key] = lane = new Lane(key, label, order, visual);
-            return lane;
-        }
-
-        // Tracks: a cue goes on the first row of its lane that is free at its start.
-        var trackEnds = new Dictionary<Lane, List<(int Block, double Time)>>();
-        foreach (var item in _timeline.Items.OrderBy(i => i.Start.Block).ThenBy(i => i.Start.Time))
-        {
-            var lane = LaneFor(item.Cue);
-            if (!trackEnds.TryGetValue(lane, out var ends)) trackEnds[lane] = ends = new();
-            var end = item.End is TimelinePoint e
-                ? (e.Block, Math.Max(e.Time, item.Start.Time + InstantSeconds))
-                : (int.MaxValue, double.MaxValue);
-            var track = ends.FindIndex(t => t.Block < item.Start.Block || t.Block == item.Start.Block && t.Time <= item.Start.Time);
-            if (track < 0) { ends.Add(end); track = ends.Count - 1; }
-            else ends[track] = end;
-            lane.Tracks = Math.Max(lane.Tracks, track + 1);
-            _placed.Add(new Placed(item, lane, track));
-        }
-        _lanes = lanes.Values.OrderBy(l => l.Order).ThenBy(l => l.Label).ToList();
+        var layout = TimelineLayout.Build(_timeline, _workspace, LanesByRoute);
+        var lanes = layout.Lanes.ToDictionary(l => l, l => new Lane(l));
+        _lanes = layout.Lanes.Select(l => lanes[l]).ToList();
+        _placed = layout.Placements.Select(p => new Placed(p.Item, lanes[p.Lane], p.Track)).ToList();
     }
 
     // ------------------------------------------------------------------ input

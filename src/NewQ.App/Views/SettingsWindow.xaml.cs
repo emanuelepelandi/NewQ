@@ -54,6 +54,8 @@ public partial class SettingsWindow : Window
         MidiBox.Text = settings.DefaultMidiDevice;
         OscEnabledBox.IsChecked = settings.OscInputEnabled;
         OscPortBox.Text = settings.OscInputPort.ToString(CultureInfo.CurrentCulture);
+        WebEnabledBox.IsChecked = settings.WebRemoteEnabled;
+        WebPortBox.Text = settings.WebRemotePort.ToString(CultureInfo.CurrentCulture);
 
         PanicFadeBox.Text = workspaceSettings.PanicFadeSeconds.ToString(CultureInfo.CurrentCulture);
         LockoutBox.Text = workspaceSettings.GoLockoutMs.ToString(CultureInfo.CurrentCulture);
@@ -88,6 +90,8 @@ public partial class SettingsWindow : Window
             Result.DefaultMidiDevice = MidiBox.Text.Trim();
             Result.OscInputEnabled = OscEnabledBox.IsChecked == true;
             Result.OscInputPort = Math.Clamp(ParseInt(OscPortBox, "Porta OSC"), 1, 65535);
+            Result.WebRemoteEnabled = WebEnabledBox.IsChecked == true;
+            Result.WebRemotePort = Math.Clamp(ParseInt(WebPortBox, "Porta HTTP"), 1, 65535);
 
             // Parse both before touching the (live) workspace settings.
             var panicFade = ParseDouble(PanicFadeBox, "Fade dello Stop");
