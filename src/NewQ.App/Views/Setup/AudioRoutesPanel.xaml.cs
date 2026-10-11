@@ -31,7 +31,7 @@ public partial class AudioRoutesPanel : UserControl
     public void Initialize(SetupContext context)
     {
         _context = context;
-        _devices = new List<DeviceChoice> { new("", "Predefinita (scheda Generale)", 2) };
+        _devices = new List<DeviceChoice> { new("", "Predefinita di Windows", 2) };
         try { _devices.AddRange(AudioEngine.GetWasapiDevices().Select(d => new DeviceChoice(d.Id, $"{d.Name} · {d.Channels} canali", d.Channels))); }
         catch { /* no audio subsystem */ }
         DeviceBox.ItemsSource = _devices;
@@ -67,7 +67,7 @@ public partial class AudioRoutesPanel : UserControl
         }
         else
         {
-            var id = string.IsNullOrEmpty(route.DeviceId) ? _context.Settings.WasapiDeviceId ?? "" : route.DeviceId;
+            var id = route.DeviceId; // empty = the Windows default device
             channels = _devices.FirstOrDefault(d => d.Id == id)?.Channels ?? 2;
         }
 

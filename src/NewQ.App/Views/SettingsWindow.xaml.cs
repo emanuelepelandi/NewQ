@@ -15,7 +15,6 @@ namespace NewQ.App.Views;
 
 public partial class SettingsWindow : Window
 {
-    private sealed record DeviceItem(string? Id, string Name);
 
     private readonly WorkspaceSettings _workspaceSettings;
 
@@ -36,11 +35,6 @@ public partial class SettingsWindow : Window
 
         DriverBox.SelectedIndex = settings.AudioDriver == AudioDriver.Asio ? 1 : 0;
 
-        var devices = new List<DeviceItem> { new(null, "Predefinito di Windows") };
-        try { devices.AddRange(AudioEngine.GetWasapiDevices().Select(d => new DeviceItem(d.Id, d.Name))); }
-        catch { /* no audio subsystem */ }
-        WasapiDeviceBox.ItemsSource = devices;
-        WasapiDeviceBox.SelectedItem = devices.FirstOrDefault(d => d.Id == settings.WasapiDeviceId) ?? devices[0];
         LatencyBox.Text = settings.LatencyMs.ToString(CultureInfo.CurrentCulture);
         ExclusiveBox.IsChecked = settings.WasapiExclusive;
 
@@ -91,7 +85,6 @@ public partial class SettingsWindow : Window
         try
         {
             Result.AudioDriver = DriverBox.SelectedIndex == 1 ? AudioDriver.Asio : AudioDriver.Wasapi;
-            Result.WasapiDeviceId = (WasapiDeviceBox.SelectedItem as DeviceItem)?.Id;
             Result.LatencyMs = Math.Clamp(ParseInt(LatencyBox, "Latenza"), 3, 500);
             Result.WasapiExclusive = ExclusiveBox.IsChecked == true;
             Result.AsioDriverName = AsioDriverBox.SelectedItem as string;

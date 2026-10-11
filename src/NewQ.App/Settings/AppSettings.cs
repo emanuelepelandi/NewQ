@@ -22,8 +22,6 @@ public sealed class AppSettings
 
     public AudioDriver AudioDriver { get; set; } = AudioDriver.Wasapi;
 
-    /// <summary>WASAPI endpoint id; null = Windows default device.</summary>
-    public string? WasapiDeviceId { get; set; }
     public bool WasapiExclusive { get; set; }
     public int LatencyMs { get; set; } = 40;
 

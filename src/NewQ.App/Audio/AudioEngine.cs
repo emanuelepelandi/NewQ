@@ -79,7 +79,7 @@ public sealed class AudioEngine : IDisposable
         }
 
         var devices = GetWasapiDevices();
-        var id = string.IsNullOrEmpty(route.DeviceId) ? _settings.WasapiDeviceId : route.DeviceId;
+        var id = route.DeviceId; // empty = the Windows default device
         var device = string.IsNullOrEmpty(id) ? null : devices.FirstOrDefault(d => d.Id == id);
         if (!string.IsNullOrEmpty(id) && device is null) return "scheda non collegata: uso la predefinita";
         var channels = device?.Channels ?? 2;
@@ -217,7 +217,7 @@ public sealed class AudioEngine : IDisposable
 
     private string ResolveWasapiKey(string routeDevice, AppSettings settings)
     {
-        var id = string.IsNullOrEmpty(routeDevice) ? settings.WasapiDeviceId ?? DefaultKey : routeDevice;
+        var id = string.IsNullOrEmpty(routeDevice) ? DefaultKey : routeDevice;
         if (string.IsNullOrEmpty(id)) return DefaultKey;
         try
         {

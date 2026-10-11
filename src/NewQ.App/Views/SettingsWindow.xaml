@@ -32,7 +32,6 @@
                     </ComboBox>
 
                     <StackPanel x:Name="WasapiPanel">
-                        <ComboBox x:Name="WasapiDeviceBox" ui:ControlHelper.Header="Dispositivo di uscita" DisplayMemberPath="Name" />
                         <UniformGrid Columns="2">
                             <TextBox x:Name="LatencyBox" ui:ControlHelper.Header="Latenza (ms)" />
                             <CheckBox x:Name="ExclusiveBox" Content="Modalità esclusiva" VerticalAlignment="Bottom" />

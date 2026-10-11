@@ -560,7 +560,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         var route = Workspace.ResolveAudioRoute(routeId);
         var device = _settings.AudioDriver == AudioDriver.Wasapi
-            ? (string.IsNullOrEmpty(route.DeviceId) ? _settings.WasapiDeviceId ?? "" : route.DeviceId)
+            ? route.DeviceId // empty = the Windows default device
             : ""; // ASIO: libVLC can't use it, the video sound goes to the Windows default device
         var gain = route.Muted ? 0 : Decibels.ToGain(route.GainDb) * Decibels.ToGain(_settings.MasterVolumeDb);
         return new VideoAudioTarget(device, gain);
