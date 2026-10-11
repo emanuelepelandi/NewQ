@@ -98,8 +98,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         // Diagnostics (NEWQ_DEBUG): resource counters every 5 s, to spot leaks in stress tests.
         if (Environment.GetEnvironmentVariable("NEWQ_DEBUG") is not null)
         {
+            // UI responsiveness: a 10 ms timer at normal priority; how late each tick arrives is the UI thread's lag.
+            var lags = new List<double>();
+            var lagClock = System.Diagnostics.Stopwatch.StartNew();
+            var lastTick = 0.0;
+            var probe = new DispatcherTimer(DispatcherPriority.Normal) { Interval = TimeSpan.FromMilliseconds(10) };
+            probe.Tick += (_, _) =>
+            {
+                var now = lagClock.Elapsed.TotalMilliseconds;
+                if (lastTick > 0) lags.Add(Math.Max(0, now - lastTick - 10));
+                lastTick = now;
+            };
+            probe.Start();
+
             var diag = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-            diag.Tick += (_, _) => VlcRuntime.Debug($"state: running={Engine.Running.Count} voices={_audio.ActiveVoiceCount} vlcPlayers={PreparedVideo.LiveCount} playhead={Engine.Playhead?.Number}");
+            diag.Tick += (_, _) =>
+            {
+                lags.Sort();
+                double At(double q) => lags.Count == 0 ? 0 : lags[Math.Min(lags.Count - 1, (int)(q * lags.Count))];
+                VlcRuntime.Debug($"state: running={Engine.Running.Count} voices={_audio.ActiveVoiceCount} vlcPlayers={PreparedVideo.LiveCount} " +
+                    $"playhead={Engine.Playhead?.Number} uiLagMs p50={At(0.5):F1} p99={At(0.99):F1} max={At(1):F1} " +
+                    $"gc0={GC.CollectionCount(0)} gc1={GC.CollectionCount(1)} gc2={GC.CollectionCount(2)} managedMB={GC.GetTotalMemory(false) / 1048576.0:F0}");
+                lags.Clear();
+            };
             diag.Start();
         }
 
