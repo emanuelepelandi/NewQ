@@ -578,6 +578,21 @@ public sealed class TimelineView : FrameworkElement
             return;
         }
 
+        if (item.Kind != TimelineItemKind.Media)
+        {
+            // Control cues (Fade, Wait, Stop with a fade): no level of their own, just a plain pink bar
+            // (amber while the cue fades out, like media cues).
+            var control = item.Cue.IsFadingOut ? FadingKey : "Fade";
+            dc.DrawRoundedRectangle(TypeBrush(control, 0x70), new Pen(selected ? B("AccentBrush") : TypeBrush(control, 0xB0), selected ? 2 : 1), r, 3, 3);
+            dc.PushClip(new RectangleGeometry(r));
+            var name = Text($"{item.Cue.Number}  {item.Cue.Name}", 11, B("TextPrimaryBrush"), FontWeights.SemiBold);
+            name.MaxLineCount = 1;
+            dc.DrawText(name, new Point(r.X + 6, r.Y + 3));
+            dc.Pop();
+            if (item.Disarmed) dc.Pop();
+            return;
+        }
+
         // Bar background, first frame, level shape (envelope, over the frame so fades stay visible), outline.
         dc.DrawRoundedRectangle(TypeBrush(type, 0x1E), null, r, 3, 3);
         dc.PushClip(new RectangleGeometry(r));

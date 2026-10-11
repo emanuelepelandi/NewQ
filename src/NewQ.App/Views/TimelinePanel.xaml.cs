@@ -58,7 +58,8 @@ public partial class TimelinePanel : UserControl
                 View.PlayheadCue = _vm!.SelectedCue;
                 View.SelectedCue = _vm.SelectedCue;
                 View.Redraw();
-                if (Follow.IsChecked == true && _vm.SelectedCue is { } cue) View.ScrollToBlock(_vm.Timeline.BlockOf(cue));
+                // While the show plays the cursor leads (FollowCursor); stopped, the view shows the next GO.
+                if (Follow.IsChecked == true && !_showRunning && _vm.SelectedCue is { } cue) View.ScrollToBlock(_vm.Timeline.BlockOf(cue));
                 break;
         }
     }
@@ -77,10 +78,38 @@ public partial class TimelinePanel : UserControl
     private void UpdateNow()
     {
         _cursorXs.Clear();
+        double? lead = null; // the cursor of the latest GO (furthest on), or the wait for the next GO
+        TimelinePoint? leadAt = null;
         if (_vm is not null)
             foreach (var now in _vm.TimelineCursors())
-                _cursorXs.Add(now.WaitingForGo ? (View.ScreenXOfGo(now.At.Block + 1), true) : (View.ScreenXOf(now.At), false));
+            {
+                var x = now.WaitingForGo ? View.ScreenXOfGo(now.At.Block + 1) : View.ScreenXOf(now.At);
+                _cursorXs.Add((x, now.WaitingForGo));
+                var at = now.WaitingForGo ? new TimelinePoint(now.At.Block + 1, -1) : now.At;
+                if (leadAt is not TimelinePoint best || at.Block > best.Block || at.Block == best.Block && at.Time > best.Time)
+                {
+                    leadAt = at;
+                    lead = x;
+                }
+            }
         NowLine.Set(_cursorXs);
+        _showRunning = _cursorXs.Exists(c => !c.Waiting);
+        if (lead is double leadX) FollowCursor(leadX);
+    }
+
+    private bool _following;
+    private bool _showRunning; // a green cursor is on the timeline
+
+    /// <summary>"Segui il playhead": when the show's cursor leaves the view, the timeline moves on with it.</summary>
+    private void FollowCursor(double x)
+    {
+        if (_following || Follow.IsChecked != true) return;
+        var left = Controls.TimelineView.GutterWidth;
+        var right = left + View.ViewportWidth;
+        if (x >= left && x <= right - 8) return;
+        _following = true;
+        try { View.HorizontalOffset += x - (left + View.ViewportWidth * 0.15); }
+        finally { _following = false; }
     }
 
     private void UpdateScrollBars()
