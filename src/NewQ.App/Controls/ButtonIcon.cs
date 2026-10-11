@@ -17,6 +17,13 @@ public static class ButtonIcon
     public static readonly DependencyProperty BrushProperty = DependencyProperty.RegisterAttached(
         "Brush", typeof(Brush), typeof(ButtonIcon), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>A drawn icon (16 × 16, stroked) for symbols the icon font lacks, e.g. the fade-out ramp.</summary>
+    public static readonly DependencyProperty ShapeProperty = DependencyProperty.RegisterAttached(
+        "Shape", typeof(Geometry), typeof(ButtonIcon), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public static Geometry? GetShape(DependencyObject d) => (Geometry?)d.GetValue(ShapeProperty);
+    public static void SetShape(DependencyObject d, Geometry? value) => d.SetValue(ShapeProperty, value);
+
     public static string? GetGlyph(DependencyObject d) => (string?)d.GetValue(GlyphProperty);
     public static void SetGlyph(DependencyObject d, string? value) => d.SetValue(GlyphProperty, value);
 

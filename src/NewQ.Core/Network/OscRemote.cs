@@ -70,8 +70,8 @@ public static class RemoteCommandRouter
         switch (address.ToLowerInvariant())
         {
             case "/go": return engine.Go() ? "GO" : "GO ignorato";
-            case "/stop": engine.StopAll(TimeSpan.Zero); return "Stop tutto";
-            case "/panic": engine.Panic(); return "Panic";
+            case "/stop": engine.StopAll(TimeSpan.Zero); return "E-STOP";
+            case "/panic": engine.Panic(); return "Stop";
             case "/pause": engine.PauseAll(); return "Pausa";
             case "/resume": engine.ResumeAll(); return "Riprendi";
             case "/playhead/next": engine.MovePlayhead(1); return "Playhead avanti";

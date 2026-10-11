@@ -58,13 +58,23 @@
                     </UniformGrid>
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Comandi compatibili QLab: /go, /stop, /panic, /pause, /resume, /playhead/next, /playhead/previous, /cue/{numero}/start, /cue/{numero}/stop." />
-
-                    <TextBlock Text="WORKSPACE CORRENTE" Style="{StaticResource SectionHeader}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <!-- Saved with the workspace (show), not with the machine. -->
+            <TabItem Header="Controllo">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,16,24,24" HorizontalAlignment="Left" Width="560">
+                    <TextBlock Text="TEMPI DI FADE" Style="{StaticResource SectionHeaderFirst}" />
                     <UniformGrid Columns="2">
-                        <TextBox x:Name="PanicFadeBox" ui:ControlHelper.Header="Fade del Panic (s)" />
-                        <TextBox x:Name="LockoutBox" ui:ControlHelper.Header="Blocco doppio GO (ms)" />
+                        <TextBox x:Name="PanicFadeBox" ui:ControlHelper.Header="Stop (s)" />
                         <TextBox x:Name="CueFadeBox" ui:ControlHelper.Header="Fade cue (s)" />
                     </UniformGrid>
+                    <TextBlock Text="GO" Style="{StaticResource SectionHeader}" />
+                    <UniformGrid Columns="2">
+                        <TextBox x:Name="LockoutBox" ui:ControlHelper.Header="Blocco doppio GO (ms)" />
+                    </UniformGrid>
+                    <TextBlock Style="{StaticResource Hint}" Text="Salvati nel workspace." />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

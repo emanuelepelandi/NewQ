@@ -288,8 +288,8 @@
                 <MenuItem Header="Avvia cue selezionata" InputGestureText="{Binding ShortcutText[FireSelected]}" Command="{Binding FireSelectedCommand}" />
                 <MenuItem Header="Pausa / Riprendi" InputGestureText="{Binding ShortcutText[PauseResume]}" Command="{Binding TogglePauseCommand}" />
                 <MenuItem Header="Fade out della cue selezionata" InputGestureText="{Binding ShortcutText[FadeSelected]}" Command="{Binding FadeSelectedCommand}" />
-                <MenuItem Header="Stop tutto" InputGestureText="{Binding ShortcutText[StopAll]}" Command="{Binding StopAllCommand}" />
-                <MenuItem Header="Panic" InputGestureText="{Binding ShortcutText[Panic]}" Command="{Binding PanicCommand}" />
+                <MenuItem Header="Stop" InputGestureText="{Binding ShortcutText[Panic]}" Command="{Binding PanicCommand}" />
+                <MenuItem Header="E-STOP" InputGestureText="{Binding ShortcutText[StopAll]}" Command="{Binding StopAllCommand}" />
             </MenuItem>
             <MenuItem Header="_Visualizza">
                 <MenuItem Header="Mostra / comprimi Proprietà cue" Command="{Binding ToggleInspectorCommand}"
@@ -327,11 +327,11 @@
                 <MenuItem Header="Show Check…" InputGestureText="{Binding ShortcutText[ShowCheck]}" Command="{Binding ShowCheckCommand}" />
                 <Separator />
                 <MenuItem Header="Impostazioni…" Click="OnSettingsClick" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Route audio…" Click="OnSetupTabClick" Tag="1" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Route video…" Click="OnSetupTabClick" Tag="2" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Test tone e rumore rosa…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Scorciatoie da tastiera…" Click="OnSetupTabClick" Tag="5" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Route audio…" Click="OnSetupTabClick" Tag="2" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Route video…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
+                <!-- <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Test tone e rumore rosa…" Click="OnSetupTabClick" Tag="5" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Scorciatoie da tastiera…" Click="OnSetupTabClick" Tag="6" IsEnabled="{Binding CanEdit}" /> -->
                 <MenuItem Header="Aggiorna dispositivi" Command="{Binding RefreshDevicesCommand}" />
                 <MenuItem Header="Chiudi uscite video" Command="{Binding CloseOutputsCommand}" />
             </MenuItem>
@@ -458,15 +458,15 @@
                     </Button.Style>
                 </Button>
                 <Button Content="Fade cue" Command="{Binding FadeSelectedCommand}" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
-                        ctl:ButtonIcon.Glyph="{StaticResource IconFade}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
+                        ctl:ButtonIcon.Shape="{StaticResource IconFadeOutShape}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
                         ToolTip="{Binding ShortcutHint[FadeSelected], Converter={StaticResource Format}, ConverterParameter='Fade out della cue selezionata ({0})'}" />
-                <Button Content="Stop tutto" Command="{Binding StopAllCommand}" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
+                <Button Content="Stop" Command="{Binding PanicCommand}" AutomationProperties.AutomationId="TransportStop" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
                         ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
-                        ToolTip="{Binding ShortcutHint[StopAll], Converter={StaticResource Format}, ConverterParameter='Ferma subito tutte le cue ({0})'}" />
-                <Button Content="Panic" Command="{Binding PanicCommand}" Style="{StaticResource TransportButton}"
-                        BorderBrush="{StaticResource WarningBrush}"
-                        ctl:ButtonIcon.Glyph="{StaticResource IconWarning}" ctl:ButtonIcon.Brush="{StaticResource WarningBrush}"
-                        ToolTip="{Binding ShortcutHint[Panic], Converter={StaticResource Format}, ConverterParameter='Fade out di tutto · due volte = stop ({0})'}" />
+                        ToolTip="{Binding ShortcutHint[Panic], Converter={StaticResource Format}, ConverterParameter='Fade out di tutto · due volte = immediato ({0})'}" />
+                <Button Content="E-STOP" Command="{Binding StopAllCommand}" AutomationProperties.AutomationId="TransportEStop" Style="{StaticResource TransportButton}"
+                        BorderBrush="{StaticResource ErrorBrush}"
+                        ctl:ButtonIcon.Glyph="{StaticResource IconWarning}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
+                        ToolTip="{Binding ShortcutHint[StopAll], Converter={StaticResource Format}, ConverterParameter='Ferma subito tutto ({0})'}" />
             </StackPanel>
         </Grid>
         </Border>
@@ -814,7 +814,7 @@
                                                 </Button.Style>
                                             </Button>
                                             <Button Grid.Column="7" Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0" Margin="0,0,4,0"
-                                                    ctl:ButtonIcon.Glyph="{StaticResource IconFade}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
+                                                    ctl:ButtonIcon.Shape="{StaticResource IconFadeOutShape}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
                                                     ToolTip="Fade out"
                                                     Command="{Binding DataContext.FadeCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}" />

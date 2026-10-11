@@ -228,7 +228,7 @@ public partial class MainWindow : Window
     private void OnSetupTabClick(object sender, RoutedEventArgs e)
         => OpenSettings(int.Parse((string)((FrameworkElement)sender).Tag, System.Globalization.CultureInfo.InvariantCulture));
 
-    /// <summary>Opens the settings on a tab: 0 general, 1 audio routes, 2 video routes, 3 video tests, 4 audio tests.</summary>
+    /// <summary>Opens the settings on a tab: 0 general, 1 control, 2 audio routes, 3 video routes, 4 video tests, 5 audio tests, 6 shortcuts.</summary>
     public void OpenSettings(int tab)
     {
         if (!ViewModel.CanEdit) return; // Safe mode: no device or route changes during the show

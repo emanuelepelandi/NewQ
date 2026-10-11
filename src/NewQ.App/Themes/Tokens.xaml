@@ -121,6 +121,8 @@
     <sys:String x:Key="IconNetwork">&#xE968;</sys:String>
     <sys:String x:Key="IconWait">&#xE916;</sys:String>
     <sys:String x:Key="IconFade">&#xE9E9;</sys:String>
+    <!-- Fade out (Fade cue, per-cue fade): level, ramp down, silence. Drawn: the icon font has no ramp. -->
+    <StreamGeometry x:Key="IconFadeOutShape">M1,3.5 L5,3.5 L12,13 L15,13</StreamGeometry>
     <sys:String x:Key="IconStop">&#xE71A;</sys:String>
     <sys:String x:Key="IconPlay">&#xE768;</sys:String>
     <sys:String x:Key="IconPause">&#xE769;</sys:String>

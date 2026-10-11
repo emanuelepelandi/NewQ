@@ -7,7 +7,7 @@
     Scenario "go-overlap" (the default and, for now, the only one):
       - a generated workspace of Rounds x GosPerRound video cues, alternating the given videos, on the preview window;
       - for each round: GosPerRound GOs IntervalMs apart (videos pile up, one timeline cursor each), then Fade cue on
-        the newest running cue, then Panic twice (immediate stop); in round 1 also Pause / Resume with everything playing;
+        the newest running cue, then Stop twice (immediate); in round 1 also Pause / Resume with everything playing;
       - 6 s idle at the end.
     Measured: GO command latency, real audio output after each GO, process memory / handles / threads / GDI / USER /
     CPU per round, UI-thread lag, GC, timeline build and render times (NEWQ_DEBUG log), what is left at the end.
@@ -88,7 +88,9 @@ try {
         }
     }
 
-    $go = Find 'GO'; $panic = Find 'Panic'; $pause = Find 'Pausa'; $fade = Find 'Fade cue'
+    function FindId($id) { $main.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty, $id))) }
+    $go = Find 'GO'; $pause = Find 'Pausa'; $fade = Find 'Fade cue'
+    $panic = FindId 'TransportStop'   # "Stop": fade out of everything, twice = immediate (was Panic)
     Press (Find 'Adatta')
     $totalSeconds = 30 + $Rounds * ($GosPerRound * $IntervalMs / 1000 + 4)
     $levels = Join-Path $work 'levels.txt'

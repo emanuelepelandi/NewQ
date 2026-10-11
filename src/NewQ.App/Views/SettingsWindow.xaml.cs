@@ -90,7 +90,7 @@ public partial class SettingsWindow : Window
             Result.OscInputPort = Math.Clamp(ParseInt(OscPortBox, "Porta OSC"), 1, 65535);
 
             // Parse both before touching the (live) workspace settings.
-            var panicFade = ParseDouble(PanicFadeBox, "Fade del Panic");
+            var panicFade = ParseDouble(PanicFadeBox, "Fade dello Stop");
             var lockout = ParseInt(LockoutBox, "Blocco doppio GO");
             var cueFade = ParseDouble(CueFadeBox, "Fade cue");
             Result.Shortcuts = ShortcutsPage.Map.ToSettings();

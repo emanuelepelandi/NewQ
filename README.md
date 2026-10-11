@@ -31,7 +31,7 @@ I workspace salvati con le versioni precedenti si convertono all'apertura: ogni 
 
 **Modalità Safe** (Strumenti → Safe, Ctrl+Maiusc+L): da usare durante lo spettacolo.
 - **Bloccato**: creazione, eliminazione, spostamento e modifica delle cue, trascinamento di file, Nuovo/Apri, Impostazioni, "Chiudi uscite video" e "Aggiorna dispositivi".
-- **Sempre attivo**: GO, Stop, Panic, Pausa e timeline, spostamento del playhead, Show Check e salvataggio.
+- **Sempre attivo**: GO, Stop, E-STOP, Pausa e timeline, spostamento del playhead, Show Check e salvataggio.
 - Chiudere NewQ con Safe attivo richiede una conferma.
 
 **Pausa e timeline**: ogni cue in esecuzione si può mettere in pausa da sola. In pausa, la barra di avanzamento di audio e video diventa trascinabile.
@@ -46,7 +46,7 @@ I workspace salvati con le versioni precedenti si convertono all'apertura: ogni 
 Un doppio clic su un problema seleziona la cue interessata.
 
 **Controllo remoto OSC** (UDP, porta 53000 di default), con indirizzi compatibili QLab:
-`/go`, `/stop`, `/panic`, `/pause`, `/resume`, `/playhead/next`, `/playhead/previous`, `/cue/{n}/start`, `/cue/{n}/stop`, `/cue/{n}/select` (accettato anche il prefisso `/newq`).
+`/go`, `/stop` (E-STOP), `/panic` (Stop), `/pause`, `/resume`, `/playhead/next`, `/playhead/previous`, `/cue/{n}/start`, `/cue/{n}/stop`, `/cue/{n}/select` (accettato anche il prefisso `/newq`).
 
 ### Route, test e configurazione delle uscite
 
@@ -65,24 +65,24 @@ Le cue non scelgono più un monitor o una scheda audio: scelgono una **route**. 
 
 **Test audio**: **tono sinusoidale** (20 Hz–20 kHz, preset rapidi), **rumore rosa**, **rumore bianco** e **sweep logaritmico** (da/a/durata), livello in dBFS (−20 di default, avviso sopra −10), su entrambi i canali, uno solo o **alternati** ogni secondo per verificare il cablaggio. Le modifiche valgono subito sui test in corso; ogni route mostra il proprio meter.
 
-I test non sopravvivono mai allo spettacolo: **Panic**, l'attivazione di **Safe** e la chiusura della finestra li spengono tutti. Lo **Show Check** segnala route audio su schede non collegate o canali inesistenti, route mute, route video senza uscite o su schermi non collegati, nomi duplicati e cue che puntano a route rimosse.
+I test non sopravvivono mai allo spettacolo: **Stop**, l'attivazione di **Safe** e la chiusura della finestra li spengono tutti. Lo **Show Check** segnala route audio su schede non collegate o canali inesistenti, route mute, route video senza uscite o su schermi non collegati, nomi duplicati e cue che puntano a route rimosse.
 
-**Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Generale → Fade cue*. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade. Una cue che sta sfumando verso lo stop diventa arancione nella timeline.
+**Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Controllo*, dove si imposta anche il fade dello **Stop** (fade out di tutto). **E-STOP** ferma subito tutto, senza fade. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade. Una cue che sta sfumando verso lo stop diventa arancione nella timeline.
 
 **Timeline** (Visualizza → Timeline, Ctrl+T): sotto la lista, a tutta larghezza, lo show previsto GO per GO. Ogni GO apre un blocco con le cue che lancia (pre-wait, follow, link); ogni blocco è preceduto da un varco tratteggiato con l'etichetta **GO n** (verde pieno: il prossimo GO; verde tenue: i successivi; grigio: quelli già passati, sempre rispetto al playhead): lì l'operatore preme GO, e il tempo di attesa non è contato. Ogni cue è una barra la cui forma è il suo livello nel tempo: fade in, fade out, cue Fade che la abbassano, Stop che la chiudono. Le cue senza fine (loop, live, immagini fisse) proseguono tratteggiate nei blocchi successivi finché qualcosa non le ferma. Video e immagini mostrano il primo fotogramma; la durata dei video viene letta dal file. Corsie per route o per tipo di cue; zoom (Ctrl+rotella), "Adatta", "Segui il playhead"; durante lo show c'è un cursore verde per ogni GO in corso, che segue quello che succede davvero nel suo blocco (tempo reale di riproduzione, pause e scorrimenti inclusi): uno show tutto in follow ha un solo cursore, più GO che si sovrappongono ne hanno uno ciascuno. Finito l'ultimo GO, un cursore arancio aspetta nel varco del prossimo. Un clic su una cue la seleziona. Le anteprime si generano in background e mai mentre lo show è in riproduzione; una lettura incompleta viene ritentata da sola, e **Ricalcola** rilegge tutti i file e ricostruisce la timeline.
 
 **Visualizza**: il pannello *Proprietà cue* si nasconde a destra (freccia nell'intestazione, Ctrl+I) per dare spazio alla lista e si riapre dal menu o con un clic destro su una cue; in modalità Safe si nasconde da solo. Anche il pannello *In esecuzione e Log* si può nascondere. *Colonne della lista* sceglie quali proprietà mostrare: destinazione, route video e audio, volume, opacità (per le cue Fade: il valore finale dato al target), layer, pre/post-wait, durata, fade in/out, loop, follow, link, armata, note, stato. Le cue senza quella proprietà lasciano la cella vuota. Scelte e larghezza del pannello sono salvate per macchina.
 
-**Scorciatoie da tastiera** (Strumenti → Scorciatoie da tastiera): ogni comando si può riassegnare o lasciare senza tasto; un tasto appartiene a una sola funzione. Mentre si scrive in un campo funzionano solo le combinazioni con Ctrl/Alt e il Panic. Le scorciatoie sono salvate per macchina e i menu mostrano sempre quelle attuali.
+**Scorciatoie da tastiera** (Strumenti → Scorciatoie da tastiera): ogni comando si può riassegnare o lasciare senza tasto; un tasto appartiene a una sola funzione. Mentre si scrive in un campo funzionano solo le combinazioni con Ctrl/Alt e lo Stop. Le scorciatoie sono salvate per macchina e i menu mostrano sempre quelle attuali.
 
 ### Comandi da tastiera (predefiniti)
 
 | Tasto | Azione |
 |---|---|
 | Spazio | GO |
-| Esc | PANIC (fade out di tutto; premuto di nuovo entro 1,5 s = stop immediato) |
+| Esc | Stop (fade out di tutto; premuto di nuovo entro 1,5 s = immediato) |
 | F | Fade out della cue selezionata |
-| S | Stop tutto |
+| S | E-STOP (ferma subito tutto) |
 | P | Pausa / Riprendi |
 | Ctrl+Invio | Avvia la cue selezionata senza spostare il playhead |
 | Ctrl+↑ / Ctrl+↓ | Sposta la cue |

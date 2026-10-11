@@ -97,6 +97,10 @@
             <StackPanel Orientation="Horizontal" Margin="{TemplateBinding Padding}"
                         HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+                <Path x:Name="Shape" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="None"
+                      StrokeThickness="1.9" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Data="{Binding (ctl:ButtonIcon.Shape), RelativeSource={RelativeSource TemplatedParent}}"
+                      Stroke="{Binding (ctl:ButtonIcon.Brush), RelativeSource={RelativeSource TemplatedParent}}" />
                 <TextBlock x:Name="Glyph" Style="{StaticResource Icon}" Margin="0,0,8,0"
                            Text="{Binding (ctl:ButtonIcon.Glyph), RelativeSource={RelativeSource TemplatedParent}}"
                            Foreground="{Binding (ctl:ButtonIcon.Brush), RelativeSource={RelativeSource TemplatedParent}}" />
@@ -109,8 +113,13 @@
             <Trigger Property="ctl:ButtonIcon.Glyph" Value="{x:Null}">
                 <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed" />
             </Trigger>
+            <Trigger Property="ctl:ButtonIcon.Shape" Value="{x:Null}">
+                <Setter TargetName="Shape" Property="Visibility" Value="Collapsed" />
+            </Trigger>
             <Trigger Property="ctl:ButtonIcon.Brush" Value="{x:Null}">
                 <Setter TargetName="Glyph" Property="Foreground"
+                        Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
+                <Setter TargetName="Shape" Property="Stroke"
                         Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
             </Trigger>
             <Trigger Property="Content" Value="{x:Null}">
