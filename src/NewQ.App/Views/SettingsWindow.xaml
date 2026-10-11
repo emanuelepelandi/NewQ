@@ -62,9 +62,11 @@
                     <TextBlock Text="CONTROLLO WEB" Style="{StaticResource SectionHeader}" />
                     <UniformGrid Columns="2">
                         <CheckBox x:Name="WebEnabledBox" Content="Pagina di controllo in rete" VerticalAlignment="Bottom" />
-                        <TextBox x:Name="WebPortBox" ui:ControlHelper.Header="Porta HTTP" />
+                        <TextBox x:Name="WebPortBox" ui:ControlHelper.Header="Porta HTTP" TextChanged="OnWebPortChanged" />
+                        <TextBox x:Name="WebPasswordBox" ui:ControlHelper.Header="Password (vuota = libera)" />
                     </UniformGrid>
-                    <TextBlock Style="{StaticResource Hint}" Text="Chiunque sulla rete locale può comandare lo show." />
+                    <TextBox x:Name="WebAddressBox" ui:ControlHelper.Header="Indirizzo da aprire sul telefono o tablet"
+                             IsReadOnly="True" TextWrapping="Wrap" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

@@ -170,6 +170,7 @@ async function loadTimeline() {
   loading = true;
   try {
     const r = await fetch("/api/timeline", { cache: "no-store" });
+    if (r.status === 401) { location.reload(); return; } // password changed or NewQ restarted: sign in again
     timeline = await r.json();
     layout();
     if (autoFit) fit();
@@ -181,7 +182,10 @@ async function loadTimeline() {
 function connect() {
   const events = new EventSource("/api/events");
   events.onopen = () => { document.body.classList.remove("offline"); document.getElementById("dot").classList.add("on"); };
-  events.onerror = () => { document.body.classList.add("offline"); document.getElementById("dot").classList.remove("on"); };
+  events.onerror = () => {
+    document.body.classList.add("offline"); document.getElementById("dot").classList.remove("on");
+    fetch("/api/timeline", { cache: "no-store" }).then(r => { if (r.status === 401) location.reload(); }).catch(() => {});
+  };
   events.onmessage = e => {
     state = JSON.parse(e.data);
     if (!timeline || timeline.rev !== state.rev) loadTimeline();
@@ -210,7 +214,10 @@ function showState() {
 // ---------------------------------------------------------------- commands
 async function send(cmd, button) {
   if (button) { button.classList.add("sent"); setTimeout(() => button.classList.remove("sent"), 160); }
-  try { await fetch("/api/cmd/" + cmd, { method: "POST" }); } catch (e) { /* shown by the offline state */ }
+  try {
+    const r = await fetch("/api/cmd/" + cmd, { method: "POST" });
+    if (r.status === 401) location.reload();
+  } catch (e) { /* shown by the offline state */ }
 }
 document.querySelectorAll("[data-cmd]").forEach(b => b.addEventListener("click", () => send(b.dataset.cmd, b)));
 document.addEventListener("keydown", e => {

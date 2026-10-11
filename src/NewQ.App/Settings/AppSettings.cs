@@ -41,6 +41,9 @@ public sealed class AppSettings
     public bool WebRemoteEnabled { get; set; }
     public int WebRemotePort { get; set; } = 8080;
 
+    /// <summary>Password of the web remote; empty = open to anyone on the network. Kept in this file, readable.</summary>
+    public string WebRemotePassword { get; set; } = "";
+
     public string? LastWorkspace { get; set; }
 
     /// <summary>Keyboard shortcuts that differ from the defaults: action name → gesture ("" = none).</summary>

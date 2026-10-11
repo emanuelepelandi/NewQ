@@ -37,6 +37,7 @@
     <Resource Include="Assets\NewQ.ico" />
     <!-- The web remote's page, served by the app itself (Remote/WebRemoteServer.cs). -->
     <EmbeddedResource Include="Remote\remote.html" LogicalName="NewQ.App.Remote.remote.html" />
+    <EmbeddedResource Include="Remote\remote-login.html" LogicalName="NewQ.App.Remote.remote-login.html" />
   </ItemGroup>
 
   <!-- libVLC's DirectShow input (Live cues), missing from the NuGet package: see ThirdParty/libvlc/README.md. -->

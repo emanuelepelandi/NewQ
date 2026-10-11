@@ -50,7 +50,8 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
             ["up"] = () => vm.PlayheadUpCommand,
             ["down"] = () => vm.PlayheadDownCommand,
         };
-        Page = LoadPage();
+        Page = LoadPage("remote.html");
+        LoginPage = LoadPage("remote-login.html");
         Refresh();
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) =>
         {
@@ -63,6 +64,7 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
     public void AttachClients(Func<int> clients) => _clients = clients;
 
     public string Page { get; }
+    public string LoginPage { get; }
     public string TimelineJson => Volatile.Read(ref _timelineJson);
     public string StateJson => Volatile.Read(ref _stateJson);
 
@@ -90,9 +92,9 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
         _ => "Playhead giù",
     };
 
-    private static string LoadPage()
+    private static string LoadPage(string name)
     {
-        using var stream = typeof(WebRemoteHost).Assembly.GetManifestResourceStream("NewQ.App.Remote.remote.html");
+        using var stream = typeof(WebRemoteHost).Assembly.GetManifestResourceStream("NewQ.App.Remote." + name);
         if (stream is null) return "<!doctype html><title>NewQ</title><p>Pagina non trovata.</p>";
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return reader.ReadToEnd();

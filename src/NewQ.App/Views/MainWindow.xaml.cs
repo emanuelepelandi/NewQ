@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -224,6 +225,14 @@ public partial class MainWindow : Window
     }
 
     private void OnSettingsClick(object sender, RoutedEventArgs e) => OpenSettings(0);
+
+    /// <summary>Status bar: a click copies the web remote's address (to send it to a phone).</summary>
+    private void OnWebAddressClick(object sender, MouseButtonEventArgs e)
+    {
+        if (ViewModel.WebAddresses.FirstOrDefault() is not string address) return;
+        try { Clipboard.SetText(address); ViewModel.ReportStatus($"Indirizzo copiato: {address}"); }
+        catch { /* clipboard busy */ }
+    }
 
     private void OnSetupTabClick(object sender, RoutedEventArgs e)
         => OpenSettings(int.Parse((string)((FrameworkElement)sender).Tag, System.Globalization.CultureInfo.InvariantCulture));

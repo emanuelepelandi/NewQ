@@ -546,7 +546,8 @@
                             </Style>
                         </Ellipse.Style>
                     </Ellipse>
-                    <TextBlock Text="{Binding WebStatus}" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding WebStatus}" Foreground="{StaticResource TextSecondaryBrush}" Cursor="Hand"
+                               ToolTip="{Binding WebAddressesText}" MouseLeftButtonUp="OnWebAddressClick" />
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0">
                     <Ellipse>

@@ -56,6 +56,7 @@ public partial class SettingsWindow : Window
         OscPortBox.Text = settings.OscInputPort.ToString(CultureInfo.CurrentCulture);
         WebEnabledBox.IsChecked = settings.WebRemoteEnabled;
         WebPortBox.Text = settings.WebRemotePort.ToString(CultureInfo.CurrentCulture);
+        WebPasswordBox.Text = settings.WebRemotePassword;
 
         PanicFadeBox.Text = workspaceSettings.PanicFadeSeconds.ToString(CultureInfo.CurrentCulture);
         LockoutBox.Text = workspaceSettings.GoLockoutMs.ToString(CultureInfo.CurrentCulture);
@@ -67,6 +68,15 @@ public partial class SettingsWindow : Window
     public AppSettings Result { get; }
 
     private void OnDriverChanged(object sender, SelectionChangedEventArgs e) => UpdatePanels();
+
+    /// <summary>The addresses of this PC with the port being typed (where phones and tablets open the page).</summary>
+    private void OnWebPortChanged(object sender, TextChangedEventArgs e)
+    {
+        if (WebAddressBox is null) return; // still loading
+        var port = int.TryParse(WebPortBox.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var p) && p is > 0 and < 65536 ? p : 8080;
+        var addresses = Remote.WebRemoteServer.AddressesFor(port);
+        WebAddressBox.Text = addresses.Length > 0 ? string.Join("   ", addresses) : "Nessuna rete collegata";
+    }
 
     private void UpdatePanels()
     {
@@ -92,6 +102,7 @@ public partial class SettingsWindow : Window
             Result.OscInputPort = Math.Clamp(ParseInt(OscPortBox, "Porta OSC"), 1, 65535);
             Result.WebRemoteEnabled = WebEnabledBox.IsChecked == true;
             Result.WebRemotePort = Math.Clamp(ParseInt(WebPortBox, "Porta HTTP"), 1, 65535);
+            Result.WebRemotePassword = WebPasswordBox.Text.Trim();
 
             // Parse both before touching the (live) workspace settings.
             var panicFade = ParseDouble(PanicFadeBox, "Fade dello Stop");

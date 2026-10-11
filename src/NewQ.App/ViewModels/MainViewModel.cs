@@ -218,7 +218,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     /// <summary>The web remote is serving its page (status bar light).</summary>
     public bool IsWebRemoteOn => _webServer is not null;
     public string WebStatus => _webServer is null ? "Web: off"
-        : "Web: " + (_webServer.Addresses().FirstOrDefault() ?? $"porta {_webServer.Port}");
+        : "Web: " + (WebAddresses.FirstOrDefault() ?? $"porta {_webServer.Port}") + (_webServer.HasPassword ? " · password" : "");
+
+    /// <summary>Where phones and tablets open the web remote (one per network of this PC).</summary>
+    public IReadOnlyList<string> WebAddresses => _webServer?.Addresses() ?? Array.Empty<string>();
+
+    /// <summary>Tooltip of the status bar: every address, or how to turn the page on.</summary>
+    public string WebAddressesText => _webServer is null
+        ? "Impostazioni → Generale → Controllo web"
+        : string.Join("\n", WebAddresses.DefaultIfEmpty($"Nessuna rete: porta {_webServer.Port}")) + "\nClic: copia l'indirizzo";
     public bool IsPaused => Engine.IsPaused;
 
     public IReadOnlyList<string> MidiDevices { get => _midiDevices; private set => SetField(ref _midiDevices, value); }
@@ -1298,7 +1306,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             try
             {
                 _webHost ??= new NewQ.App.Remote.WebRemoteHost(this, _dispatcher, message => AddLog(EngineLogLevel.Info, message));
-                _webServer = new NewQ.App.Remote.WebRemoteServer(_settings.WebRemotePort, _webHost);
+                _webServer = new NewQ.App.Remote.WebRemoteServer(_settings.WebRemotePort, _webHost, _settings.WebRemotePassword);
                 var server = _webServer;
                 _webHost.AttachClients(() => server.Clients);
                 AddLog(EngineLogLevel.Info, "Controllo web: " + string.Join("  ", server.Addresses().DefaultIfEmpty($"porta {server.Port}")));
@@ -1310,6 +1318,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
         }
         OnPropertyChanged(nameof(WebStatus));
+        OnPropertyChanged(nameof(WebAddressesText));
         OnPropertyChanged(nameof(IsWebRemoteOn));
     }
 
@@ -1333,6 +1342,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         while (Log.Count > 500) Log.RemoveAt(Log.Count - 1);
         StatusText = message;
     }
+
+    /// <summary>A message in the status bar only (not in the log).</summary>
+    public void ReportStatus(string message) => StatusText = message;
 
     public void ReportUnhandled(Exception ex) => AddLog(EngineLogLevel.Error, $"Errore imprevisto: {ex.Message}");
 
