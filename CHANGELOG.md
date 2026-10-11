@@ -93,3 +93,9 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 ---
 
 ## Modifiche
+
+### 2026-10-11 - Password e indirizzo del controllo web (commit `e7608bf`)
+- **Aggiunto**: password della pagina web in *Impostazioni → Generale → Controllo web*; vuota = pagina libera. Con la password la pagina chiede l'accesso e il browser resta autenticato finché la password non cambia o NewQ non si riavvia; dopo 5 password sbagliate in un minuto il dispositivo aspetta 30 secondi.
+- **Aggiunto**: l'indirizzo da aprire sul telefono o tablet compare nelle impostazioni (si aggiorna con la porta) e nella barra di stato, con tutti gli indirizzi nel tooltip; un clic lo copia.
+- **Corretto**: i client che inviano `Expect: 100-continue` non aspettano più ~350 ms a ogni comando.
+
