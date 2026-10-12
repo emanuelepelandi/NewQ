@@ -59,6 +59,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _dispatcher = dispatcher;
         _settings = AppSettings.Load();
+        CueColors.Apply(_settings.CueColors);
         _shortcuts = ShortcutMap.FromSettings(_settings.Shortcuts);
         Columns = new CueColumns(_settings.CueColumns);
         Columns.Changed += () => { _settings.CueColumns = Columns.Visible; TrySaveSettings(); };
@@ -1150,8 +1151,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     // One cursor per GO still going on (the engine's groups: a GO with everything its follows and links fire). Each
     // is anchored where its first cue sits in the timeline; the position comes from the real playback time of the
     // newest cue of the group that is playing (pause and scrubbing included), otherwise from a clock that stops while
-    // the group is paused. A cursor ends with its block. When the latest GO is over, an amber cursor waits in the gap
-    // of the next GO.
+    // the group is paused. A cursor ends with its block. When the latest GO is over, a cursor waits in the gap of the
+    // next GO. The cursors are not drawn: they drive "Segui il playhead"; the bars show TimelineProgress.
 
     private sealed class GoCursor
     {
@@ -1160,6 +1161,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         public TimeSpan AnchorTime;     // engine time of that fire
         public TimeSpan PausedTotal;    // time spent paused since then
         public bool Over;               // reached the end of its block (open-ended cues may still run)
+        public double Position;         // last position in the block
     }
 
     private readonly Dictionary<int, GoCursor> _cursors = new();
@@ -1229,6 +1231,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 cursor.Over = true;
                 continue;
             }
+            cursor.Position = Math.Max(0, position);
             _cursorList.Add(new TimelineNow(new TimelinePoint(cursor.Block, Math.Max(0, position)), WaitingForGo: false));
         }
 
@@ -1240,6 +1243,43 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         return _cursorList;
     }
+
+    private readonly List<TimelineProgress> _progressList = new();
+
+    /// <summary>
+    /// How far each running cue is along its bar (call after <see cref="TimelineCursors"/>, which it reads). A cue is
+    /// at its own playback time in the block of its GO, up to the end of that block. If its bar goes on into later
+    /// blocks, once one of those GOs has gone it is where that GO is. Never before its start or past its end.
+    /// </summary>
+    public IReadOnlyList<TimelineProgress> CueProgress()
+    {
+        _progressList.Clear();
+        foreach (var rc in Engine.Running)
+        {
+            if (rc.IsFinished || rc.IsInPreWait || rc.Handle is null) continue;
+            var item = _cursors.TryGetValue(rc.Group, out var own) ? Timeline.ItemOf(rc.Cue, own.Block) : null;
+            item ??= TimelineItemOf(rc.Cue);
+            if (item is null || item.Kind == TimelineItemKind.Instant || item.Start.Block >= Timeline.Blocks.Count) continue;
+
+            var block = item.Start.Block;
+            var at = new TimelinePoint(block, Math.Min(item.Start.Time + Math.Max(0, rc.Cue.ElapsedSeconds), Timeline.Blocks[block].Length));
+            // The furthest later GO reached inside the bar: the cue is where that GO is (its end, once over).
+            var lastBlock = Math.Min(item.End?.Block ?? int.MaxValue, Math.Min(_latestGroupBlock, Timeline.Blocks.Count - 1));
+            if (lastBlock > block)
+            {
+                at = new TimelinePoint(lastBlock, Timeline.Blocks[lastBlock].Length);
+                foreach (var cursor in _cursors.Values)
+                    if (cursor.Block == lastBlock && !cursor.Over && cursor.Position < at.Time) at = new TimelinePoint(lastBlock, cursor.Position);
+            }
+
+            if (Before(at, item.Start)) at = item.Start;
+            if (item.End is TimelinePoint end && Before(end, at)) at = end;
+            _progressList.Add(new TimelineProgress(item, at));
+        }
+        return _progressList;
+    }
+
+    private static bool Before(TimelinePoint a, TimelinePoint b) => a.Block < b.Block || a.Block == b.Block && a.Time < b.Time;
 
     /// <summary>Where a fired cue is: the block it opens if it is a GO cue, otherwise its first placement.</summary>
     private TimelineItem? TimelineItemOf(Cue cue)
@@ -1344,6 +1384,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         Engine.StopAll(TimeSpan.Zero);
         _settings = settings;
+        CueColors.Apply(settings.CueColors);
         _shortcuts = ShortcutMap.FromSettings(settings.Shortcuts);
         ShortcutText.Update(_shortcuts);
         ShortcutHint.Update(_shortcuts);

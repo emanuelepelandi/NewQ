@@ -42,6 +42,7 @@ public partial class TimelinePanel : UserControl
         vm.PropertyChanged += OnViewModelChanged;
         vm.Thumbnails.Updated += View.Redraw;
         vm.TimelineStateChanged += View.Redraw; // fading cues turn amber
+        Infrastructure.CueColors.Changed += UpdateNow;
         Refresh();
         if (IsVisible) _nowTimer.Start();
     }
@@ -72,19 +73,24 @@ public partial class TimelinePanel : UserControl
         View.Update(_vm.Timeline, _vm.Workspace);
     }
 
-    private readonly List<(double X, bool Waiting)> _cursorXs = new();
+    private readonly List<(Rect Bar, double X)> _progress = new();
 
-    /// <summary>The cursors follow the show while cues run (only this thin layer is redrawn).</summary>
+    /// <summary>
+    /// The running cues' bars fill up as they play (only that thin layer is redrawn); the show's cursors, not drawn,
+    /// lead "Segui il playhead".
+    /// </summary>
     private void UpdateNow()
     {
-        _cursorXs.Clear();
         double? lead = null; // the cursor of the latest GO (furthest on), or the wait for the next GO
         TimelinePoint? leadAt = null;
+        var running = false;
+        _progress.Clear();
         if (_vm is not null)
+        {
             foreach (var now in _vm.TimelineCursors())
             {
                 var x = now.WaitingForGo ? View.ScreenXOfGo(now.At.Block + 1) : View.ScreenXOf(now.At);
-                _cursorXs.Add((x, now.WaitingForGo));
+                running |= !now.WaitingForGo;
                 var at = now.WaitingForGo ? new TimelinePoint(now.At.Block + 1, -1) : now.At;
                 if (leadAt is not TimelinePoint best || at.Block > best.Block || at.Block == best.Block && at.Time > best.Time)
                 {
@@ -92,8 +98,11 @@ public partial class TimelinePanel : UserControl
                     lead = x;
                 }
             }
-        NowLine.Set(_cursorXs);
-        _showRunning = _cursorXs.Exists(c => !c.Waiting);
+            foreach (var p in _vm.CueProgress())
+                if (View.TryGetScreenBounds(p.Item, out var bar)) _progress.Add((bar, View.ScreenXOf(p.At)));
+        }
+        ProgressLayer.Set(_progress);
+        _showRunning = running;
         if (lead is double leadX) FollowCursor(leadX);
     }
 

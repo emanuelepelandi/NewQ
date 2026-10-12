@@ -74,48 +74,17 @@ public sealed class NotEmptyToVisibilityConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
-/// <summary>Soft colour per cue type (TypeName), used for the type badges. Colours are design tokens (Cue*Color).</summary>
+/// <summary>Colour per cue type (TypeName), for the type badges: <see cref="CueColors"/> (Impostazioni → Grafica).</summary>
 public sealed class CueTypeBrushConverter : IValueConverter
 {
-    private static readonly Dictionary<string, string> TokenKeys = new()
-    {
-        ["Audio"] = "CueAudioColor",
-        ["Video"] = "CueVideoColor",
-        ["Immagine"] = "CueImageColor",
-        ["Cattura"] = "CueLiveColor",
-        ["MIDI"] = "CueMidiColor",
-        ["Rete"] = "CueNetworkColor",
-        ["Attesa"] = "CueWaitColor",
-        ["Fade"] = "CueFadeColor",
-        ["Stop"] = "CueStopColor",
-    };
-
-    private readonly Dictionary<string, System.Windows.Media.SolidColorBrush> _cache = new();
-
-    /// <summary>Colour of a cue type (design token), for code that draws by hand (timeline).</summary>
-    public static System.Windows.Media.Color ColorOf(string typeName)
-    {
-        var token = TokenKeys.TryGetValue(typeName, out var k) ? k : "CueWaitColor";
-        return System.Windows.Application.Current?.TryFindResource(token) is System.Windows.Media.Color c
-            ? c : System.Windows.Media.Color.FromRgb(0x9A, 0x9F, 0xA8);
-    }
+    /// <summary>Colour of a cue type, for code that draws by hand (timeline, web remote).</summary>
+    public static System.Windows.Media.Color ColorOf(string typeName) => CueColors.Of(typeName);
 
     /// <summary>255 = solid text colour; lower values give a translucent background tint.</summary>
     public byte Alpha { get; set; } = 255;
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        var key = value as string ?? "";
-        if (_cache.TryGetValue(key, out var brush)) return brush;
-        var token = TokenKeys.TryGetValue(key, out var k) ? k : "CueWaitColor";
-        var color = System.Windows.Application.Current?.TryFindResource(token) is System.Windows.Media.Color c
-            ? c : System.Windows.Media.Color.FromRgb(0x9A, 0x9F, 0xA8);
-        color.A = Alpha;
-        brush = new System.Windows.Media.SolidColorBrush(color);
-        brush.Freeze();
-        _cache[key] = brush;
-        return brush;
-    }
+        => CueColors.BrushOf(value as string ?? "", Alpha);
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }

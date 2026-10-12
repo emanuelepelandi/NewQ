@@ -330,11 +330,11 @@
                 <Separator />
                 <MenuItem Header="Cerca aggiornamenti…" Command="{Binding CheckUpdatesCommand}" IsEnabled="{Binding CanEdit}" />
                 <MenuItem Header="{Binding VersionText}" IsEnabled="False" />
-                <MenuItem Header="Route audio…" Click="OnSetupTabClick" Tag="2" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Route video…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
-                <!-- <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Test tone e rumore rosa…" Click="OnSetupTabClick" Tag="5" IsEnabled="{Binding CanEdit}" />
-                <MenuItem Header="Scorciatoie da tastiera…" Click="OnSetupTabClick" Tag="6" IsEnabled="{Binding CanEdit}" /> -->
+                <MenuItem Header="Route audio…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Route video…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />
+                <!-- <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="5" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Test tone e rumore rosa…" Click="OnSetupTabClick" Tag="6" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="Scorciatoie da tastiera…" Click="OnSetupTabClick" Tag="7" IsEnabled="{Binding CanEdit}" /> -->
                 <MenuItem Header="Aggiorna dispositivi" Command="{Binding RefreshDevicesCommand}" />
                 <MenuItem Header="Chiudi uscite video" Command="{Binding CloseOutputsCommand}" />
             </MenuItem>

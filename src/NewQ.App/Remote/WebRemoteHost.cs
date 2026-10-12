@@ -34,6 +34,7 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
     private object? _timelineKey;
     private int _revision;
     private TimelineLayout? _layout;
+    private readonly Dictionary<TimelineItem, int> _itemIndex = new();
 
     public WebRemoteHost(MainViewModel vm, Dispatcher dispatcher, Action<string> log)
     {
@@ -104,12 +105,14 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
 
     private void Refresh()
     {
-        var key = (_vm.Timeline, _vm.Settings.TimelineLanesByRoute, _vm.RoutesVersion, _vm.Workspace);
+        var key = (_vm.Timeline, _vm.Settings.TimelineLanesByRoute, _vm.RoutesVersion, _vm.Workspace, CueColors.Version);
         if (!Equals(key, _timelineKey))
         {
             _timelineKey = key;
             _revision++;
             _layout = TimelineLayout.Build(_vm.Timeline, _vm.Workspace, _vm.Settings.TimelineLanesByRoute);
+            _itemIndex.Clear();
+            for (var i = 0; i < _layout.Placements.Count; i++) _itemIndex.TryAdd(_layout.Placements[i].Item, i);
             Volatile.Write(ref _timelineJson, BuildTimeline(_vm.Timeline, _layout, _revision));
         }
         Volatile.Write(ref _stateJson, BuildState());
@@ -226,6 +229,18 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
                 w.WriteNumberValue(now.At.Block);
                 w.WriteNumberValue(Math.Round(now.At.Time, 3));
                 w.WriteBooleanValue(now.WaitingForGo);
+                w.WriteEndArray();
+            }
+            w.WriteEndArray();
+            // Running cues: [item index, block, time] where the green part of the bar ends.
+            w.WriteStartArray("progress");
+            foreach (var p in _vm.CueProgress())
+            {
+                if (!_itemIndex.TryGetValue(p.Item, out var index)) continue;
+                w.WriteStartArray();
+                w.WriteNumberValue(index);
+                w.WriteNumberValue(p.At.Block);
+                w.WriteNumberValue(Math.Round(p.At.Time, 3));
                 w.WriteEndArray();
             }
             w.WriteEndArray();

@@ -86,6 +86,9 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <TabItem Header="Grafica">
+                <setup:GraphicsPanel x:Name="GraphicsPage" />
+            </TabItem>
             <TabItem Header="Route audio">
                 <setup:AudioRoutesPanel x:Name="AudioRoutesPage" />
             </TabItem>

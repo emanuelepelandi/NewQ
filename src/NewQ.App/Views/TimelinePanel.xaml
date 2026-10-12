@@ -43,7 +43,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ctl:TimelineView x:Name="View" AutomationProperties.Name="Timeline dello show" />
-            <ctl:TimelineNowLine x:Name="NowLine" />
+            <ctl:TimelineProgressLayer x:Name="ProgressLayer" />
             <ScrollBar x:Name="VScroll" Grid.Column="1" Orientation="Vertical" Scroll="OnVScroll" />
             <ScrollBar x:Name="HScroll" Grid.Row="1" Orientation="Horizontal" Scroll="OnHScroll" />
         </Grid>

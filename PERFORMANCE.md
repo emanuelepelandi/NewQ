@@ -233,3 +233,26 @@ Istanza di prova con il controllo web attivo (porta 8090), workspace di 2 video 
 | Thread | inizio 71 - fine 55 |
 | Oggetti GDI / USER | inizio 37 / 67 - fine 37 / 66 |
 | Working set a fine giro, MB | 354 344 352 353 356 346 353 355 354 354 357 331 |
+
+## 2026-10-12 23:48 - go-overlap - progresso nei blocchi + colori cue
+
+- Commit: `fb9d365+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.0 - p95 5.7 - max 6.9 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 34.5 - p99 medio 20.1 - max assoluto 109.5 |
+| Rendering timeline, ms | media 1.5 - max 2.2 (8 campioni) |
+| Ricostruzione timeline, ms | media 9.8 - max 17.4 (2) |
+| CPU per giro, % (tutti i core) | media 16.0 - max 24.4 |
+| Working set, MB | inizio 247 - picco 367 - fine 253 |
+| Private bytes, MB | inizio 257 - fine 237 |
+| Memoria gestita, MB (fine) | 22 |
+| GC gen0 / gen2 (totale) | 149 / 91 |
+| Handle | inizio 1243 - fine 1163 |
+| Thread | inizio 72 - fine 55 |
+| Oggetti GDI / USER | inizio 37 / 65 - fine 37 / 66 |
+| Working set a fine giro, MB | 347 365 359 356 360 358 360 367 357 361 357 339 |

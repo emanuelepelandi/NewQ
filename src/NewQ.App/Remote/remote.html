@@ -162,7 +162,7 @@
 "use strict";
 // ---------------------------------------------------------------- data
 let timeline = null;   // lanes, blocks, items (rebuilt by NewQ when the show changes)
-let state = null;      // live: cursors, playhead, pause...
+let state = null;      // live: cursors (for follow), progress, playhead, pause...
 let loading = false;
 
 async function loadTimeline() {
@@ -316,6 +316,7 @@ function draw() {
   });
   const fading = new Set(state.fading);
   timeline.items.forEach((item, i) => drawItem(item, fading.has(i), h));
+  (state.progress || []).forEach(([i, b, t]) => drawProgress(timeline.items[i], screenX(b, t)));
   if (timeline.startHasGo) drawGap(0, state.onStart ? "next" : "past", h);
   blockX.forEach((bx, b) => drawGap(bx - gap, goState(b), h));
   ctx.restore();
@@ -336,15 +337,26 @@ function draw() {
     ctx.fillStyle = C.text2;
     ctx.fillText(ellipsize(l.label, gutter - 16), 8, RULER + laneTop[i] + trackH[i] / 2);
   });
+}
 
-  // cursors
-  state.cursors.forEach(([b, t, waiting]) => {
-    const x = waiting ? goX(b + 1) : screenX(b, t);
-    if (x < gutter - gap / 2 || x > w) return;
-    ctx.strokeStyle = ctx.fillStyle = waiting ? C.warning : C.success;
-    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, RULER); ctx.lineTo(x, h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - 5, RULER); ctx.lineTo(x + 5, RULER); ctx.lineTo(x, RULER + 7); ctx.closePath(); ctx.fill();
-  });
+// The played part of a running cue's bar: green, up to a bright edge (as in NewQ).
+function drawProgress(item, x) {
+  if (!item) return;
+  const th = trackH[item.lane];
+  const x0 = gutter + xOf(item.start[0], item.start[1]) - offset;
+  let x1 = item.end ? gutter + xOf(item.end[0], item.end[1]) - offset : gutter + contentWidth - offset;
+  if (x1 - x0 < 10) x1 = x0 + 10;
+  const right = Math.min(Math.max(x, x0), x1);
+  if (right <= x0) return;
+  const y = RULER + laneTop[item.lane] + item.track * th + 3, bh = th - 6;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0, y, right - x0, bh); ctx.clip();
+  ctx.fillStyle = rgba(C.success, .55); roundRect(x0, y, x1 - x0, bh, 3); ctx.fill();
+  ctx.restore();
+  if (right < x1 - 1) {
+    ctx.strokeStyle = C.success; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(right, y); ctx.lineTo(right, y + bh); ctx.stroke();
+  }
 }
 
 function ellipsize(text, width) {

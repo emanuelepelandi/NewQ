@@ -16,7 +16,7 @@ namespace NewQ.App.Controls;
 /// Draws the predicted show (<see cref="ShowTimeline"/>): one lane per route or per cue type, GO blocks side by side
 /// (separated by a band: the wait for the operator's GO), each cue as a bar whose filled shape is its level over
 /// time (fade in, Fade cues, fade out), with the first frame of videos and images. Redrawn only when something
-/// changes; the "now" line is a separate lightweight layer (<see cref="TimelineNowLine"/>).
+/// changes; the progress of running cues is a separate lightweight layer (<see cref="TimelineProgressLayer"/>).
 /// </summary>
 public sealed class TimelineView : FrameworkElement
 {
@@ -57,6 +57,7 @@ public sealed class TimelineView : FrameworkElement
     private Workspace? _workspace;
     private List<Lane> _lanes = new();
     private List<Placed> _placed = new();
+    private Dictionary<TimelineItem, Placed> _byItem = new();
     private double[] _blockX = Array.Empty<double>();
     private double _contentWidth, _contentHeight;
     private double _pixelsPerSecond = 24;
@@ -67,6 +68,11 @@ public sealed class TimelineView : FrameworkElement
         ClipToBounds = true;
         Focusable = false;
         System.Windows.Controls.ToolTipService.SetInitialShowDelay(this, 400);
+        CueColors.Changed += () =>
+        {
+            TypeBrushes.Clear();
+            InvalidateVisual();
+        };
     }
 
     /// <summary>Raised when the user clicks a cue.</summary>
@@ -198,6 +204,16 @@ public sealed class TimelineView : FrameworkElement
     /// <summary>X of a moment on screen (control coordinates).</summary>
     public double ScreenXOf(TimelinePoint p) => GutterWidth + XOf(p) - _horizontalOffset;
 
+    /// <summary>The bar of an item on screen (control coordinates); false if it is not drawn.</summary>
+    public bool TryGetScreenBounds(TimelineItem item, out Rect bounds)
+    {
+        bounds = Rect.Empty;
+        if (!_byItem.TryGetValue(item, out var p)) return false;
+        bounds = p.Bounds;
+        bounds.Offset(GutterWidth - _horizontalOffset, RulerHeight - _verticalOffset);
+        return true;
+    }
+
     /// <summary>The moment under a content X (the nearest block for X in a gap).</summary>
     private TimelinePoint PointAt(double contentX)
     {
@@ -238,6 +254,8 @@ public sealed class TimelineView : FrameworkElement
         var lanes = layout.Lanes.ToDictionary(l => l, l => new Lane(l));
         _lanes = layout.Lanes.Select(l => lanes[l]).ToList();
         _placed = layout.Placements.Select(p => new Placed(p.Item, lanes[p.Lane], p.Track)).ToList();
+        _byItem = new Dictionary<TimelineItem, Placed>();
+        foreach (var p in _placed) _byItem.TryAdd(p.Item, p);
     }
 
     // ------------------------------------------------------------------ input
@@ -631,45 +649,54 @@ public sealed class TimelineView : FrameworkElement
 }
 
 /// <summary>
-/// The cursors of the show over the timeline, one per GO going on (green), or the wait for the next GO (amber, in
-/// its gap): a thin layer redrawn alone while cues run.
+/// The progress of the running cues: the played part of each bar turns green, up to a bright edge. A thin layer
+/// over <see cref="TimelineView"/>, redrawn alone while cues run.
 /// </summary>
-public sealed class TimelineNowLine : FrameworkElement
+public sealed class TimelineProgressLayer : FrameworkElement
 {
-    private readonly List<(double X, bool Waiting)> _cursors = new();
+    private readonly List<(Rect Bar, double X)> _bars = new();
+    private Brush? _fill;
+    private Pen? _edge;
 
-    public TimelineNowLine() => IsHitTestVisible = false;
+    public TimelineProgressLayer() => IsHitTestVisible = false;
 
-    /// <summary>Screen X of each cursor; redraws only when something moved.</summary>
-    public void Set(IReadOnlyList<(double X, bool Waiting)> cursors)
+    /// <summary>Each running cue's bar and progress X, on screen; redraws only when something moved.</summary>
+    public void Set(IReadOnlyList<(Rect Bar, double X)> bars)
     {
-        if (cursors.Count == _cursors.Count)
+        if (bars.Count == _bars.Count)
         {
             var same = true;
-            for (var i = 0; i < cursors.Count && same; i++) same = cursors[i] == _cursors[i];
+            for (var i = 0; i < bars.Count && same; i++) same = bars[i] == _bars[i];
             if (same) return;
         }
-        _cursors.Clear();
-        _cursors.AddRange(cursors);
+        _bars.Clear();
+        _bars.AddRange(bars);
         InvalidateVisual();
     }
 
     protected override void OnRender(DrawingContext dc)
     {
-        foreach (var (x, waiting) in _cursors)
+        if (_bars.Count == 0) return;
+        if (_fill is null || _edge is null)
         {
-            if (x < TimelineView.GutterWidth - TimelineView.GapWidth / 2 || x > ActualWidth) continue;
-            var brush = (Brush)FindResource(waiting ? "WarningBrush" : "SuccessBrush");
-            dc.DrawLine(new Pen(brush, 2), new Point(x, TimelineView.RulerHeight), new Point(x, ActualHeight));
-            var head = new StreamGeometry();
-            using (var g = head.Open())
-            {
-                g.BeginFigure(new Point(x - 5, TimelineView.RulerHeight), true, true);
-                g.LineTo(new Point(x + 5, TimelineView.RulerHeight), true, false);
-                g.LineTo(new Point(x, TimelineView.RulerHeight + 7), true, false);
-            }
-            head.Freeze();
-            dc.DrawGeometry(brush, null, head);
+            var green = ((SolidColorBrush)FindResource("SuccessBrush")).Color;
+            _fill = new SolidColorBrush(Color.FromArgb(0x8C, green.R, green.G, green.B));
+            _fill.Freeze();
+            _edge = new Pen(new SolidColorBrush(green), 2);
+            _edge.Freeze();
         }
+        dc.PushClip(new RectangleGeometry(new Rect(TimelineView.GutterWidth, TimelineView.RulerHeight,
+            Math.Max(0, ActualWidth - TimelineView.GutterWidth), Math.Max(0, ActualHeight - TimelineView.RulerHeight))));
+        foreach (var (bar, x) in _bars)
+        {
+            var right = Math.Clamp(x, bar.Left, bar.Right);
+            if (right <= bar.Left || bar.Right < TimelineView.GutterWidth || bar.Left > ActualWidth) continue;
+            dc.PushClip(new RectangleGeometry(new Rect(bar.Left, bar.Top, right - bar.Left, bar.Height)));
+            dc.DrawRoundedRectangle(_fill, null, bar, 3, 3);
+            dc.Pop();
+            if (right < bar.Right - 1)
+                dc.DrawLine(_edge, new Point(right, bar.Top), new Point(right, bar.Bottom));
+        }
+        dc.Pop();
     }
 }

@@ -6,7 +6,7 @@
 .DESCRIPTION
     Scenario "go-overlap" (the default and, for now, the only one):
       - a generated workspace of Rounds x GosPerRound video cues, alternating the given videos, on the preview window;
-      - for each round: GosPerRound GOs IntervalMs apart (videos pile up, one timeline cursor each), then Fade cue on
+      - for each round: GosPerRound GOs IntervalMs apart (videos pile up, each filling its timeline bar), then Fade cue on
         the newest running cue, then Stop twice (immediate); in round 1 also Pause / Resume with everything playing;
       - 6 s idle at the end.
     Measured: GO command latency, real audio output after each GO, process memory / handles / threads / GDI / USER /

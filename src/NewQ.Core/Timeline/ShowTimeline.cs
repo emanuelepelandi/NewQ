@@ -8,6 +8,9 @@ public readonly record struct TimelinePoint(int Block, double Time);
 /// <summary>Where the show is: a moment of a block, or the end of a block while the operator's GO is awaited.</summary>
 public readonly record struct TimelineNow(TimelinePoint At, bool WaitingForGo);
 
+/// <summary>How far a running cue is along its bar: from <see cref="TimelineItem.Start"/> to <paramref name="At"/>.</summary>
+public readonly record struct TimelineProgress(TimelineItem Item, TimelinePoint At);
+
 /// <summary>Level of a cue (fraction of its own volume/opacity, 1 = as programmed) at a moment.</summary>
 public readonly record struct EnvelopePoint(TimelinePoint At, double Level);
 

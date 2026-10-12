@@ -72,6 +72,9 @@ public sealed class AppSettings
     /// <summary>The timeline scrolls to the next GO when the playhead moves.</summary>
     public bool TimelineFollow { get; set; } = true;
 
+    /// <summary>Cue type colours that differ from the defaults: type name → "#RRGGBB" (Impostazioni → Grafica).</summary>
+    public Dictionary<string, string> CueColors { get; set; } = new();
+
     public static AppSettings Load()
     {
         try
