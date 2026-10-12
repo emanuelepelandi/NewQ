@@ -1260,6 +1260,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var item = _cursors.TryGetValue(rc.Group, out var own) ? Timeline.ItemOf(rc.Cue, own.Block) : null;
             item ??= TimelineItemOf(rc.Cue);
             if (item is null || item.Kind == TimelineItemKind.Instant || item.Start.Block >= Timeline.Blocks.Count) continue;
+            if (rc.Cue is LiveCue)
+            {
+                _progressList.Add(new TimelineProgress(item, item.Start, Live: true));
+                continue;
+            }
 
             var block = item.Start.Block;
             var at = new TimelinePoint(block, Math.Min(item.Start.Time + Math.Max(0, rc.Cue.ElapsedSeconds), Timeline.Blocks[block].Length));

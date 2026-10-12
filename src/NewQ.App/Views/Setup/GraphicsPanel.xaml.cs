@@ -67,11 +67,15 @@ public partial class GraphicsPanel : UserControl
         Swatches.ItemsSource = BuildPalette();
     }
 
-    public void Initialize()
+    public void Initialize(bool timelineCursors)
     {
+        ProgressBox.SelectedIndex = timelineCursors ? 1 : 0;
         _rows = CueColors.Types.Select(t => new Row(t.Type, CueColors.Of(t.Type))).ToList();
         Rows.ItemsSource = _rows;
     }
+
+    /// <summary>Timeline progress as cursors instead of filled bars.</summary>
+    public bool TimelineCursors => ProgressBox.SelectedIndex == 1;
 
     /// <summary>The colours that differ from the defaults (type → "#RRGGBB"); throws on an invalid value.</summary>
     public Dictionary<string, string> Result()

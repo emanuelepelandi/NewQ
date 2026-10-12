@@ -72,6 +72,9 @@ public sealed class AppSettings
     /// <summary>The timeline scrolls to the next GO when the playhead moves.</summary>
     public bool TimelineFollow { get; set; } = true;
 
+    /// <summary>Show progress on the timeline with one cursor per GO instead of filling the cue bars.</summary>
+    public bool TimelineCursors { get; set; }
+
     /// <summary>Cue type colours that differ from the defaults: type name → "#RRGGBB" (Impostazioni → Grafica).</summary>
     public Dictionary<string, string> CueColors { get; set; } = new();
 

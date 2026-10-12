@@ -74,22 +74,28 @@ public partial class TimelinePanel : UserControl
     }
 
     private readonly List<(Rect Bar, double X)> _progress = new();
+    private readonly List<Rect> _live = new();
+    private readonly List<(double X, bool Waiting)> _cursorXs = new();
 
     /// <summary>
-    /// The running cues' bars fill up as they play (only that thin layer is redrawn); the show's cursors, not drawn,
-    /// lead "Segui il playhead".
+    /// The running cues' bars fill up as they play, or (Impostazioni → Grafica) one cursor per GO; live sources pulse.
+    /// Only that thin layer is redrawn. The show's cursors lead "Segui il playhead" in both cases.
     /// </summary>
     private void UpdateNow()
     {
         double? lead = null; // the cursor of the latest GO (furthest on), or the wait for the next GO
         TimelinePoint? leadAt = null;
         var running = false;
+        var cursorMode = _vm?.Settings.TimelineCursors == true;
         _progress.Clear();
+        _live.Clear();
+        _cursorXs.Clear();
         if (_vm is not null)
         {
             foreach (var now in _vm.TimelineCursors())
             {
                 var x = now.WaitingForGo ? View.ScreenXOfGo(now.At.Block + 1) : View.ScreenXOf(now.At);
+                if (cursorMode) _cursorXs.Add((x, now.WaitingForGo));
                 running |= !now.WaitingForGo;
                 var at = now.WaitingForGo ? new TimelinePoint(now.At.Block + 1, -1) : now.At;
                 if (leadAt is not TimelinePoint best || at.Block > best.Block || at.Block == best.Block && at.Time > best.Time)
@@ -99,11 +105,22 @@ public partial class TimelinePanel : UserControl
                 }
             }
             foreach (var p in _vm.CueProgress())
-                if (View.TryGetScreenBounds(p.Item, out var bar)) _progress.Add((bar, View.ScreenXOf(p.At)));
+            {
+                if (!View.TryGetScreenBounds(p.Item, out var bar)) continue;
+                if (p.Live) _live.Add(bar);
+                else if (!cursorMode) _progress.Add((bar, View.ScreenXOf(p.At)));
+            }
         }
-        ProgressLayer.Set(_progress);
+        ProgressLayer.Set(_progress, _live, _cursorXs, LivePulse());
         _showRunning = running;
         if (lead is double leadX) FollowCursor(leadX);
+    }
+
+    /// <summary>Opacity of the live bars: a slow, soft breath (period 2.4 s, about 8 % to 30 %).</summary>
+    private static byte LivePulse()
+    {
+        var phase = Environment.TickCount64 % 2400 / 2400.0;
+        return (byte)(20 + 56 * (0.5 - 0.5 * Math.Cos(phase * 2 * Math.PI)));
     }
 
     private bool _following;

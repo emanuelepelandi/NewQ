@@ -222,6 +222,7 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
                 w.WriteString("type", playhead.TypeName);
                 w.WriteEndObject();
             }
+            w.WriteBoolean("cursorMode", _vm.Settings.TimelineCursors);
             w.WriteStartArray("cursors");
             foreach (var now in _vm.TimelineCursors())
             {
@@ -232,11 +233,16 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
                 w.WriteEndArray();
             }
             w.WriteEndArray();
-            // Running cues: [item index, block, time] where the green part of the bar ends.
+            // Running cues: [item index, block, time] where the green part of the bar ends; live sources (pulsing): item indexes.
+            var progress = _vm.CueProgress();
+            w.WriteStartArray("live");
+            foreach (var p in progress)
+                if (p.Live && _itemIndex.TryGetValue(p.Item, out var live)) w.WriteNumberValue(live);
+            w.WriteEndArray();
             w.WriteStartArray("progress");
-            foreach (var p in _vm.CueProgress())
+            foreach (var p in progress)
             {
-                if (!_itemIndex.TryGetValue(p.Item, out var index)) continue;
+                if (p.Live || !_itemIndex.TryGetValue(p.Item, out var index)) continue;
                 w.WriteStartArray();
                 w.WriteNumberValue(index);
                 w.WriteNumberValue(p.At.Block);

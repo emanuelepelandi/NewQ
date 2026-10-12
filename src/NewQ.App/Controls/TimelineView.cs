@@ -649,40 +649,58 @@ public sealed class TimelineView : FrameworkElement
 }
 
 /// <summary>
-/// The progress of the running cues: the played part of each bar turns green, up to a bright edge. A thin layer
-/// over <see cref="TimelineView"/>, redrawn alone while cues run.
+/// The show's progress over <see cref="TimelineView"/>, a thin layer redrawn alone while cues run: the played part of
+/// each running cue's bar in green (or, by choice, one cursor per GO), and the bars of live sources pulsing softly.
 /// </summary>
 public sealed class TimelineProgressLayer : FrameworkElement
 {
     private readonly List<(Rect Bar, double X)> _bars = new();
+    private readonly List<Rect> _live = new();
+    private readonly List<(double X, bool Waiting)> _cursors = new();
+    private byte _pulse;
+    private Color _green;
     private Brush? _fill;
     private Pen? _edge;
 
     public TimelineProgressLayer() => IsHitTestVisible = false;
 
-    /// <summary>Each running cue's bar and progress X, on screen; redraws only when something moved.</summary>
-    public void Set(IReadOnlyList<(Rect Bar, double X)> bars)
+    /// <summary>
+    /// On screen: running cues' bars and progress X, live bars, cursors (X, waiting for the GO); <paramref name="pulse"/>
+    /// = opacity of the live bars now. Redraws only when something changed.
+    /// </summary>
+    public void Set(IReadOnlyList<(Rect Bar, double X)> bars, IReadOnlyList<Rect> live, IReadOnlyList<(double X, bool Waiting)> cursors, byte pulse)
     {
-        if (bars.Count == _bars.Count)
-        {
-            var same = true;
-            for (var i = 0; i < bars.Count && same; i++) same = bars[i] == _bars[i];
-            if (same) return;
-        }
-        _bars.Clear();
-        _bars.AddRange(bars);
+        if (Same(bars, _bars) && Same(live, _live) && Same(cursors, _cursors) && (live.Count == 0 || pulse == _pulse)) return;
+        Copy(bars, _bars);
+        Copy(live, _live);
+        Copy(cursors, _cursors);
+        _pulse = pulse;
         InvalidateVisual();
+    }
+
+    private static bool Same<T>(IReadOnlyList<T> a, List<T> b) where T : struct
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+            if (!a[i].Equals(b[i])) return false;
+        return true;
+    }
+
+    private static void Copy<T>(IReadOnlyList<T> from, List<T> to)
+    {
+        to.Clear();
+        for (var i = 0; i < from.Count; i++) to.Add(from[i]);
     }
 
     protected override void OnRender(DrawingContext dc)
     {
-        if (_bars.Count == 0) return;
+        if (_bars.Count == 0 && _live.Count == 0 && _cursors.Count == 0) return;
         if (_fill is null || _edge is null)
         {
-            var green = ((SolidColorBrush)FindResource("SuccessBrush")).Color;
-            _fill = new SolidColorBrush(Color.FromArgb(0x8C, green.R, green.G, green.B));
+            _green = ((SolidColorBrush)FindResource("SuccessBrush")).Color;
+            _fill = new SolidColorBrush(Color.FromArgb(0x8C, _green.R, _green.G, _green.B));
             _fill.Freeze();
-            _edge = new Pen(new SolidColorBrush(green), 2);
+            _edge = new Pen(new SolidColorBrush(_green), 2);
             _edge.Freeze();
         }
         dc.PushClip(new RectangleGeometry(new Rect(TimelineView.GutterWidth, TimelineView.RulerHeight,
@@ -697,6 +715,29 @@ public sealed class TimelineProgressLayer : FrameworkElement
             if (right < bar.Right - 1)
                 dc.DrawLine(_edge, new Point(right, bar.Top), new Point(right, bar.Bottom));
         }
+        if (_live.Count > 0)
+        {
+            var pulse = new SolidColorBrush(Color.FromArgb(_pulse, _green.R, _green.G, _green.B));
+            pulse.Freeze();
+            foreach (var bar in _live)
+                if (bar.Right >= TimelineView.GutterWidth && bar.Left <= ActualWidth) dc.DrawRoundedRectangle(pulse, null, bar, 3, 3);
+        }
         dc.Pop();
+
+        foreach (var (x, waiting) in _cursors)
+        {
+            if (x < TimelineView.GutterWidth - TimelineView.GapWidth / 2 || x > ActualWidth) continue;
+            var brush = (Brush)FindResource(waiting ? "WarningBrush" : "SuccessBrush");
+            dc.DrawLine(new Pen(brush, 2), new Point(x, TimelineView.RulerHeight), new Point(x, ActualHeight));
+            var head = new StreamGeometry();
+            using (var g = head.Open())
+            {
+                g.BeginFigure(new Point(x - 5, TimelineView.RulerHeight), true, true);
+                g.LineTo(new Point(x + 5, TimelineView.RulerHeight), true, false);
+                g.LineTo(new Point(x, TimelineView.RulerHeight + 7), true, false);
+            }
+            head.Freeze();
+            dc.DrawGeometry(brush, null, head);
+        }
     }
 }

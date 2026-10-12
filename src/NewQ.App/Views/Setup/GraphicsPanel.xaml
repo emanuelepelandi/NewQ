@@ -1,6 +1,7 @@
 <UserControl x:Class="NewQ.App.Views.Setup.GraphicsPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
              xmlns:ctl="clr-namespace:NewQ.App.Controls">
     <Grid Margin="24,16,24,16">
         <Grid.RowDefinitions>
@@ -14,15 +15,14 @@
         </DockPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Panel}" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <ItemsControl x:Name="Rows" Margin="16,4,16,12" KeyboardNavigation.TabNavigation="Continue">
-                <ItemsControl.Template>
-                    <ControlTemplate TargetType="ItemsControl">
-                        <StackPanel>
-                            <TextBlock Text="TIPI DI CUE" Style="{StaticResource SectionHeader}" Margin="0,12,0,4" />
-                            <ItemsPresenter />
-                        </StackPanel>
-                    </ControlTemplate>
-                </ItemsControl.Template>
+          <StackPanel Margin="16,4,16,12">
+            <TextBlock Text="TIMELINE" Style="{StaticResource SectionHeader}" Margin="0,12,0,4" />
+            <ComboBox x:Name="ProgressBox" ui:ControlHelper.Header="Avanzamento" Width="256" HorizontalAlignment="Left">
+                <ComboBoxItem Content="Riempimento dei blocchi" />
+                <ComboBoxItem Content="Cursori" />
+            </ComboBox>
+            <TextBlock Text="TIPI DI CUE" Style="{StaticResource SectionHeader}" Margin="0,12,0,4" />
+            <ItemsControl x:Name="Rows" KeyboardNavigation.TabNavigation="Continue">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Margin="0,2">
@@ -51,6 +51,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+          </StackPanel>
         </Border>
 
         <!-- Palette of the swatch buttons. -->

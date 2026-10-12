@@ -29,7 +29,7 @@ public partial class SettingsWindow : Window
         TestVideoPage.Initialize(setup);
         TestAudioPage.Initialize(setup);
         ShortcutsPage.Initialize(Core.Input.ShortcutMap.FromSettings(settings.Shortcuts));
-        GraphicsPage.Initialize();
+        GraphicsPage.Initialize(settings.TimelineCursors);
         Tabs.SelectedIndex = initialTab;
         Result = settings;
         _workspaceSettings = workspaceSettings;
@@ -104,6 +104,7 @@ public partial class SettingsWindow : Window
             var cueFade = ParseDouble(CueFadeBox, "Fade cue");
             Result.Shortcuts = ShortcutsPage.Map.ToSettings();
             Result.CueColors = GraphicsPage.Result();
+            Result.TimelineCursors = GraphicsPage.TimelineCursors;
             _workspaceSettings.PanicFadeSeconds = panicFade;
             _workspaceSettings.GoLockoutMs = lockout;
             _workspaceSettings.CueFadeSeconds = cueFade;
