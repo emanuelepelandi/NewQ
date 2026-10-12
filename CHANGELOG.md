@@ -108,3 +108,7 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Aggiunto**: aggiornamenti automatici dalle release GitHub. All'avvio NewQ installato controlla se c'è una versione nuova, mostra versione e note e chiede se installarla; durante la riproduzione non chiede nulla e lo annota nel log. Gli aggiornamenti scaricano solo le differenze quando possibile.
 - **Aggiunto**: *Strumenti → Cerca aggiornamenti…* e la versione installata nel menu.
 
+### 2026-10-12 - Avanzamento nei blocchi della timeline e colori delle cue (commit `9fc54b8`)
+- **Cambiato**: niente più cursori sulla timeline: la parte già riprodotta di ogni cue in corso diventa verde, sul tempo reale di riproduzione. Vale anche per la pagina web. *Segui il playhead* funziona come prima.
+- **Cambiato**: le cue Cattura non sono più verdi (ora giallo oliva): il verde indica l'avanzamento.
+- **Aggiunto**: *Impostazioni → Grafica*: colore di ogni tipo di cue (codice esadecimale o tavolozza, ripristino singolo o di tutti), applicato a badge, timeline e pagina web.
