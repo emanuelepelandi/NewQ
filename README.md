@@ -159,11 +159,3 @@ Crea `dist\NewQ\NewQ.exe` e `dist\NewQ-win-x64.zip`: una build *self-contained* 
 5. Trigger da **MIDI in** e **hotkey** per singola cue.
 6. Video: crossfade diretto tra due video (oggi il fade passa dal nero), maschere per uscita, salvataggio e richiamo di preset di geometria.
 7. Installer MSI/MSIX con associazione dei file `.newq`.
-
-### TO DO (completato nel branch `routes-and-test-signals`)
-
-- [x] Pagina nelle impostazioni con "Route video" e "Route audio"; nelle cue si sceglie solo la route.
-- [x] Route video con uscite, scaling e riposizionamento, warping, keystone correction, edge blending.
-- [x] Route audio con uscite e gain in uscita verso la route.
-- [x] Pagina per generare e mandare test pattern alle route video, di diversi tipi, inclusa la fluidità in stile Resolume.
-- [x] Pagina per generare e mandare test tone, rumore rosa e sweep in frequenza alle route audio.
