@@ -327,6 +327,9 @@
                 <MenuItem Header="Show Check…" InputGestureText="{Binding ShortcutText[ShowCheck]}" Command="{Binding ShowCheckCommand}" />
                 <Separator />
                 <MenuItem Header="Impostazioni…" Click="OnSettingsClick" IsEnabled="{Binding CanEdit}" />
+                <Separator />
+                <MenuItem Header="Cerca aggiornamenti…" Command="{Binding CheckUpdatesCommand}" IsEnabled="{Binding CanEdit}" />
+                <MenuItem Header="{Binding VersionText}" IsEnabled="False" />
                 <MenuItem Header="Route audio…" Click="OnSetupTabClick" Tag="2" IsEnabled="{Binding CanEdit}" />
                 <MenuItem Header="Route video…" Click="OnSetupTabClick" Tag="3" IsEnabled="{Binding CanEdit}" />
                 <!-- <MenuItem Header="Test pattern video…" Click="OnSetupTabClick" Tag="4" IsEnabled="{Binding CanEdit}" />

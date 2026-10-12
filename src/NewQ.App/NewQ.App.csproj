@@ -12,6 +12,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Icon of NewQ.exe (Explorer, shortcuts); the windows use the same file as a resource. -->
     <ApplicationIcon>Assets\NewQ.ico</ApplicationIcon>
+    <!-- Program.Main: Velopack (installer, updates) must run before the WPF application. -->
+    <StartupObject>NewQ.App.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- WinForms analyzer: DPI awareness for a WPF app is correctly declared in app.manifest. -->
@@ -31,6 +33,8 @@
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
     <PackageReference Include="Vortice.Direct3D11" Version="2.4.2" />
     <PackageReference Include="Vortice.D3DCompiler" Version="2.4.2" />
+    <!-- Installer and automatic updates from the GitHub releases (tools/release/Build-Release.ps1). -->
+    <PackageReference Include="Velopack" Version="1.2.158" />
   </ItemGroup>
 
   <ItemGroup>

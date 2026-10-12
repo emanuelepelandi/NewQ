@@ -8,3 +8,6 @@ dist/
 TestResults/
 docs/
 .claude
+# release builds (tools/release/Build-Release.ps1)
+artifacts/
+tools/release/.vpk/

@@ -285,6 +285,81 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand ResetClipsCommand { get; }
     public ICommand ShowCheckCommand { get; }
 
+    // ------------------------------------------------------------------ updates
+
+    /// <summary>Releases of the GitHub repository (only for the installed app).</summary>
+    public NewQ.App.Updates.UpdateService Updates { get; } = new();
+
+    public string VersionText => "NewQ " + Updates.CurrentVersion;
+
+    public ICommand CheckUpdatesCommand => _checkUpdates ??= new RelayCommand(() => _ = CheckForUpdates(interactive: true));
+    private ICommand? _checkUpdates;
+    private bool _checkingUpdates;
+
+    /// <summary>A few seconds after the start: offers a newer release, if there is one.</summary>
+    public async Task CheckForUpdatesAtStartup()
+    {
+        if (!Updates.IsInstalled) return;
+        await Task.Delay(TimeSpan.FromSeconds(4));
+        await CheckForUpdates(interactive: false);
+    }
+
+    /// <summary>
+    /// Asks before installing; never during a show: at the start, with cues playing, it only notes the release in
+    /// the log. Installing closes NewQ (after saving or discarding the workspace) and opens the new version.
+    /// </summary>
+    public async Task CheckForUpdates(bool interactive)
+    {
+        if (_checkingUpdates) return;
+        if (!Updates.IsInstalled)
+        {
+            if (interactive)
+                MessageBox.Show($"{VersionText}: aggiornamenti solo nella versione installata.", "Aggiornamenti",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        _checkingUpdates = true;
+        try
+        {
+            var update = await Updates.CheckAsync();
+            if (update is null)
+            {
+                if (interactive)
+                    MessageBox.Show($"{VersionText} è aggiornato.", "Aggiornamenti", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var version = update.TargetFullRelease.Version.ToString();
+            if (!interactive && Engine.Running.Count > 0)
+            {
+                AddLog(EngineLogLevel.Info, $"Aggiornamento disponibile: NewQ {version}.");
+                return;
+            }
+
+            var notes = update.TargetFullRelease.NotesMarkdown?.Trim() ?? "";
+            if (notes.Length > 700) notes = notes[..700] + "…";
+            var text = $"Disponibile NewQ {version} (installata: {Updates.CurrentVersion})."
+                       + (notes.Length > 0 ? "\n\n" + notes : "")
+                       + "\n\nInstallare ora? NewQ si riavvierà.";
+            if (MessageBox.Show(text, "Aggiornamento", MessageBoxButton.YesNo, MessageBoxImage.Information, MessageBoxResult.No)
+                != MessageBoxResult.Yes) return;
+            if (!ConfirmDiscard()) return;
+
+            Engine.StopAll(TimeSpan.Zero);
+            StatusText = $"Download NewQ {version}…";
+            await Updates.DownloadAsync(update, percent => _dispatcher.BeginInvoke(() => StatusText = $"Download NewQ {version}: {percent} %"));
+            AddLog(EngineLogLevel.Info, $"Installazione NewQ {version}…");
+            Updates.ApplyAndRestart(update);
+        }
+        catch (Exception ex)
+        {
+            AddLog(EngineLogLevel.Warning, $"Aggiornamenti: {ex.Message}");
+            if (interactive)
+                MessageBox.Show($"Aggiornamenti non disponibili:\n{ex.Message}", "Aggiornamenti", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { _checkingUpdates = false; }
+    }
+
     // ------------------------------------------------------------------ transport
 
     private void TogglePause()

@@ -144,6 +144,17 @@ Nota: quando una cue Cattura è la prossima del GO la sorgente resta aperta (pre
 
 ## Distribuzione
 
+**Installer e aggiornamenti automatici** (Velopack, release GitHub):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\release\Build-Release.ps1 -Version 0.2.0                          # prova in locale
+powershell -ExecutionPolicy Bypass -File tools\release\Build-Release.ps1 -Version 0.2.0 -Notes notes.md -Publish  # pubblica
+```
+
+Crea `artifacts\releases\NewQ-win-Setup.exe` (installazione per l'utente, senza permessi di amministratore) e i pacchetti di aggiornamento; con `-Publish` li carica come release `v0.2.0` del repository. Le copie installate controllano le release all'avvio e chiedono se aggiornarsi (*Strumenti → Cerca aggiornamenti…* per farlo a mano). Guida passo passo: [tools/release/README.md](tools/release/README.md).
+
+**Cartella portabile** (senza installer né aggiornamenti):
+
 ```powershell
 .\publish.ps1
 ```
@@ -158,4 +169,4 @@ Crea `dist\NewQ\NewQ.exe` e `dist\NewQ-win-x64.zip`: una build *self-contained* 
 4. **Patch di rete**: destinazioni con nome (es. "Banco luci") condivise da più cue.
 5. Trigger da **MIDI in** e **hotkey** per singola cue.
 6. Video: crossfade diretto tra due video (oggi il fade passa dal nero), maschere per uscita, salvataggio e richiamo di preset di geometria.
-7. Installer MSI/MSIX con associazione dei file `.newq`.
+7. Associazione dei file `.newq` all'installazione; installer firmato digitalmente.

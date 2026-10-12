@@ -34,6 +34,8 @@ public partial class App : Application
 
         var file = e.Args.FirstOrDefault(a => a.EndsWith(Core.Model.Workspace.FileExtension, StringComparison.OrdinalIgnoreCase));
         if (file is not null) _viewModel.OpenFile(file);
+
+        _ = _viewModel.CheckForUpdatesAtStartup(); // installed app only
     }
 
     protected override void OnExit(ExitEventArgs e)
