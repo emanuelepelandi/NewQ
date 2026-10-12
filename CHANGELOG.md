@@ -103,3 +103,8 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Rimosso**: *Impostazioni → Generale → Dispositivo di uscita*. Sceglieva solo la scheda delle route audio lasciate su "Predefinita", un doppione della scheda che ogni route ha già.
 - **Cambiato**: nelle route audio la scheda "Predefinita" è ora la scheda predefinita di Windows.
 
+### 2026-10-12 - Installer e aggiornamenti automatici (commit `833c0b4`)
+- **Aggiunto**: installer `NewQ-win-Setup.exe` (installazione per l'utente, senza permessi di amministratore, collegamenti nel menu Start e sul desktop), creato con `tools/release/Build-Release.ps1`; guida in `tools/release/README.md`.
+- **Aggiunto**: aggiornamenti automatici dalle release GitHub. All'avvio NewQ installato controlla se c'è una versione nuova, mostra versione e note e chiede se installarla; durante la riproduzione non chiede nulla e lo annota nel log. Gli aggiornamenti scaricano solo le differenze quando possibile.
+- **Aggiunto**: *Strumenti → Cerca aggiornamenti…* e la versione installata nel menu.
+
