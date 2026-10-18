@@ -307,9 +307,9 @@
                                                Foreground="{StaticResource TextOnAccentBrush}" />
                                 </Border>
                                 <!-- Length and time left. -->
-                                <TextBlock x:Name="Duration" Text="{Binding RuntimeDurationText}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSmall}"
+                                <TextBlock x:Name="Duration" Text="{Binding RuntimeDurationText}" Typography.NumeralAlignment="Tabular" FontSize="{StaticResource FontSmall}"
                                            Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" ToolTip="Durata" />
-                                <TextBlock Text="{Binding RemainingText}" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold"
+                                <TextBlock Text="{Binding RemainingText}" Typography.NumeralAlignment="Tabular" FontWeight="SemiBold"
                                            MinWidth="72" TextAlignment="Right" VerticalAlignment="Center" ToolTip="Mancante" />
                             </StackPanel>
                         </Grid>
