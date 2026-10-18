@@ -143,3 +143,6 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Aggiunto**: le cue Video si riproducono da un punto di inizio a un punto di fine del file, come già l'audio (anche in loop e con Hold on finish). La durata dei video compare nella lista.
 - **Aggiunto**: nella pagina *Tempo e loop* di audio e video, un editor con la forma d'onda del file: si trascinano inizio, fine, fade in e fade out (Ctrl = preciso, frecce per i ritocchi, Ctrl+rotella = zoom); una linea verde mostra la posizione mentre la cue suona.
 - **Corretto**: dopo un GO che cambiava il tipo di cue mostrato nelle Proprietà, il cursore poteva finire nel campo Note (uno Spazio scriveva invece di dare GO). Ora la tastiera torna alla lista, e un clic sulle linguette delle Proprietà non le toglie più il focus.
+
+### 2026-10-19 - Pagine delle Proprietà cliccabili (commit `b731c17`)
+- **Corretto**: dopo la modifica precedente le pagine delle Proprietà non si potevano più aprire con un clic. Ora un clic apre la pagina e la tastiera resta sulla lista (Spazio = GO).
