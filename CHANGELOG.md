@@ -130,3 +130,6 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Cambiato**: la pagina di controllo web non mostra più la timeline: al suo posto c'è *In esecuzione* come nell'app, con riga verde che segue l'avanzamento, durata e tempo mancante, colori per pre-wait, pausa e fade, e pulsanti pausa, fade e stop per ogni cue.
 - **Cambiato**: per le cue senza fine la riga mostra solo "∞" (anche nell'app).
 - **Rimosso**: `/api/timeline`; con il controllo web acceso NewQ non calcola più la timeline se il pannello è nascosto.
+
+### 2026-10-18 - Font di In esecuzione (commit `0123139`)
+- **Cambiato**: in *In esecuzione* (app e pagina web) durata e tempo mancante usano il font dell'interfaccia invece di quello monospaziato, con cifre a larghezza fissa per non far ballare i numeri.
