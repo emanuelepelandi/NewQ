@@ -1009,10 +1009,10 @@
             <!-- Pages of the selected cue (built by MainWindow.ShowInspectorPages). -->
             <TabControl x:Name="InspectorTabs" Grid.Column="1" Padding="0" Focusable="False"
                         Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
-                <!-- A click on a tab leaves the keyboard where it was (the list: Space = GO). -->
+                <!-- A click on a tab selects it and leaves the keyboard where it was (the list: Space = GO). -->
                 <TabControl.ItemContainerStyle>
                     <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
-                        <Setter Property="Focusable" Value="False" />
+                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnInspectorTabMouseDown" />
                     </Style>
                 </TabControl.ItemContainerStyle>
                 <TabControl.ItemTemplate>

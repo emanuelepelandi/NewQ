@@ -102,6 +102,17 @@ public partial class MainWindow : Window
         RunningSplitter.Visibility = RunningPanel.Visibility;
     }
 
+    /// <summary>
+    /// A click on a page of the properties selects it without taking the keyboard: a TabItem selects itself by taking
+    /// the focus, which would leave Space to the tab instead of GO.
+    /// </summary>
+    private void OnInspectorTabMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not TabItem tab) return;
+        tab.IsSelected = true;
+        e.Handled = true;
+    }
+
     /// <summary>A tab of the properties panel: a page of fields of the selected cue.</summary>
     public sealed class InspectorPage : Core.ObservableObject
     {
