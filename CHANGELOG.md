@@ -133,3 +133,8 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 
 ### 2026-10-18 - Font di In esecuzione (commit `0123139`)
 - **Cambiato**: in *In esecuzione* (app e pagina web) durata e tempo mancante usano il font dell'interfaccia invece di quello monospaziato, con cifre a larghezza fissa per non far ballare i numeri.
+
+### 2026-10-18 - Hold on finish, finestra di anteprima, bande nere dei video (commit `f2f732f`)
+- **Aggiunto**: per le cue Video, **Hold on finish** (pagina *Tempo e loop*), come *Hold at end* di QLab: a fine file resta l'ultimo fotogramma e la cue resta attiva finché non viene fermata o sfumata; il follow parte alla fine del file. Senza effetto con Loop; il fade out finale non si applica.
+- **Cambiato**: la finestra di anteprima video non si ridimensiona più trascinando i bordi né si ingrandisce: larghezza e altezza in pixel si impostano in *Impostazioni → Generale → Finestra di anteprima video* (960×540 di default).
+- **Corretto**: i video non riempivano del tutto le uscite (due sottili bande nere ai lati): libVLC forniva i fotogrammi alla dimensione codificata (es. 1920×1088 invece di 1920×1080). Ora si usano le dimensioni reali della traccia, anche per i file che le comunicano solo dopo l'avvio (MPEG-TS).
