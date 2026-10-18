@@ -22,7 +22,30 @@ public abstract class MediaCue : Cue
     public override string Summary => string.IsNullOrWhiteSpace(FilePath) ? "(nessun file)" : Path.GetFileName(FilePath);
 }
 
-public sealed class AudioCue : MediaCue
+/// <summary>Audio and video cues: they play a region of their file, from <see cref="StartTime"/> to <see cref="EndTime"/>.</summary>
+public interface ITrimmedMedia
+{
+    /// <summary>Playback starts from this position (seconds).</summary>
+    double StartTime { get; set; }
+
+    /// <summary>Playback stops at this position (seconds); 0 = end of file.</summary>
+    double EndTime { get; set; }
+
+    bool Loop { get; }
+
+    /// <summary>Length of the file, probed by the application (not persisted).</summary>
+    double? MediaDuration { get; }
+}
+
+/// <summary>The played region of a trimmed file.</summary>
+public static class MediaTrim
+{
+    /// <summary>Seconds played from start to end (or the end of a file <paramref name="total"/> long).</summary>
+    public static double PlayLength(double start, double end, double total)
+        => Math.Max(0, (end > 0 ? Math.Min(end, total) : total) - start);
+}
+
+public sealed class AudioCue : MediaCue, ITrimmedMedia
 {
     private Guid? _audioRouteId;
     private double _volumeDb;
@@ -51,14 +74,7 @@ public sealed class AudioCue : MediaCue
     [JsonIgnore] public double? MediaDuration { get => _mediaDuration; set => SetField(ref _mediaDuration, value); }
 
     public override double? Duration
-    {
-        get
-        {
-            if (Loop || MediaDuration is not double total) return null;
-            var end = EndTime > 0 ? Math.Min(EndTime, total) : total;
-            return Math.Max(0, end - StartTime);
-        }
-    }
+        => Loop || MediaDuration is not double total ? null : MediaTrim.PlayLength(StartTime, EndTime, total);
 }
 
 public enum FitMode { Fit, Fill, Stretch, Original }
@@ -92,11 +108,14 @@ public abstract class VisualCue : MediaCue
     public override double? ListOpacity => Opacity;
 }
 
-public sealed class VideoCue : VisualCue
+public sealed class VideoCue : VisualCue, ITrimmedMedia
 {
     private Guid? _audioRouteId;
     private double _volumeDb;
     private bool _loop;
+    private double _startTime;
+    private double _endTime;
+    private double? _mediaDuration;
 
     public override string TypeName => "Video";
 
@@ -106,6 +125,18 @@ public sealed class VideoCue : VisualCue
     public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
     public override double? ListVolumeDb => VolumeDb;
     public bool Loop { get => _loop; set => SetField(ref _loop, value); }
+
+    /// <summary>Playback starts from this position (seconds).</summary>
+    public double StartTime { get => _startTime; set => SetField(ref _startTime, Math.Max(0, value)); }
+
+    /// <summary>Playback stops at this position (seconds); 0 = end of file.</summary>
+    public double EndTime { get => _endTime; set => SetField(ref _endTime, Math.Max(0, value)); }
+
+    /// <summary>Length of the file, probed by the application (not persisted).</summary>
+    [JsonIgnore] public double? MediaDuration { get => _mediaDuration; set => SetField(ref _mediaDuration, value); }
+
+    public override double? Duration
+        => Loop || MediaDuration is not double total ? null : MediaTrim.PlayLength(StartTime, EndTime, total);
 
     /// <summary>
     /// "Hold on finish" (QLab's Hold at end): at the end of the file the last frame stays on screen and the cue stays

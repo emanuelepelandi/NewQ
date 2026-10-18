@@ -193,7 +193,7 @@ public abstract class Cue : ObservableObject
         => propertyName is not null
            && !RuntimeProperties.Contains(propertyName)
            && !DerivedProperties.Contains(propertyName)
-           && propertyName != nameof(AudioCue.MediaDuration);
+           && propertyName != nameof(ITrimmedMedia.MediaDuration);
 
     protected override void OnPropertyChanged(string? propertyName = null)
     {

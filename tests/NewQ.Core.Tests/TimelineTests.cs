@@ -131,6 +131,34 @@ public class TimelineTests
     }
 
     [Fact]
+    public void Trimmed_video_plays_from_its_start_point_to_its_end_point()
+    {
+        var video = new VideoCue { Number = "1", FilePath = "v.mp4", StartTime = 10, EndTime = 25, MediaDuration = 60, ContinueMode = ContinueMode.AutoFollow };
+        Assert.Equal(15, video.Duration);
+        var t = TimelineBuilder.Build(new Cue[] { video, Audio("2", 5) });
+        Assert.Equal(new TimelinePoint(0, 15), ItemOf(t, "1").End);
+        Assert.Equal(new TimelinePoint(0, 15), ItemOf(t, "2").Start);
+
+        video.EndTime = 0;                       // until the end of the file
+        Assert.Equal(50, video.Duration);
+        video.EndTime = 90;                      // past the end of the file: the file ends first
+        Assert.Equal(50, video.Duration);
+        video.HoldAtEnd = true;                  // held on the end point's frame
+        Assert.Equal(new TimelinePoint(0, 50), ItemOf(TimelineBuilder.Build(new Cue[] { video }), "1").HoldFrom);
+        video.Loop = true;
+        Assert.Null(video.Duration);
+    }
+
+    [Fact]
+    public void Play_length_of_a_trimmed_file()
+    {
+        Assert.Equal(30, MediaTrim.PlayLength(0, 0, 30));
+        Assert.Equal(20, MediaTrim.PlayLength(10, 0, 30));
+        Assert.Equal(5, MediaTrim.PlayLength(10, 15, 30));
+        Assert.Equal(0, MediaTrim.PlayLength(40, 0, 30));  // start past the end: nothing plays
+    }
+
+    [Fact]
     public void Auto_follow_on_a_cue_that_never_ends_stops_the_chain()
     {
         var loop = new AudioCue { Number = "1", Loop = true, ContinueMode = ContinueMode.AutoFollow, FilePath = "l.wav" };

@@ -164,9 +164,12 @@ public partial class MainWindow : Window
             return;
         }
         var open = (InspectorTabs.SelectedItem as InspectorPage)?.Header;
+        var focusInside = InspectorPanel.IsKeyboardFocusWithin;
         _pages = wanted.Select(p => new InspectorPage(p.Header, (DataTemplate)FindResource(p.Template), cue)).ToList();
         InspectorTabs.ItemsSource = _pages;
         InspectorTabs.SelectedItem = _pages.FirstOrDefault(p => p.Header == open) ?? _pages[0];
+        // The old page is gone: WPF would put the keyboard in a field of the new one (Space would type instead of GO).
+        if (focusInside) Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => CueGrid.Focus());
     }
 
     /// <summary>Right click on a cue: select it and open its properties.</summary>
@@ -211,7 +214,7 @@ public partial class MainWindow : Window
     /// <summary>Controls that use the arrow keys themselves: text, lists, sliders, menus, the geometry editor.</summary>
     private static bool ArrowsBelongToFocus()
         => Keyboard.FocusedElement is TextBoxBase or PasswordBox or ComboBox or ComboBoxItem or Slider or ScrollBar
-               or MenuItem or ListBoxItem or Controls.GeometryEditor
+               or MenuItem or ListBoxItem or Controls.GeometryEditor or Controls.TrimEditor
            || Keyboard.FocusedElement is DependencyObject d && ItemsControl.ItemsControlFromItemContainer(d) is ComboBox;
 
     /// <summary>

@@ -73,6 +73,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ShortcutText = new ShortcutTexts(_shortcuts);
         ShortcutHint = new ShortcutTexts(_shortcuts, asHint: true);
         _outputs = new OutputWindowManager(_hub) { PreviewSize = new(_settings.PreviewWidth, _settings.PreviewHeight) };
+        Waveforms.Shared.ResolvePath = path => Workspace.ResolvePath(path); // the trim editor reads the cue's file
 
         Engine = new CueEngine(
             new DispatcherScheduler(dispatcher),
@@ -505,7 +506,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         HookWorkspace(workspace);
         ReconfigureAudio(); // each workspace has its own audio routes
         ApplyVideoRoutes(); // ...and video routes: output windows open now, black, before any GO
-        foreach (var cue in workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
+        foreach (var cue in workspace.Cues) ProbeDuration(cue);
         IsDirty = converted; // the converted file must be saved to keep the routes
         OnPropertyChanged(nameof(Workspace));
         OnPropertyChanged(nameof(HasProgramCues));
@@ -689,7 +690,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         IsDirty = true;
         ScheduleTimeline();
         Engine.SchedulePreload(); // file, output or continue mode may have changed
-        if (sender is AudioCue audio && e.PropertyName == nameof(MediaCue.FilePath)) ProbeDuration(audio);
+        if (sender is ITrimmedMedia and Cue media && e.PropertyName == nameof(MediaCue.FilePath)) ProbeDuration(media);
     }
 
     // ---- no loops of Start links ----
@@ -739,11 +740,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return false;
     }
 
-    private void ProbeDuration(AudioCue cue)
+    /// <summary>Length of the file of an audio or video cue (its duration, the trim editor's scale).</summary>
+    private void ProbeDuration(Cue cue)
     {
-        var path = Workspace.ResolvePath(cue.FilePath);
-        Task.Run(() => AudioEngine.ProbeDuration(path))
-            .ContinueWith(t => cue.MediaDuration = t.Result, TaskScheduler.FromCurrentSynchronizationContext());
+        if (cue is not MediaCue { FilePath.Length: > 0 } media) return;
+        var path = Workspace.ResolvePath(media.FilePath);
+        var ui = TaskScheduler.FromCurrentSynchronizationContext();
+        switch (cue)
+        {
+            case AudioCue audio:
+                Task.Run(() => AudioEngine.ProbeDuration(path)).ContinueWith(t => audio.MediaDuration = t.Result, ui);
+                break;
+            case VideoCue video:
+                VideoProbe.LengthAsync(path).ContinueWith(t => video.MediaDuration = t.Result, ui);
+                break;
+        }
     }
 
     public bool ConfirmDiscard()
@@ -902,7 +913,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
         var copy = WorkspaceSerializer.CloneCue(cue);
         copy.Number = Workspace.NextCueNumber();
-        if (copy is AudioCue a) ProbeDuration(a);
+        ProbeDuration(copy);
         AddCue(copy);
     }
 
@@ -1130,7 +1141,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Thumbnails.Forget(Workspace.Cues.OfType<MediaCue>()
             .Where(c => c is VideoCue or ImageCue && !string.IsNullOrWhiteSpace(c.FilePath))
             .Select(c => Workspace.ResolvePath(c.FilePath)));
-        foreach (var cue in Workspace.Cues.OfType<AudioCue>()) ProbeDuration(cue);
+        foreach (var cue in Workspace.Cues) ProbeDuration(cue);
         RebuildTimeline();
     }
 
@@ -1166,7 +1177,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private double? LengthOf(Cue cue) => cue switch
     {
         VideoCue { Loop: true } => null,
-        VideoCue video when !string.IsNullOrWhiteSpace(video.FilePath) => Thumbnails.VideoLength(Workspace.ResolvePath(video.FilePath)),
+        VideoCue { Duration: double length } => length, // the played region of the probed file
+        VideoCue video when !string.IsNullOrWhiteSpace(video.FilePath)
+            && Thumbnails.VideoLength(Workspace.ResolvePath(video.FilePath)) is double total => MediaTrim.PlayLength(video.StartTime, video.EndTime, total),
+        VideoCue => null,
         _ => cue.Duration,
     };
 

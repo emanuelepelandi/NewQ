@@ -40,6 +40,10 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
 
     public bool CanPlay(Cue cue) => cue is VideoCue or ImageCue or LiveCue;
 
+    /// <summary>The file of a video cue, played from its start point to its end point.</summary>
+    private static VideoSource FileSource(VideoCue video, string path)
+        => VideoSource.File(path, video.Loop, video.StartTime, video.EndTime);
+
     // ------------------------------------------------------------------ preload
 
     public void Preload(Cue cue, Workspace workspace)
@@ -63,12 +67,13 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
         {
             case VideoCue video:
                 var device = _audioTarget(video.AudioRouteId).DeviceId;
+                var file = FileSource(video, path);
                 if (_videos.TryGetValue(video.Id, out var prepared))
                 {
-                    if (prepared.IsUsableFor(path, video.Loop, device)) return;
+                    if (prepared.IsUsableFor(file, device)) return;
                     prepared.Dispose();
                 }
-                _videos[video.Id] = new PreparedVideo(path, video.Loop, device, _dispatcher);
+                _videos[video.Id] = new PreparedVideo(file, device, _dispatcher);
                 break;
 
             case ImageCue:
@@ -164,12 +169,13 @@ public sealed class VisualCuePlayer : IPreloadingCuePlayer
         {
             case VideoCue video:
                 var audio = _audioTarget(video.AudioRouteId);
-                if (_videos.Remove(video.Id, out var prepared) && !prepared.IsUsableFor(path, video.Loop, audio.DeviceId))
+                var file = FileSource(video, path);
+                if (_videos.Remove(video.Id, out var prepared) && !prepared.IsUsableFor(file, audio.DeviceId))
                 {
                     prepared.Dispose();
                     prepared = null;
                 }
-                prepared ??= new PreparedVideo(path, video.Loop, audio.DeviceId, _dispatcher);
+                prepared ??= new PreparedVideo(file, audio.DeviceId, _dispatcher);
                 return new VideoLayer(video, prepared, _hub, routeId, audio.Gain, context);
 
             case ImageCue image:
@@ -338,7 +344,9 @@ internal sealed class VideoLayer : VisualLayer
     private bool _paused;
     private bool _autoFading; // the automatic fade-out before the end (as opposed to a stop/fade cue)
     private readonly bool _hold; // Hold on finish (QLab's Hold at end); no effect with Loop
-    private TimeSpan? _heldAt;   // holding the last frame since the end of the file, which lasted this long
+    private TimeSpan? _heldAt;   // holding the last frame since the end of the region, which lasted this long
+    private readonly long _startMs; // the region of the file played (start and end points, fixed at GO)
+    private readonly long _endMs;   // 0 = end of file
 
     public VideoLayer(VideoCue cue, PreparedVideo prepared, CompositionHub hub, Guid routeId, double routeGain, CueContext context)
         : base(cue, hub, routeId, prepared.Frames, context)
@@ -349,6 +357,8 @@ internal sealed class VideoLayer : VisualLayer
         _volume = new VolumeRamp(prepared.Player, Dispatcher.CurrentDispatcher);
         _hold = cue.HoldAtEnd && !cue.Loop;
         prepared.Frames.KeepLastFrame = _hold;
+        _startMs = (long)(cue.StartTime * 1000);
+        _endMs = cue.EndTime > cue.StartTime ? (long)(cue.EndTime * 1000) : 0;
 
         prepared.Ended += OnEnded;
         prepared.Failed += OnFailed;
@@ -358,7 +368,18 @@ internal sealed class VideoLayer : VisualLayer
         _volume.RampTo(Decibels.ToGain(cue.VolumeDb) * routeGain, cue.FadeIn);
     }
 
-    public override TimeSpan Elapsed => _heldAt ?? TimeSpan.FromMilliseconds(Math.Max(0, _prepared.Player.Time));
+    /// <summary>Where the played region ends in the file (ms), 0 if the length isn't known yet.</summary>
+    private long RegionEnd
+    {
+        get
+        {
+            var length = _prepared.Player.Length;
+            if (length <= 0) return _endMs;
+            return _endMs > 0 ? Math.Min(_endMs, length) : length;
+        }
+    }
+
+    public override TimeSpan Elapsed => _heldAt ?? TimeSpan.FromMilliseconds(Math.Max(0, _prepared.Player.Time - _startMs));
 
     public override TimeSpan? Duration
     {
@@ -366,8 +387,8 @@ internal sealed class VideoLayer : VisualLayer
         {
             if (_heldAt is TimeSpan held) return held; // full bar, nothing left
             if (_cue.Loop) return null;
-            var length = _prepared.Player.Length;
-            return length > 0 ? TimeSpan.FromMilliseconds(length) : null;
+            var end = RegionEnd;
+            return end > _startMs ? TimeSpan.FromMilliseconds(end - _startMs) : null;
         }
     }
 
@@ -383,17 +404,18 @@ internal sealed class VideoLayer : VisualLayer
         if (_heldAt is null) _prepared.Player.SetPause(false);
     }
 
-    public override bool CanSeek => !_cue.Loop && _heldAt is null && _prepared.Player.Length > 0;
+    public override bool CanSeek => !_cue.Loop && _heldAt is null && RegionEnd > _startMs;
 
+    /// <summary>Moves to a time relative to the start point.</summary>
     public override void Seek(TimeSpan position)
     {
-        var length = _prepared.Player.Length;
-        if (length <= 0) return;
+        var end = RegionEnd;
+        if (end <= _startMs) return;
         // Stay a little before the end so scrubbing to the far right doesn't end the cue.
-        var ms = (long)Math.Clamp(position.TotalMilliseconds, 0, Math.Max(0, length - 200));
+        var ms = _startMs + (long)Math.Clamp(position.TotalMilliseconds, 0, Math.Max(0, end - _startMs - 200));
         _prepared.Player.Time = ms;
 
-        if (_autoFading && (length - ms) / 1000.0 > _cue.FadeOut)
+        if (_autoFading && (end - ms) / 1000.0 > _cue.FadeOut)
         {
             // Moved back before the automatic end fade: bring picture and sound back.
             _autoFading = false;
@@ -408,10 +430,10 @@ internal sealed class VideoLayer : VisualLayer
     protected override void OnTick()
     {
         if (_paused || _cue.Loop || _hold || _cue.FadeOut <= 0 || FadingOut) return; // holding: no final fade-out
-        var length = _prepared.Player.Length;
+        var end = RegionEnd;
         var time = _prepared.Player.Time;
-        if (length <= 0 || time < 0) return;
-        var remaining = (length - time) / 1000.0;
+        if (end <= 0 || time < 0) return;
+        var remaining = (end - time) / 1000.0;
         if (remaining > _cue.FadeOut) return;
         FadingOut = true;
         _autoFading = true;
@@ -420,8 +442,8 @@ internal sealed class VideoLayer : VisualLayer
     }
 
     /// <summary>
-    /// End of the file. Hold on finish: the last frame stays and the cue keeps running until stopped or faded (as in
-    /// QLab); its follow fires now.
+    /// End of the region (its end point or the end of the file). Hold on finish: the last frame stays and the cue
+    /// keeps running until stopped or faded (as in QLab); its follow fires now.
     /// </summary>
     private void OnEnded()
     {
@@ -430,8 +452,8 @@ internal sealed class VideoLayer : VisualLayer
             Finish();
             return;
         }
-        var length = _prepared.Player.Length;
-        _heldAt = TimeSpan.FromMilliseconds(Math.Max(0, length > 0 ? length : _prepared.Player.Time));
+        var end = RegionEnd;
+        _heldAt = TimeSpan.FromMilliseconds(Math.Max(0, (end > 0 ? end : _prepared.Player.Time) - _startMs));
         _volume.Stop();
         Context.ActionDone();
     }

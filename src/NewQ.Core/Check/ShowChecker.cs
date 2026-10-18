@@ -347,7 +347,7 @@ public static class ShowChecker
 
         if (probe.DurationSeconds is double duration)
         {
-            if (cue is AudioCue audio)
+            if (cue is ITrimmedMedia audio)
             {
                 if (audio.StartTime >= duration)
                     issues.Add(new(CheckSeverity.Error, cue, $"Il punto di inizio ({audio.StartTime:0.##} s) è oltre la fine del file ({duration:0.##} s)."));
@@ -357,8 +357,8 @@ public static class ShowChecker
                     issues.Add(new(CheckSeverity.Info, cue, $"Fine ({audio.EndTime:0.##} s) oltre la durata del file ({duration:0.##} s)."));
             }
 
-            var playable = cue is AudioCue a2 ? (a2.EndTime > 0 ? Math.Min(a2.EndTime, duration) : duration) - a2.StartTime : duration;
-            if (cue.FadeIn + cue.FadeOut > playable && playable > 0 && !(cue is AudioCue { Loop: true } or VideoCue { Loop: true }))
+            var playable = cue is ITrimmedMedia a2 ? MediaTrim.PlayLength(a2.StartTime, a2.EndTime, duration) : duration;
+            if (cue.FadeIn + cue.FadeOut > playable && playable > 0 && !(cue is ITrimmedMedia { Loop: true }))
                 issues.Add(new(CheckSeverity.Warning, cue, $"Fade in + fade out ({cue.FadeIn + cue.FadeOut:0.##} s) più lunghi della durata ({playable:0.##} s)."));
         }
 

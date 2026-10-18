@@ -109,8 +109,16 @@
             </WrapPanel>
         </DataTemplate>
 
+        <!-- Start, end and fades over the waveform (audio, video): drag the bars and the handles, or type below. -->
+        <DataTemplate x:Key="TrimEditor">
+            <ctl:TrimEditor Cue="{Binding}" Height="104" Margin="0,0,8,12"
+                            AutomationProperties.Name="Inizio, fine e fade"
+                            ToolTip="Trascina inizio, fine e fade · Ctrl = preciso · Ctrl+rotella = zoom · doppio clic = tutto il file" />
+        </DataTemplate>
+
         <DataTemplate x:Key="PageAudioTime">
             <StackPanel>
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrimEditor}" Focusable="False" />
                 <WrapPanel>
                     <TextBox ui:ControlHelper.Header="Inizio (s)" Text="{Binding StartTime}" />
                     <TextBox ui:ControlHelper.Header="Fine (s, 0 = fine file)" Text="{Binding EndTime}" />
@@ -144,7 +152,11 @@
         </DataTemplate>
 
         <DataTemplate x:Key="PageVideoTime">
+            <StackPanel>
+            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrimEditor}" Focusable="False" />
             <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Inizio (s)" Text="{Binding StartTime}" />
+                <TextBox ui:ControlHelper.Header="Fine (s, 0 = fine file)" Text="{Binding EndTime}" />
                 <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
                 <!-- Holding the last frame, there is no final fade-out. -->
                 <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}"
@@ -154,6 +166,7 @@
                           IsEnabled="{Binding Loop, Converter={StaticResource InverseBool}}"
                           ToolTip="A fine video resta l'ultimo fotogramma finché la cue non viene fermata" />
             </WrapPanel>
+            </StackPanel>
         </DataTemplate>
 
         <DataTemplate x:Key="PageImage">
@@ -996,6 +1009,12 @@
             <!-- Pages of the selected cue (built by MainWindow.ShowInspectorPages). -->
             <TabControl x:Name="InspectorTabs" Grid.Column="1" Padding="0" Focusable="False"
                         Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
+                <!-- A click on a tab leaves the keyboard where it was (the list: Space = GO). -->
+                <TabControl.ItemContainerStyle>
+                    <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                        <Setter Property="Focusable" Value="False" />
+                    </Style>
+                </TabControl.ItemContainerStyle>
                 <TabControl.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Header}" />

@@ -70,9 +70,21 @@ internal static class DirectSoundDevices
 /// <param name="Key">Identity of the source with all its options: two cues with the same key can share it.</param>
 internal sealed record VideoSource(string Location, FromType Type, bool Loop, bool IsLive, string Key, IReadOnlyList<string> Options)
 {
-    public static VideoSource File(string path, bool loop)
-        => new(path, FromType.FromPath, loop, false, $"file|{path.ToLowerInvariant()}|{loop}",
-            loop ? new[] { ":input-repeat=65535" } : Array.Empty<string>()); // seamless loop handled by libVLC
+    /// <summary>Where playback starts in the file (seconds): the preload waits on that frame.</summary>
+    public double StartSeconds { get; init; }
+
+    /// <summary>A file, played from <paramref name="start"/> to <paramref name="end"/> (0 = end of file), optionally looping that region.</summary>
+    public static VideoSource File(string path, bool loop, double start = 0, double end = 0)
+    {
+        var options = new List<string>();
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        if (start > 0) options.Add(":start-time=" + start.ToString("0.###", invariant));
+        if (end > start) options.Add(":stop-time=" + end.ToString("0.###", invariant));
+        if (loop) options.Add(":input-repeat=65535"); // seamless loop handled by libVLC (of the region, if trimmed)
+        return new(path, FromType.FromPath, loop, false,
+            $"file|{path.ToLowerInvariant()}|{loop}|{start.ToString(invariant)}|{end.ToString(invariant)}", options)
+        { StartSeconds = start };
+    }
 
     /// <summary>A DirectShow capture device (camera, HDMI capture card) with optional size, rate and audio input.</summary>
     public static VideoSource Capture(string device, string audioDevice, string resolution, double frameRate)
@@ -105,9 +117,6 @@ internal sealed class PreparedVideo : IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly Media _media;
     private bool _disposed;
-
-    public PreparedVideo(string path, bool loop, string audioDevice, Dispatcher dispatcher)
-        : this(VideoSource.File(path, loop), audioDevice, dispatcher) { }
 
     public PreparedVideo(VideoSource source, string audioDevice, Dispatcher dispatcher)
     {
@@ -143,8 +152,6 @@ internal sealed class PreparedVideo : IDisposable
     public event Action<string>? Failed;
 
     public bool IsLive => _source.IsLive;
-
-    public bool IsUsableFor(string path, bool loop, string audioDevice) => IsUsableFor(VideoSource.File(path, loop), audioDevice);
 
     public bool IsUsableFor(VideoSource source, string audioDevice)
         => !_disposed && Error is null && _audioDevice == audioDevice && _source.Key == source.Key;
@@ -201,7 +208,7 @@ internal sealed class PreparedVideo : IDisposable
         if (!IsLive) ReadPictureSize();
         if (IsClaimed || IsLive) return; // GO came while preloading, or a live source: keep playing
         Player.SetPause(true);
-        Player.Time = 0; // libVLC decodes and displays frame 0 again
+        Player.Time = (long)(_source.StartSeconds * 1000); // libVLC decodes and displays the first frame again
     }
 
     private void Fail(string message)

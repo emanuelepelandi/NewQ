@@ -394,3 +394,26 @@ Istanza di prova con il controllo web attivo (porta 8090), workspace di 2 video 
 | Thread | inizio 71 - fine 54 |
 | Oggetti GDI / USER | inizio 37 / 65 - fine 37 / 66 |
 | Working set a fine giro, MB | 339 334 333 344 335 339 335 346 337 346 431 329 |
+
+## 2026-10-19 00:16 - go-overlap - inizio/fine per audio e video, editor con forma d onda
+
+- Commit: `cda40c4+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.3 - p95 5.3 - max 13.4 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 39.7 - p99 medio 16.7 - max assoluto 47.2 |
+| Rendering timeline, ms | media 2.1 - max 5.9 (8 campioni) |
+| Ricostruzione timeline, ms | media 10.3 - max 19.0 (2) |
+| CPU per giro, % (tutti i core) | media 13.1 - max 23.0 |
+| Working set, MB | inizio 236 - picco 353 - fine 242 |
+| Private bytes, MB | inizio 272 - fine 255 |
+| Memoria gestita, MB (fine) | 13 |
+| GC gen0 / gen2 (totale) | 163 / 114 |
+| Handle | inizio 1242 - fine 1158 |
+| Thread | inizio 71 - fine 54 |
+| Oggetti GDI / USER | inizio 37 / 68 - fine 37 / 67 |
+| Working set a fine giro, MB | 324 330 337 341 345 337 341 347 353 345 336 312 |
