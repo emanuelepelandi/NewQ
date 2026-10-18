@@ -22,14 +22,14 @@ public interface IWebRemoteHost
     /// <summary>The access page, when a password is set.</summary>
     string LoginPage { get; }
 
-    /// <summary>The timeline (lanes, blocks, cues) as JSON; changes rarely.</summary>
-    string TimelineJson { get; }
-
-    /// <summary>The live state (cursors, playhead, pause, fading cues...) as JSON; refreshed several times a second.</summary>
+    /// <summary>The live state (next cue, pause, running cues...) as JSON; refreshed several times a second.</summary>
     string StateJson { get; }
 
     /// <summary>Runs a command ("go", "pause", "fade", "stop", "estop", "up", "down"); false if unknown.</summary>
     bool Execute(string command, string from);
+
+    /// <summary>Runs a command on one running cue ("pause", "fade", "stop"); false if unknown.</summary>
+    bool ExecuteCue(string command, Guid cueId, string from);
 }
 
 /// <summary>
@@ -38,9 +38,10 @@ public interface IWebRemoteHost
 /// <code>
 /// GET  /                 the page (or the access page)
 /// POST /login            password=...: sets the session cookie
-/// GET  /api/timeline     timeline JSON
 /// GET  /api/events       text/event-stream of state JSON (every 100 ms when it changes, a heartbeat otherwise)
+/// GET  /api/ping         204 (signed in) or 401: the page checks its session after losing the stream
 /// POST /api/cmd/{name}   go | pause | fade | stop | estop | up | down
+/// POST /api/cue/{id}/{name}  pause | fade | stop of one running cue
 /// </code>
 /// With a password, everything but the access page needs the session cookie given by /login (401 otherwise).
 /// Sessions live until the password changes or NewQ restarts (the server is recreated). Five wrong passwords from
@@ -144,13 +145,19 @@ public sealed class WebRemoteServer : IDisposable
             await Respond(stream, "200 OK", "text/html; charset=utf-8", allowed ? _host.Page : _host.LoginPage).ConfigureAwait(false);
         else if (!allowed)
             await Respond(stream, "401 Unauthorized", "text/plain", "").ConfigureAwait(false);
-        else if (method == "GET" && path == "/api/timeline")
-            await Respond(stream, "200 OK", "application/json; charset=utf-8", _host.TimelineJson).ConfigureAwait(false);
+        else if (method == "GET" && path == "/api/ping")
+            await Respond(stream, "204 No Content", "text/plain", "").ConfigureAwait(false);
         else if (method == "GET" && path == "/api/events")
             await StreamState(stream).ConfigureAwait(false);
         else if (method == "POST" && path.StartsWith("/api/cmd/", StringComparison.Ordinal))
         {
             var ok = _host.Execute(path["/api/cmd/".Length..], from);
+            await Respond(stream, ok ? "204 No Content" : "404 Not Found", "text/plain", "").ConfigureAwait(false);
+        }
+        else if (method == "POST" && path.StartsWith("/api/cue/", StringComparison.Ordinal))
+        {
+            var parts = path["/api/cue/".Length..].Split('/');
+            var ok = parts.Length == 2 && Guid.TryParseExact(parts[0], "N", out var id) && _host.ExecuteCue(parts[1], id, from);
             await Respond(stream, ok ? "204 No Content" : "404 Not Found", "text/plain", "").ConfigureAwait(false);
         }
         else

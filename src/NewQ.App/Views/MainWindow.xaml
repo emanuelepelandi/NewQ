@@ -307,7 +307,7 @@
                                                Foreground="{StaticResource TextOnAccentBrush}" />
                                 </Border>
                                 <!-- Length and time left. -->
-                                <TextBlock Text="{Binding RuntimeDurationText}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSmall}"
+                                <TextBlock x:Name="Duration" Text="{Binding RuntimeDurationText}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSmall}"
                                            Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" ToolTip="Durata" />
                                 <TextBlock Text="{Binding RemainingText}" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold"
                                            MinWidth="72" TextAlignment="Right" VerticalAlignment="Center" ToolTip="Mancante" />
@@ -356,6 +356,7 @@
                 <DataTrigger Binding="{Binding RuntimeDuration}" Value="{x:Null}">
                     <Setter TargetName="Fill" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="EndlessFill" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="Duration" Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding RunState}" Value="PreWait">
                     <Setter TargetName="Fill" Property="Fill" Value="{StaticResource PreWaitFillBrush}" />

@@ -39,14 +39,36 @@
   .badge.safe { background: rgba(122,180,230,.15); color: var(--safe); }
   .badge.paused { background: rgba(127,166,226,.18); color: var(--paused); }
 
-  /* ---- timeline */
-  .tl-bar {
-    display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 16px; min-height: 38px;
+  /* ---- In esecuzione: one row per running cue, as in NewQ */
+  .run-bar {
+    display: flex; align-items: center; padding: 4px 16px; min-height: 32px;
     background: var(--raised); border-bottom: 1px solid var(--border);
   }
-  .tl-bar .caption { flex: 1; }
-  #timelineBox { flex: 1; min-height: 120px; position: relative; background: var(--panel); border-bottom: 1px solid var(--border); }
-  #timeline { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  #running { flex: 1; min-height: 120px; overflow-y: auto; background: var(--panel); border-bottom: 1px solid var(--border); padding: 8px; }
+  #empty { color: var(--muted); text-align: center; padding: 32px 0; }
+  .cue { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .bar {
+    position: relative; flex: 1; min-width: 0; height: 52px; border-radius: 4px; overflow: hidden;
+    background: var(--control); display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  }
+  .fill { position: absolute; inset: 0; transform-origin: left center; transform: scaleX(0); background: rgba(76,178,126,.40); }
+  .cue.endless .fill { transform: none; background: rgba(76,178,126,.18); }
+  .cue.endless .dur { display: none; } /* no length: only "∞" */
+  .cue.prewait .fill { background: rgba(221,186,106,.30); }
+  .cue.fading .fill { background: rgba(226,169,69,.30); }
+  .cue.paused .fill { background: rgba(127,166,226,.30); }
+  .cue.error .bar { box-shadow: inset 0 0 0 1px var(--error); }
+  .bar > span { position: relative; } /* over the fill */
+  .num { font-weight: 600; }
+  .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .times { display: flex; align-items: baseline; gap: 10px; font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; white-space: nowrap; }
+  .dur { font-size: 12px; color: var(--text-2); }
+  .rem { font-weight: 600; min-width: 72px; text-align: right; }
+  .cue button { min-height: 44px; width: 44px; padding: 0; flex: none; }
+  .cue button svg { width: 16px; height: 16px; }
+  .cue .c-pause svg, .cue .c-fade svg { color: var(--paused); }
+  .cue .c-stop svg { color: var(--error); }
+  .cue.paused .c-pause { border-color: var(--accent); background: rgba(91,141,214,.18); }
 
   /* ---- controls */
   .controls { display: grid; gap: 8px; padding: 10px 12px 12px; background: var(--raised); }
@@ -88,7 +110,9 @@
   /* phones: icon above the label, so every button keeps its label on one line */
   @media (max-width: 520px) {
     .row.transport button { flex-direction: column; gap: 4px; font-size: 13px; min-height: 64px; padding: 0 4px; }
-    .tl-bar .caption { font-size: 10px; }
+    .times { flex-direction: column; align-items: flex-end; gap: 0; }
+    .rem { min-width: 0; }
+    .cue button { width: 40px; }
   }
 
   @media (orientation: landscape) and (min-width: 900px) {
@@ -115,15 +139,9 @@
     <span class="badge safe" id="safeBadge" hidden>SAFE</span>
   </header>
 
-  <div class="tl-bar">
-    <span class="caption">Timeline</span>
-    <button class="small" id="zoomOut" aria-label="Riduci">−</button>
-    <button class="small" id="zoomIn" aria-label="Ingrandisci">+</button>
-    <button class="small" id="fit">Adatta</button>
-    <button class="small on" id="follow">Segui</button>
-  </div>
-  <div id="timelineBox">
-    <canvas id="timeline" aria-label="Timeline dello show"></canvas>
+  <div class="run-bar"><span class="caption">In esecuzione</span></div>
+  <div id="running" aria-label="Cue in esecuzione">
+    <div id="empty">Nessuna cue in esecuzione</div>
   </div>
 
   <div class="controls">
@@ -161,39 +179,20 @@
 <script>
 "use strict";
 // ---------------------------------------------------------------- data
-let timeline = null;   // lanes, blocks, items (rebuilt by NewQ when the show changes)
-let state = null;      // live: cursors (for follow), progress, playhead, pause...
-let loading = false;
-
-async function loadTimeline() {
-  if (loading) return;
-  loading = true;
-  try {
-    const r = await fetch("/api/timeline", { cache: "no-store" });
-    if (r.status === 401) { location.reload(); return; } // password changed or NewQ restarted: sign in again
-    timeline = await r.json();
-    layout();
-    if (autoFit) fit();
-    draw();
-  } catch (e) { /* the event stream reconnects and asks again */ }
-  finally { loading = false; }
-}
+let state = null;      // next cue, pause, running cues... (every 100 ms while something changes)
 
 function connect() {
   const events = new EventSource("/api/events");
   events.onopen = () => { document.body.classList.remove("offline"); document.getElementById("dot").classList.add("on"); };
   events.onerror = () => {
     document.body.classList.add("offline"); document.getElementById("dot").classList.remove("on");
-    if (state) { state.live = []; updatePulse(); }
-    fetch("/api/timeline", { cache: "no-store" }).then(r => { if (r.status === 401) location.reload(); }).catch(() => {});
+    // password changed or NewQ restarted: sign in again
+    fetch("/api/ping", { cache: "no-store" }).then(r => { if (r.status === 401) location.reload(); }).catch(() => {});
   };
   events.onmessage = e => {
     state = JSON.parse(e.data);
-    if (!timeline || timeline.rev !== state.rev) loadTimeline();
     showState();
-    follow();
-    draw();
-    updatePulse();
+    showRunning();
   };
 }
 
@@ -227,295 +226,71 @@ document.addEventListener("keydown", e => {
   if (keys[e.key]) { e.preventDefault(); send(keys[e.key]); }
 });
 
-// ---------------------------------------------------------------- timeline drawing (as in NewQ)
-const canvas = document.getElementById("timeline");
-const ctx = canvas.getContext("2d");
-const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const C = {
-  panel: css("--panel"), raised: css("--raised"), inset: css("--inset"), border: css("--border"), strong: css("--border-strong"),
-  text: css("--text"), text2: css("--text-2"), muted: css("--muted"), go: css("--go"), success: css("--success"),
-  warning: css("--warning"), accent: css("--accent"),
+// ---------------------------------------------------------------- In esecuzione (as in NewQ)
+const list = document.getElementById("running");
+const rows = new Map(); // cue id → row element
+const ICON = {
+  pause: '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>',
+  play: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9.5-5.5z"/></svg>',
+  fade: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3.5H5L12 13H15"/></svg>',
+  stop: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="11" height="11" rx="1"/></svg>',
 };
-const RULER = 24, MIN_BLOCK = 2;
-let gutter = 92, gap = 48, pps = 24, offset = 0, autoFit = true, followOn = true;
-let blockX = [], contentWidth = 0, laneTop = [], trackH = [];
 
-function rgba(hex, a) {
-  const v = parseInt(hex.slice(1), 16);
-  return `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${a})`;
-}
-
-function layout() {
-  if (!timeline) return;
-  const small = canvas.clientWidth < 600;
-  gutter = small ? 72 : 110; gap = small ? 40 : 52;
-  let x = timeline.startHasGo ? gap : 0;
-  blockX = timeline.blocks.map(len => { x += gap; const bx = x; x += Math.max(MIN_BLOCK, len) * pps; return bx; });
-  contentWidth = x + 80;
-  let y = 0;
-  laneTop = []; trackH = [];
-  timeline.lanes.forEach((l, i) => { laneTop[i] = y; trackH[i] = l.visual ? 36 : 28; y += l.tracks * trackH[i]; });
-  clampOffset();
-}
-
-const viewWidth = () => canvas.clientWidth - gutter;
-const xOf = (b, t) => (b < 0 || b >= blockX.length) ? 0 : blockX[b] + Math.max(0, t) * pps;
-const screenX = (b, t) => gutter + xOf(b, t) - offset;
-const goX = b => gutter + (b < blockX.length ? blockX[b] - gap / 2
-  : blockX.length ? blockX[blockX.length - 1] + Math.max(MIN_BLOCK, timeline.blocks[blockX.length - 1]) * pps + gap / 2 : gap / 2) - offset;
-function clampOffset() { offset = Math.max(0, Math.min(offset, Math.max(0, contentWidth - viewWidth()))); }
-
-function fit() {
-  if (!timeline || !timeline.blocks.length) return;
-  const seconds = timeline.blocks.reduce((s, l) => s + Math.max(MIN_BLOCK, l), 0);
-  const room = viewWidth() - timeline.blocks.length * gap - (timeline.startHasGo ? gap : 0) - 80;
-  if (seconds > 0 && room > 40) pps = room / seconds;
-  offset = 0;
-  layout(); draw();
-}
-
-function zoom(f) {
-  autoFit = false;
-  const center = offset + viewWidth() / 2;
-  const before = pps;
-  pps = Math.max(1, Math.min(400, pps * f));
-  layout();
-  offset = center * (pps / before) - viewWidth() / 2; // roughly keeps the middle
-  clampOffset(); draw();
-}
-
-function goState(b) {
-  if (state.playheadBlock < 0 && !state.onStart) return "future";
-  return b < state.playheadBlock ? "past" : b === state.playheadBlock ? "next" : "future";
-}
-
-function resize() {
-  const r = window.devicePixelRatio || 1;
-  canvas.width = Math.round(canvas.clientWidth * r);
-  canvas.height = Math.round(canvas.clientHeight * r);
-  ctx.setTransform(r, 0, 0, r, 0, 0);
-  layout();
-  if (autoFit) fit();
-  draw();
-}
-
-function draw() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  ctx.fillStyle = C.panel; ctx.fillRect(0, 0, w, h);
-  if (!timeline || !state) return;
-  if (!timeline.blocks.length) {
-    ctx.fillStyle = C.muted; ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
-    ctx.fillText("Nessuna cue", gutter + 16, RULER + 24);
-    return;
+function makeRow(id) {
+  const row = document.createElement("div");
+  row.className = "cue";
+  row.innerHTML = '<div class="bar"><div class="fill"></div><span class="num"></span><span class="name"></span>'
+    + '<span class="times"><span class="dur" title="Durata"></span><span class="rem" title="Mancante"></span></span></div>'
+    + '<button class="c-pause" aria-label="Pausa"></button>'
+    + '<button class="c-fade" aria-label="Fade out">' + ICON.fade + '</button>'
+    + '<button class="c-stop" aria-label="Stop">' + ICON.stop + '</button>';
+  for (const action of ["pause", "fade", "stop"]) {
+    const b = row.querySelector(".c-" + action);
+    b.addEventListener("click", () => sendCue(id, action, b));
   }
-
-  // content
-  ctx.save();
-  ctx.beginPath(); ctx.rect(gutter, RULER, w - gutter, h - RULER); ctx.clip();
-  timeline.lanes.forEach((l, i) => {
-    const y = RULER + laneTop[i] + l.tracks * trackH[i] - .5;
-    ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gutter, y); ctx.lineTo(w, y); ctx.stroke();
-  });
-  const fading = new Set(state.fading);
-  timeline.items.forEach((item, i) => drawItem(item, fading.has(i), h));
-  if (!state.cursorMode) (state.progress || []).forEach(([i, b, t]) => drawProgress(timeline.items[i], screenX(b, t)));
-  (state.live || []).forEach(i => drawLive(timeline.items[i]));
-  if (timeline.startHasGo) drawGap(0, state.onStart ? "next" : "past", h);
-  blockX.forEach((bx, b) => drawGap(bx - gap, goState(b), h));
-  ctx.restore();
-
-  // ruler
-  ctx.fillStyle = C.raised; ctx.fillRect(0, 0, w, RULER);
-  ctx.strokeStyle = C.border; ctx.beginPath(); ctx.moveTo(0, RULER - .5); ctx.lineTo(w, RULER - .5); ctx.stroke();
-  ctx.save(); ctx.beginPath(); ctx.rect(gutter, 0, w - gutter, RULER); ctx.clip();
-  if (timeline.startHasGo) drawPill(gutter + gap / 2 - offset, "START", state.onStart ? "next" : "past");
-  blockX.forEach((bx, b) => drawPill(gutter + bx - gap / 2 - offset, "GO " + (b + 1), goState(b)));
-  ctx.restore();
-
-  // gutter
-  ctx.fillStyle = C.raised; ctx.fillRect(0, RULER, gutter, h - RULER);
-  ctx.strokeStyle = C.border; ctx.beginPath(); ctx.moveTo(gutter - .5, 0); ctx.lineTo(gutter - .5, h); ctx.stroke();
-  ctx.font = "12px 'Segoe UI', system-ui, sans-serif"; ctx.textBaseline = "middle";
-  timeline.lanes.forEach((l, i) => {
-    ctx.fillStyle = C.text2;
-    ctx.fillText(ellipsize(l.label, gutter - 16), 8, RULER + laneTop[i] + trackH[i] / 2);
-  });
-
-  // cursors (Impostazioni → Grafica → Avanzamento: Cursori)
-  if (state.cursorMode) state.cursors.forEach(([b, t, waiting]) => {
-    const x = waiting ? goX(b + 1) : screenX(b, t);
-    if (x < gutter - gap / 2 || x > w) return;
-    ctx.strokeStyle = ctx.fillStyle = waiting ? C.warning : C.success;
-    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, RULER); ctx.lineTo(x, h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - 5, RULER); ctx.lineTo(x + 5, RULER); ctx.lineTo(x, RULER + 7); ctx.closePath(); ctx.fill();
-  });
+  row.el = {
+    fill: row.querySelector(".fill"), num: row.querySelector(".num"), name: row.querySelector(".name"),
+    dur: row.querySelector(".dur"), rem: row.querySelector(".rem"), pause: row.querySelector(".c-pause"),
+  };
+  return row;
 }
 
-// Bar of a cue without an end (loop, capture) while on: a slow, soft green breath (as in NewQ).
-function itemBar(item) {
-  const th = trackH[item.lane];
-  const x0 = gutter + xOf(item.start[0], item.start[1]) - offset;
-  let x1 = item.end ? gutter + xOf(item.end[0], item.end[1]) - offset : gutter + contentWidth - offset;
-  if (x1 - x0 < 10) x1 = x0 + 10;
-  return { x0, x1, y: RULER + laneTop[item.lane] + item.track * th + 3, h: th - 6 };
-}
-
-function pulse() { return 0.08 + 0.22 * (0.5 - 0.5 * Math.cos(performance.now() % 2400 / 2400 * 2 * Math.PI)); }
-
-function drawLive(item) {
-  if (!item) return;
-  const r = itemBar(item);
-  if (r.x1 < gutter || r.x0 > canvas.clientWidth) return;
-  ctx.fillStyle = rgba(C.success, pulse()); roundRect(r.x0, r.y, r.x1 - r.x0, r.h, 3); ctx.fill();
-}
-
-// While a cue without an end is on, redraw at ~20 fps for the pulse (nothing runs otherwise).
-let pulseTimer = null;
-function updatePulse() {
-  const on = !!(state && state.live && state.live.length);
-  if (on && !pulseTimer) pulseTimer = setInterval(draw, 50);
-  else if (!on && pulseTimer) { clearInterval(pulseTimer); pulseTimer = null; }
-}
-
-// The played part of a running cue's bar: green, up to a bright edge (as in NewQ).
-function drawProgress(item, x) {
-  if (!item) return;
-  const th = trackH[item.lane];
-  const x0 = gutter + xOf(item.start[0], item.start[1]) - offset;
-  let x1 = item.end ? gutter + xOf(item.end[0], item.end[1]) - offset : gutter + contentWidth - offset;
-  if (x1 - x0 < 10) x1 = x0 + 10;
-  const right = Math.min(Math.max(x, x0), x1);
-  if (right <= x0) return;
-  const y = RULER + laneTop[item.lane] + item.track * th + 3, bh = th - 6;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(x0, y, right - x0, bh); ctx.clip();
-  ctx.fillStyle = rgba(C.success, .55); roundRect(x0, y, x1 - x0, bh, 3); ctx.fill();
-  ctx.restore();
-  if (right < x1 - 1) {
-    ctx.strokeStyle = C.success; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(right, y); ctx.lineTo(right, y + bh); ctx.stroke();
-  }
-}
-
-function ellipsize(text, width) {
-  if (ctx.measureText(text).width <= width) return text;
-  while (text.length > 1 && ctx.measureText(text + "…").width > width) text = text.slice(0, -1);
-  return text + "…";
-}
-
-function drawGap(contentLeft, st, h) {
-  const left = gutter + contentLeft - offset;
-  if (left + gap < gutter || left > canvas.clientWidth) return;
-  ctx.fillStyle = "rgba(13,15,18,.78)"; ctx.fillRect(left, RULER, gap, h - RULER);
-  ctx.save(); ctx.beginPath(); ctx.rect(left, RULER, gap, h - RULER); ctx.clip();
-  ctx.strokeStyle = C.border; ctx.lineWidth = 1;
-  for (let d = -h; d < gap; d += 10) { ctx.beginPath(); ctx.moveTo(left + d, h); ctx.lineTo(left + d + h, RULER); ctx.stroke(); }
-  ctx.restore();
-  ctx.strokeStyle = st === "past" ? C.muted : C.go; ctx.lineWidth = st === "next" ? 2 : 1.5;
-  ctx.setLineDash(st === "next" ? [] : [4, 3]);
-  ctx.beginPath(); ctx.moveTo(left + gap / 2, RULER); ctx.lineTo(left + gap / 2, h); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.strokeStyle = C.strong; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(left + gap + .5, RULER); ctx.lineTo(left + gap + .5, h); ctx.stroke();
-}
-
-function drawPill(center, label, st) {
-  ctx.font = "600 11px 'Segoe UI', system-ui, sans-serif"; ctx.textBaseline = "middle";
-  const width = Math.max(ctx.measureText(label).width + 14, 40), height = RULER - 7, x = center - width / 2, y = 3;
-  ctx.fillStyle = st === "next" ? C.go : st === "past" ? C.raised : rgba(C.go, .3);
-  ctx.strokeStyle = st === "past" ? C.strong : C.go; ctx.lineWidth = 1;
-  roundRect(x, y, width, height, height / 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = st === "next" ? "#fff" : st === "past" ? C.muted : C.text;
-  ctx.textAlign = "center"; ctx.fillText(label, center, y + height / 2 + .5); ctx.textAlign = "left";
-}
-
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
-
-function drawItem(item, isFading, h) {
-  const th = trackH[item.lane];
-  const x0 = gutter + xOf(item.start[0], item.start[1]) - offset;
-  let x1 = item.end ? gutter + xOf(item.end[0], item.end[1]) - offset : gutter + contentWidth - offset;
-  if (x1 - x0 < 10) x1 = x0 + 10;
-  if (x1 < gutter - 20 || x0 > canvas.clientWidth) return;
-  const y = RULER + laneTop[item.lane] + item.track * th + 3, bh = th - 6;
-  const color = isFading ? C.warning : item.color;
-  ctx.save();
-  if (item.disarmed) ctx.globalAlpha = .35;
-  ctx.font = "600 11px 'Segoe UI', system-ui, sans-serif"; ctx.textBaseline = "top";
-
-  if (item.kind === "instant") {
-    const cy = y + bh / 2;
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.moveTo(x0, cy - 6); ctx.lineTo(x0 + 6, cy); ctx.lineTo(x0, cy + 6); ctx.lineTo(x0 - 6, cy); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = C.text2; ctx.textBaseline = "middle"; ctx.fillText(item.label, x0 + 10, cy);
-    ctx.restore(); return;
-  }
-  if (item.kind === "control") {
-    ctx.fillStyle = rgba(color, .44); ctx.strokeStyle = rgba(color, .7); ctx.lineWidth = 1;
-    roundRect(x0, y, x1 - x0, bh, 3); ctx.fill(); ctx.stroke();
-  } else {
-    ctx.fillStyle = rgba(color, .12); roundRect(x0, y, x1 - x0, bh, 3); ctx.fill();
-    // level: fill under the line, then the line
-    const Y = level => y + bh - 2 - Math.min(Math.max(level, 0), 1.25) / 1.25 * (bh - 6);
-    const pts = (item.level || []).map(([b, t, l]) => [gutter + xOf(b, t) - offset, Y(l)]);
-    if (pts.length) {
-      if (!item.end) pts.push([x1, pts[pts.length - 1][1]]);
-      ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, bh); ctx.clip();
-      ctx.beginPath(); ctx.moveTo(pts[0][0], y + bh); pts.forEach(p => ctx.lineTo(p[0], p[1])); ctx.lineTo(pts[pts.length - 1][0], y + bh); ctx.closePath();
-      ctx.fillStyle = rgba(color, .33); ctx.fill();
-      ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
-      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.restore();
+// Rows are kept and only their text and fill change: no flicker, and a button under the finger stays put.
+function showRunning() {
+  const cues = state.running || [];
+  const seen = new Set();
+  cues.forEach((c, i) => {
+    seen.add(c.id);
+    let row = rows.get(c.id);
+    if (!row) { row = makeRow(c.id); rows.set(c.id, row); }
+    if (list.children[i + 1] !== row) list.insertBefore(row, list.children[i + 1] || null);
+    const e = row.el;
+    const cls = "cue " + c.state + (c.endless ? " endless" : "");
+    if (row.className !== cls) row.className = cls;
+    if (!c.endless) e.fill.style.transform = "scaleX(" + c.progress + ")";
+    else if (e.fill.style.transform) e.fill.style.transform = "";
+    set(e.num, c.number); set(e.name, c.name); set(e.dur, c.duration); set(e.rem, c.remaining);
+    const paused = c.state === "paused";
+    if (e.pause.dataset.paused !== String(paused)) {
+      e.pause.dataset.paused = String(paused);
+      e.pause.innerHTML = paused ? ICON.play : ICON.pause;
+      e.pause.setAttribute("aria-label", paused ? "Riprendi" : "Pausa");
     }
-    ctx.strokeStyle = rgba(color, .56); ctx.lineWidth = 1;
-    if (!item.end) ctx.setLineDash([4, 3]);
-    roundRect(x0, y, x1 - x0, bh, 3); ctx.stroke(); ctx.setLineDash([]);
-  }
-  ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, bh); ctx.clip();
-  ctx.fillStyle = C.text; ctx.fillText(item.label, Math.max(x0, gutter) + 6, y + 3);
-  ctx.restore();
-  ctx.restore();
-}
-
-// ---------------------------------------------------------------- follow, pan, zoom
-function follow() {
-  if (!followOn || !timeline || !state || !state.cursors.length) return;
-  // the latest GO: the cursor furthest on (the wait for a GO counts as the start of that GO)
-  let lead = null, key = -Infinity;
-  state.cursors.forEach(([b, t, waiting]) => {
-    const k = waiting ? (b + 1) * 1e6 - 1 : b * 1e6 + t;
-    if (k > key) { key = k; lead = waiting ? goX(b + 1) : screenX(b, t); }
   });
-  if (lead === null) return;
-  if (lead >= gutter && lead <= canvas.clientWidth - 8) return;
-  offset += lead - (gutter + viewWidth() * .15);
-  clampOffset();
+  for (const [id, row] of rows) if (!seen.has(id)) { row.remove(); rows.delete(id); }
+  document.getElementById("empty").hidden = cues.length > 0;
 }
 
-let drag = null;
-canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, offset }; canvas.setPointerCapture(e.pointerId); });
-canvas.addEventListener("pointermove", e => {
-  if (!drag) return;
-  offset = drag.offset - (e.clientX - drag.x); clampOffset(); draw();
-  if (Math.abs(e.clientX - drag.x) > 8) autoFit = false;
-  if (Math.abs(e.clientX - drag.x) > 8) setFollow(false); // looking around: stop following
-});
-canvas.addEventListener("pointerup", () => drag = null);
-canvas.addEventListener("pointercancel", () => drag = null);
-canvas.addEventListener("wheel", e => { e.preventDefault(); if (e.ctrlKey) zoom(e.deltaY < 0 ? 1.25 : .8); else { offset += e.deltaX || e.deltaY; clampOffset(); draw(); } }, { passive: false });
+function set(el, text) { if (el.textContent !== text) el.textContent = text; }
 
-function setFollow(on) { followOn = on; document.getElementById("follow").classList.toggle("on", on); }
-document.getElementById("follow").addEventListener("click", () => { setFollow(!followOn); follow(); draw(); });
-document.getElementById("fit").addEventListener("click", () => { autoFit = true; fit(); });
-document.getElementById("zoomIn").addEventListener("click", () => zoom(1.5));
-document.getElementById("zoomOut").addEventListener("click", () => zoom(1 / 1.5));
-window.addEventListener("resize", resize);
+async function sendCue(id, action, button) {
+  button.classList.add("sent"); setTimeout(() => button.classList.remove("sent"), 160);
+  try {
+    const r = await fetch("/api/cue/" + id + "/" + action, { method: "POST" });
+    if (r.status === 401) location.reload();
+  } catch (e) { /* shown by the offline state */ }
+}
 
-resize();
 connect();
 </script>
 </body>

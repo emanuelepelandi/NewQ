@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,17 +7,15 @@ using System.Text.Json;
 using System.Threading;
 using System.Windows.Input;
 using System.Windows.Threading;
-using NewQ.App.Infrastructure;
 using NewQ.App.ViewModels;
 using NewQ.Core.Model;
-using NewQ.Core.Timeline;
 
 namespace NewQ.App.Remote;
 
 /// <summary>
-/// Bridge between the web remote and the app. A timer on the UI thread (10 Hz) writes the timeline and the live state
-/// as JSON; the server's threads only read those strings. Commands are queued to the UI thread, exactly like the
-/// buttons of the main window.
+/// Bridge between the web remote and the app. A timer on the UI thread (10 Hz) writes the live state as JSON; the
+/// server's threads only read that string. Commands are queued to the UI thread, exactly like the buttons of the
+/// main window.
 /// </summary>
 public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
 {
@@ -26,15 +23,11 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _timer;
     private readonly Dictionary<string, Func<ICommand>> _commands;
+    private readonly Dictionary<string, Func<ICommand>> _cueCommands;
     private readonly Action<string> _log;
     private Func<int> _clients = () => 0;
 
-    private string _timelineJson = "{}";
     private string _stateJson = "{}";
-    private object? _timelineKey;
-    private int _revision;
-    private TimelineLayout? _layout;
-    private readonly Dictionary<TimelineItem, int> _itemIndex = new();
 
     public WebRemoteHost(MainViewModel vm, Dispatcher dispatcher, Action<string> log)
     {
@@ -51,6 +44,13 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
             ["up"] = () => vm.PlayheadUpCommand,
             ["down"] = () => vm.PlayheadDownCommand,
         };
+        // The buttons of a row of "In esecuzione".
+        _cueCommands = new Dictionary<string, Func<ICommand>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["pause"] = () => vm.TogglePauseCueCommand,
+            ["fade"] = () => vm.FadeCueCommand,
+            ["stop"] = () => vm.StopCueCommand,
+        };
         Page = LoadPage("remote.html");
         LoginPage = LoadPage("remote-login.html");
         Refresh();
@@ -66,7 +66,6 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
 
     public string Page { get; }
     public string LoginPage { get; }
-    public string TimelineJson => Volatile.Read(ref _timelineJson);
     public string StateJson => Volatile.Read(ref _stateJson);
 
     public bool Execute(string command, string from)
@@ -82,6 +81,21 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
         return true;
     }
 
+    public bool ExecuteCue(string command, Guid cueId, string from)
+    {
+        if (!_cueCommands.TryGetValue(command, out var get)) return false;
+        _dispatcher.BeginInvoke(() =>
+        {
+            // Only a cue still running: a late tap never restarts or touches anything else.
+            if (_vm.ActiveCues.FirstOrDefault(c => c.Id == cueId) is not Cue cue) return;
+            var cmd = get();
+            if (!cmd.CanExecute(cue)) return;
+            cmd.Execute(cue);
+            _log($"Web da {from}: {CueLabel(command)} {cue.Number}".TrimEnd());
+        });
+        return true;
+    }
+
     private static string Label(string command) => command.ToLowerInvariant() switch
     {
         "go" => "GO",
@@ -91,6 +105,13 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
         "estop" => "E-STOP",
         "up" => "Playhead su",
         _ => "Playhead giù",
+    };
+
+    private static string CueLabel(string command) => command.ToLowerInvariant() switch
+    {
+        "pause" => "Pausa / Riprendi cue",
+        "fade" => "Fade out cue",
+        _ => "Stop cue",
     };
 
     private static string LoadPage(string name)
@@ -103,116 +124,17 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
 
     // ------------------------------------------------------------------ JSON (UI thread)
 
-    private void Refresh()
-    {
-        var key = (_vm.Timeline, _vm.Settings.TimelineLanesByRoute, _vm.RoutesVersion, _vm.Workspace, CueColors.Version);
-        if (!Equals(key, _timelineKey))
-        {
-            _timelineKey = key;
-            _revision++;
-            _layout = TimelineLayout.Build(_vm.Timeline, _vm.Workspace, _vm.Settings.TimelineLanesByRoute);
-            _itemIndex.Clear();
-            for (var i = 0; i < _layout.Placements.Count; i++) _itemIndex.TryAdd(_layout.Placements[i].Item, i);
-            Volatile.Write(ref _timelineJson, BuildTimeline(_vm.Timeline, _layout, _revision));
-        }
-        Volatile.Write(ref _stateJson, BuildState());
-    }
-
-    private static string Hex(System.Windows.Media.Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
-
-    private static string BuildTimeline(ShowTimeline timeline, TimelineLayout layout, int revision)
-    {
-        using var buffer = new MemoryStream();
-        using (var w = new Utf8JsonWriter(buffer))
-        {
-            w.WriteStartObject();
-            w.WriteNumber("rev", revision);
-            w.WriteBoolean("startHasGo", timeline.StartHasGo);
-            w.WriteStartArray("blocks");
-            foreach (var block in timeline.Blocks) w.WriteNumberValue(Math.Round(block.Length, 3));
-            w.WriteEndArray();
-            w.WriteStartArray("lanes");
-            foreach (var lane in layout.Lanes)
-            {
-                w.WriteStartObject();
-                w.WriteString("label", lane.Label);
-                w.WriteNumber("tracks", lane.Tracks);
-                w.WriteBoolean("visual", lane.Visual);
-                w.WriteEndObject();
-            }
-            w.WriteEndArray();
-
-            var laneIndex = layout.Lanes.Select((l, i) => (l, i)).ToDictionary(x => x.l, x => x.i);
-            w.WriteStartArray("items");
-            foreach (var p in layout.Placements)
-            {
-                var item = p.Item;
-                var instant = item.End is TimelinePoint e && Equals(e, item.Start);
-                w.WriteStartObject();
-                w.WriteNumber("lane", laneIndex[p.Lane]);
-                w.WriteNumber("track", p.Track);
-                w.WriteString("label", $"{item.Cue.Number}  {item.Cue.Name}".Trim());
-                w.WriteString("kind", instant ? "instant" : item.Kind == TimelineItemKind.Media ? "media" : "control");
-                w.WriteString("color", Hex(CueTypeBrushConverter.ColorOf(item.Kind == TimelineItemKind.Media || instant ? item.Cue.TypeName : "Fade")));
-                w.WriteBoolean("disarmed", item.Disarmed);
-                WritePoint(w, "start", item.Start);
-                if (item.End is TimelinePoint end) WritePoint(w, "end", end); else w.WriteNull("end");
-                if (item.Kind == TimelineItemKind.Media && !instant)
-                {
-                    // The level line: start, every change, end (as the app draws it).
-                    w.WriteStartArray("level");
-                    WriteLevel(w, item.Start, TimelineBuilder.LevelAt(item, item.Start));
-                    foreach (var point in item.Envelope) WriteLevel(w, point.At, point.Level);
-                    if (item.End is TimelinePoint last) WriteLevel(w, last, TimelineBuilder.LevelAt(item, last));
-                    w.WriteEndArray();
-                }
-                w.WriteEndObject();
-            }
-            w.WriteEndArray();
-            w.WriteEndObject();
-        }
-        return Encoding.UTF8.GetString(buffer.ToArray());
-    }
-
-    private static void WritePoint(Utf8JsonWriter w, string name, TimelinePoint p)
-    {
-        w.WriteStartArray(name);
-        w.WriteNumberValue(p.Block);
-        w.WriteNumberValue(Math.Round(p.Time, 3));
-        w.WriteEndArray();
-    }
-
-    private static void WriteLevel(Utf8JsonWriter w, TimelinePoint p, double level)
-    {
-        w.WriteStartArray();
-        w.WriteNumberValue(p.Block);
-        w.WriteNumberValue(Math.Round(p.Time, 3));
-        w.WriteNumberValue(Math.Round(level, 3));
-        w.WriteEndArray();
-    }
+    private void Refresh() => Volatile.Write(ref _stateJson, BuildState());
 
     private string BuildState()
     {
-        var timeline = _vm.Timeline;
         var playhead = _vm.SelectedCue;
-        var onStart = playhead is ShowMarkerCue { IsStart: true };
-        var playheadBlock = playhead switch
-        {
-            null => -1,
-            ShowMarkerCue { IsEnd: true } => timeline.Blocks.Count,
-            _ when onStart && timeline.StartHasGo => -1,
-            _ => timeline.BlockOf(playhead),
-        };
-
         using var buffer = new MemoryStream();
         using (var w = new Utf8JsonWriter(buffer))
         {
             w.WriteStartObject();
-            w.WriteNumber("rev", _revision);
             w.WriteBoolean("paused", _vm.IsPaused);
             w.WriteBoolean("safe", _vm.IsSafeMode);
-            w.WriteNumber("playheadBlock", playheadBlock);
-            w.WriteBoolean("onStart", onStart);
             if (playhead is null) w.WriteNull("next");
             else
             {
@@ -222,45 +144,36 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
                 w.WriteString("type", playhead.TypeName);
                 w.WriteEndObject();
             }
-            w.WriteBoolean("cursorMode", _vm.Settings.TimelineCursors);
-            w.WriteStartArray("cursors");
-            foreach (var now in _vm.TimelineCursors())
+            // In esecuzione, as in the app: one row per running cue, its fill, length and time left.
+            w.WriteStartArray("running");
+            foreach (var cue in _vm.ActiveCues)
             {
-                w.WriteStartArray();
-                w.WriteNumberValue(now.At.Block);
-                w.WriteNumberValue(Math.Round(now.At.Time, 3));
-                w.WriteBooleanValue(now.WaitingForGo);
-                w.WriteEndArray();
+                w.WriteStartObject();
+                w.WriteString("id", cue.Id.ToString("N"));
+                w.WriteString("number", cue.Number);
+                w.WriteString("name", cue.Name);
+                w.WriteString("state", StateOf(cue));
+                w.WriteNumber("progress", Math.Round(Math.Clamp(cue.Progress, 0, 1), 4));
+                w.WriteBoolean("endless", cue.RuntimeDuration is null);
+                w.WriteString("duration", cue.RuntimeDurationText);
+                w.WriteString("remaining", cue.RemainingText);
+                w.WriteEndObject();
             }
             w.WriteEndArray();
-            // Running cues: [item index, block, time] where the green part of the bar ends; cues without an end (pulsing): item indexes.
-            var progress = _vm.CueProgress();
-            w.WriteStartArray("live");
-            foreach (var p in progress)
-                if (p.Live && _itemIndex.TryGetValue(p.Item, out var live)) w.WriteNumberValue(live);
-            w.WriteEndArray();
-            w.WriteStartArray("progress");
-            foreach (var p in progress)
-            {
-                if (p.Live || !_itemIndex.TryGetValue(p.Item, out var index)) continue;
-                w.WriteStartArray();
-                w.WriteNumberValue(index);
-                w.WriteNumberValue(p.At.Block);
-                w.WriteNumberValue(Math.Round(p.At.Time, 3));
-                w.WriteEndArray();
-            }
-            w.WriteEndArray();
-            // Cues fading out to a stop: their bars turn amber (indexes in the timeline's items).
-            w.WriteStartArray("fading");
-            if (_layout is not null)
-                for (var i = 0; i < _layout.Placements.Count; i++)
-                    if (_layout.Placements[i].Item.Cue.IsFadingOut) w.WriteNumberValue(i);
-            w.WriteEndArray();
-            w.WriteNumber("running", _vm.ActiveCues.Count);
             w.WriteEndObject();
         }
         return Encoding.UTF8.GetString(buffer.ToArray());
     }
+
+    /// <summary>The row's colour: the same states as the app's "In esecuzione".</summary>
+    private static string StateOf(Cue cue) => cue.RunState switch
+    {
+        CueRunState.Paused => "paused",
+        CueRunState.Error => "error",
+        _ when cue.IsFadingOut => "fading",
+        CueRunState.PreWait => "prewait",
+        _ => "running",
+    };
 
     public void Dispose() => _timer.Stop();
 }

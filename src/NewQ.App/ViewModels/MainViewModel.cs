@@ -1150,7 +1150,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void RebuildTimeline()
     {
-        if (!_timelineVisible && _webServer is null) return;
+        if (!_timelineVisible) return;
         var cues = Workspace.Cues.ToList();
         foreach (var cue in cues)
         {
@@ -1463,7 +1463,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 var server = _webServer;
                 _webHost.AttachClients(() => server.Clients);
                 AddLog(EngineLogLevel.Info, "Controllo web: " + string.Join("  ", server.Addresses().DefaultIfEmpty($"porta {server.Port}")));
-                ScheduleTimeline(); // the page shows the timeline even when the panel is hidden
             }
             catch (Exception ex)
             {
