@@ -116,3 +116,6 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 ### 2026-10-13 - Cursori o riempimento, lampeggio delle cue Cattura (commit `5bd09ed`)
 - **Aggiunto**: *Impostazioni → Grafica → Avanzamento*: "Riempimento dei blocchi" (predefinito) o "Cursori" (un cursore per GO, come prima). Vale anche per la pagina web.
 - **Corretto**: le cue Cattura non mostravano un avanzamento sensato (una sorgente live non ha una posizione): ora, finché sono attive, il loro blocco lampeggia piano di verde, nell'app e nella pagina web.
+
+### 2026-10-18 - Loop nella timeline (commit `dc504f8`)
+- **Corretto**: le cue in loop non avanzavano all'inizio, poi seguivano il GO successivo e si fermavano con lui. Ora, come le Cattura e le immagini fisse, finché sono attive il loro blocco lampeggia piano di verde, nell'app e nella pagina web. Anche *Segui il playhead* non si basa più sul tempo di un loop.
