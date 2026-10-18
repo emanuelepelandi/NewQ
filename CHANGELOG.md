@@ -119,3 +119,9 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 
 ### 2026-10-18 - Loop nella timeline (commit `dc504f8`)
 - **Corretto**: le cue in loop non avanzavano all'inizio, poi seguivano il GO successivo e si fermavano con lui. Ora, come le Cattura e le immagini fisse, finché sono attive il loro blocco lampeggia piano di verde, nell'app e nella pagina web. Anche *Segui il playhead* non si basa più sul tempo di un loop.
+
+### 2026-10-18 - Nuova disposizione della finestra principale (commit `1fce1b8`)
+- **Cambiato**: la timeline è spenta all'inizio (Visualizza → Timeline per riaccenderla).
+- **Cambiato**: il pannello *In esecuzione* è a destra della lista, al posto delle proprietà, in stile QLab: una riga per cue con sfondo verde che segue l'avanzamento, durata e tempo mancante in sovraimpressione, pulsanti pausa, fade e stop. Colori per pre-wait, pausa e fade; le cue senza fine hanno la riga tutta verde tenue. In pausa si scorre con un clic o trascinando sulla riga.
+- **Cambiato**: le *Proprietà cue* sono in basso, a tutta larghezza, divise in pagine (Base, Trigger e le pagine del tipo di cue). Tra cue dello stesso tipo resta aperta la stessa pagina.
+- **Cambiato**: il Log non è più una scheda sotto la lista: si apre in una finestra a parte da *Strumenti → Log…*, solo fuori dalla modalità Safe (attivando Safe si chiude).
