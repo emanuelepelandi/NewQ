@@ -78,7 +78,7 @@ public partial class TimelinePanel : UserControl
     private readonly List<(double X, bool Waiting)> _cursorXs = new();
 
     /// <summary>
-    /// The running cues' bars fill up as they play, or (Impostazioni → Grafica) one cursor per GO; live sources pulse.
+    /// The running cues' bars fill up as they play, or (Impostazioni → Grafica) one cursor per GO; cues without an end (loops, captures) pulse.
     /// Only that thin layer is redrawn. The show's cursors lead "Segui il playhead" in both cases.
     /// </summary>
     private void UpdateNow()

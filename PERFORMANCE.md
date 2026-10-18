@@ -279,3 +279,26 @@ Istanza di prova con il controllo web attivo (porta 8090), workspace di 2 video 
 | Thread | inizio 71 - fine 54 |
 | Oggetti GDI / USER | inizio 37 / 65 - fine 37 / 66 |
 | Working set a fine giro, MB | 336 347 361 352 356 351 349 351 362 353 354 328 |
+
+## 2026-10-18 22:19 - go-overlap - loop senza posizione: lampeggio
+
+- Commit: `1761199+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.3 - p95 5.3 - max 11.3 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.17 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 30.8 - p99 medio 18.5 - max assoluto 100.1 |
+| Rendering timeline, ms | media 3.3 - max 17.8 (9 campioni) |
+| Ricostruzione timeline, ms | media 9.3 - max 16.5 (2) |
+| CPU per giro, % (tutti i core) | media 14.4 - max 15.9 |
+| Working set, MB | inizio 255 - picco 356 - fine 240 |
+| Private bytes, MB | inizio 256 - fine 214 |
+| Memoria gestita, MB (fine) | 22 |
+| GC gen0 / gen2 (totale) | 162 / 104 |
+| Handle | inizio 1237 - fine 1151 |
+| Thread | inizio 70 - fine 53 |
+| Oggetti GDI / USER | inizio 37 / 65 - fine 37 / 66 |
+| Working set a fine giro, MB | 346 350 352 356 346 354 350 356 356 356 342 325 |

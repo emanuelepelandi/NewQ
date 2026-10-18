@@ -351,7 +351,7 @@ function draw() {
   });
 }
 
-// Bar of a live source (capture) while on: a slow, soft green breath (as in NewQ).
+// Bar of a cue without an end (loop, capture) while on: a slow, soft green breath (as in NewQ).
 function itemBar(item) {
   const th = trackH[item.lane];
   const x0 = gutter + xOf(item.start[0], item.start[1]) - offset;
@@ -369,7 +369,7 @@ function drawLive(item) {
   ctx.fillStyle = rgba(C.success, pulse()); roundRect(r.x0, r.y, r.x1 - r.x0, r.h, 3); ctx.fill();
 }
 
-// While a live source is on, redraw at ~20 fps for the pulse (nothing runs otherwise).
+// While a cue without an end is on, redraw at ~20 fps for the pulse (nothing runs otherwise).
 let pulseTimer = null;
 function updatePulse() {
   const on = !!(state && state.live && state.live.length);

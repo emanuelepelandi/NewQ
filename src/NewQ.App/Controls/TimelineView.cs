@@ -650,7 +650,7 @@ public sealed class TimelineView : FrameworkElement
 
 /// <summary>
 /// The show's progress over <see cref="TimelineView"/>, a thin layer redrawn alone while cues run: the played part of
-/// each running cue's bar in green (or, by choice, one cursor per GO), and the bars of live sources pulsing softly.
+/// each running cue's bar in green (or, by choice, one cursor per GO), and the bars of cues without an end (loops, captures) pulsing softly.
 /// </summary>
 public sealed class TimelineProgressLayer : FrameworkElement
 {

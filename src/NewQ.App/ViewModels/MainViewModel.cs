@@ -1217,7 +1217,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             // Best source: the real playback position of the newest cue of this group playing in its block.
             double position;
             var reference = members
-                .Where(r => r.Handle is not null && !r.IsInPreWait)
+                .Where(r => r.Handle is not null && !r.IsInPreWait && !Endless(r.Cue))
                 .Select(r => (Run: r, Item: Timeline.ItemOf(r.Cue, cursor.Block)))
                 .Where(x => x.Item is not null && x.Item.Kind != TimelineItemKind.Instant)
                 .OrderByDescending(x => x.Run.FiredAt)
@@ -1250,6 +1250,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     /// How far each running cue is along its bar (call after <see cref="TimelineCursors"/>, which it reads). A cue is
     /// at its own playback time in the block of its GO, up to the end of that block. If its bar goes on into later
     /// blocks, once one of those GOs has gone it is where that GO is. Never before its start or past its end.
+    /// Cues that never end by themselves (loops, live sources, held images) have no position: their bar pulses.
     /// </summary>
     public IReadOnlyList<TimelineProgress> CueProgress()
     {
@@ -1260,7 +1261,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var item = _cursors.TryGetValue(rc.Group, out var own) ? Timeline.ItemOf(rc.Cue, own.Block) : null;
             item ??= TimelineItemOf(rc.Cue);
             if (item is null || item.Kind == TimelineItemKind.Instant || item.Start.Block >= Timeline.Blocks.Count) continue;
-            if (rc.Cue is LiveCue)
+            if (Endless(rc.Cue))
             {
                 _progressList.Add(new TimelineProgress(item, item.Start, Live: true));
                 continue;
@@ -1283,6 +1284,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         return _progressList;
     }
+
+    /// <summary>A cue that goes on until stopped (loop, live source, held image): its playback time says nothing of the show.</summary>
+    private bool Endless(Cue cue) => cue is MediaCue && LengthOf(cue) is null;
 
     private static bool Before(TimelinePoint a, TimelinePoint b) => a.Block < b.Block || a.Block == b.Block && a.Time < b.Time;
 

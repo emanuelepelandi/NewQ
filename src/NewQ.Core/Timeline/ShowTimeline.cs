@@ -10,7 +10,7 @@ public readonly record struct TimelineNow(TimelinePoint At, bool WaitingForGo);
 
 /// <summary>
 /// How far a running cue is along its bar: from <see cref="TimelineItem.Start"/> to <paramref name="At"/>.
-/// <paramref name="Live"/>: a live source (capture), with no position: the whole bar shows it is on.
+/// <paramref name="Live"/>: a cue that goes on until stopped (loop, capture, held image), with no position: the whole bar shows it is on.
 /// </summary>
 public readonly record struct TimelineProgress(TimelineItem Item, TimelinePoint At, bool Live = false);
 

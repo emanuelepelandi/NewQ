@@ -233,7 +233,7 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
                 w.WriteEndArray();
             }
             w.WriteEndArray();
-            // Running cues: [item index, block, time] where the green part of the bar ends; live sources (pulsing): item indexes.
+            // Running cues: [item index, block, time] where the green part of the bar ends; cues without an end (pulsing): item indexes.
             var progress = _vm.CueProgress();
             w.WriteStartArray("live");
             foreach (var p in progress)
