@@ -33,7 +33,7 @@ public partial class MainWindow : Window
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
-    // ------------------------------------------------------------------ view: list columns, properties panel
+    // ------------------------------------------------------------------ view: list columns, panels
 
     private Dictionary<string, DataGridColumn> OptionalColumns() => new()
     {
@@ -51,9 +51,11 @@ public partial class MainWindow : Window
             if (e.PropertyName == nameof(MainViewModel.IsInspectorCollapsed)) ApplyInspector();
             if (e.PropertyName == nameof(MainViewModel.IsTimelineVisible)) ApplyTimeline();
             if (e.PropertyName == nameof(MainViewModel.IsRunningPanelVisible)) ApplyRunningPanel();
+            if (e.PropertyName == nameof(MainViewModel.SelectedCue)) ShowInspectorPages();
         };
         ApplyColumns();
         ApplyInspector();
+        ShowInspectorPages();
         ApplyRunningPanel();
         TimelineArea.Initialize(ViewModel);
         ApplyTimeline();
@@ -66,8 +68,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Hides the properties panel completely (the list gets the space), or opens it again. It comes back from
-    /// Visualizza, its shortcut, or a right click on a cue.
+    /// Hides the properties panel at the bottom completely (the list gets the space), or opens it again. It comes back
+    /// from Visualizza, its shortcut, or a right click on a cue.
     /// </summary>
     private void ApplyInspector()
     {
@@ -75,29 +77,96 @@ public partial class MainWindow : Window
         if (collapsed)
         {
             if (InspectorPanel.IsKeyboardFocusWithin) CueGrid.Focus(); // never leave the focus in a hidden field
-            if (InspectorColumn.ActualWidth > 0) ViewModel.SaveInspectorWidth(InspectorColumn.ActualWidth);
-            InspectorColumn.MinWidth = 0;
-            InspectorColumn.Width = new GridLength(0);
+            if (InspectorRow.ActualHeight > 0) ViewModel.SaveInspectorHeight(InspectorRow.ActualHeight);
+            InspectorRow.MinHeight = 0;
+            InspectorRow.Height = new GridLength(0);
         }
         else
         {
-            InspectorColumn.MinWidth = 320;
-            InspectorColumn.Width = new GridLength(Math.Max(320, ViewModel.Settings.InspectorWidth));
+            InspectorRow.MinHeight = 150;
+            InspectorRow.Height = new GridLength(Math.Max(150, ViewModel.Settings.InspectorHeight));
         }
-        InspectorSplitterColumn.Width = new GridLength(collapsed ? 0 : 5);
+        InspectorSplitterRow.Height = new GridLength(collapsed ? 0 : 5);
         InspectorPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         InspectorSplitter.Visibility = InspectorPanel.Visibility;
     }
 
-    /// <summary>Shows or hides the "In esecuzione" / "Log" panel under the list (the list gets the height).</summary>
+    /// <summary>Shows or hides the "In esecuzione" panel on the right of the list (the list gets the width).</summary>
     private void ApplyRunningPanel()
     {
         var visible = ViewModel.IsRunningPanelVisible;
-        RunningRow.MinHeight = visible ? 90 : 0;
-        RunningRow.Height = visible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        RunningSplitterRow.Height = new GridLength(visible ? 5 : 0);
+        RunningColumn.MinWidth = visible ? 280 : 0;
+        RunningColumn.Width = new GridLength(visible ? Math.Max(280, ViewModel.Settings.RunningWidth) : 0);
+        RunningSplitterColumn.Width = new GridLength(visible ? 5 : 0);
         RunningPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         RunningSplitter.Visibility = RunningPanel.Visibility;
+    }
+
+    /// <summary>A tab of the properties panel: a page of fields of the selected cue.</summary>
+    public sealed class InspectorPage : Core.ObservableObject
+    {
+        private Core.Model.Cue _cue;
+
+        public InspectorPage(string header, DataTemplate template, Core.Model.Cue cue)
+        {
+            Header = header;
+            Template = template;
+            _cue = cue;
+        }
+
+        public string Header { get; }
+        public DataTemplate Template { get; }
+
+        /// <summary>Changes in place when the next cue has the same pages: the fields are only rebound.</summary>
+        public Core.Model.Cue Cue { get => _cue; set => SetField(ref _cue, value); }
+
+        public override string ToString() => Header; // the tab's name for screen readers and UI automation
+    }
+
+    private List<InspectorPage> _pages = new();
+
+    /// <summary>The pages of each cue type, in tab order (resource keys of MainWindow.xaml).</summary>
+    private static (string Header, string Template)[] PagesOf(Core.Model.Cue cue) => cue switch
+    {
+        Core.Model.ShowMarkerCue => new[] { ("Base", "PageMarker") },
+        Core.Model.AudioCue => Common(("Audio", "PageAudio"), ("Tempo e loop", "PageAudioTime")),
+        Core.Model.VideoCue => Common(("Video", "PageVideo"), ("Layer", "PageDisplay"), ("Tempo e loop", "PageVideoTime")),
+        Core.Model.ImageCue => Common(("Immagine", "PageImage"), ("Layer", "PageDisplay"), ("Tempo", "PageImageTime")),
+        Core.Model.LiveCue => Common(("Sorgente", "PageLiveSource"), ("Uscita", "PageLiveOutput"), ("Layer", "PageDisplay")),
+        Core.Model.MidiCue => Common(("MIDI", "PageMidi")),
+        Core.Model.NetworkCue => Common(("Rete", "PageNetwork")),
+        Core.Model.WaitCue => Common(("Attesa", "PageWait")),
+        Core.Model.FadeCue => Common(("Fade", "PageFade")),
+        Core.Model.StopCue => Common(("Stop", "PageStop")),
+        _ => Common(),
+    };
+
+    private static (string Header, string Template)[] Common(params (string, string)[] own)
+        => new[] { ("Base", "PageBase"), ("Trigger", "PageTrigger") }.Concat(own).ToArray();
+
+    /// <summary>
+    /// Tabs of the selected cue. A cue with the same pages (e.g. the next video, at every GO) reuses them: the fields
+    /// are only rebound. Otherwise the open page stays open when the new cue has one with the same name.
+    /// </summary>
+    private void ShowInspectorPages()
+    {
+        if (_fields.EditedField() is TextBox field && InspectorPanel.IsAncestorOf(field)) FieldCommit.Commit(field);
+        if (ViewModel.SelectedCue is not Core.Model.Cue cue)
+        {
+            _pages = new();
+            InspectorTabs.ItemsSource = null;
+            return;
+        }
+        var wanted = PagesOf(cue);
+        if (wanted.Length == _pages.Count && wanted.Select(p => FindResource(p.Template)).SequenceEqual(_pages.Select(p => (object)p.Template)))
+        {
+            foreach (var page in _pages) page.Cue = cue;
+            return;
+        }
+        var open = (InspectorTabs.SelectedItem as InspectorPage)?.Header;
+        _pages = wanted.Select(p => new InspectorPage(p.Header, (DataTemplate)FindResource(p.Template), cue)).ToList();
+        InspectorTabs.ItemsSource = _pages;
+        InspectorTabs.SelectedItem = _pages.FirstOrDefault(p => p.Header == open) ?? _pages[0];
     }
 
     /// <summary>Right click on a cue: select it and open its properties.</summary>
@@ -126,7 +195,12 @@ public partial class MainWindow : Window
 
     private void OnInspectorResized(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
     {
-        if (!ViewModel.IsInspectorCollapsed) ViewModel.SaveInspectorWidth(InspectorColumn.ActualWidth);
+        if (!ViewModel.IsInspectorCollapsed) ViewModel.SaveInspectorHeight(InspectorRow.ActualHeight);
+    }
+
+    private void OnRunningResized(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (ViewModel.IsRunningPanelVisible) ViewModel.SaveRunningWidth(RunningColumn.ActualWidth);
     }
 
     /// <summary>True while the user is typing somewhere, so show shortcuts must not fire.</summary>
@@ -180,19 +254,30 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // ------------------------------------------------------------------ timeline scrubbing
+    // ------------------------------------------------------------------ In esecuzione: scrubbing a paused cue
 
-    private bool _scrubbing;
-
-    private void OnScrubStart(object sender, MouseButtonEventArgs e) => _scrubbing = true;
-
-    private void OnScrubEnd(object sender, RoutedEventArgs e) => _scrubbing = false;
-
-    /// <summary>Only user-driven changes seek; the periodic progress updates also change the value.</summary>
-    private void OnScrubValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void OnRunningBarDown(object sender, MouseButtonEventArgs e)
     {
-        if (_scrubbing && sender is Slider { DataContext: Core.Model.Cue cue })
-            ViewModel.SeekCue(cue, e.NewValue);
+        if (sender is not FrameworkElement { DataContext: Core.Model.Cue { CanSeek: true } } bar) return;
+        bar.CaptureMouse();
+        SeekTo(bar, e);
+        e.Handled = true;
+    }
+
+    private void OnRunningBarMove(object sender, MouseEventArgs e)
+    {
+        if (sender is FrameworkElement { IsMouseCaptured: true } bar) SeekTo(bar, e);
+    }
+
+    private void OnRunningBarUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { IsMouseCaptured: true } bar) bar.ReleaseMouseCapture();
+    }
+
+    private void SeekTo(FrameworkElement bar, MouseEventArgs e)
+    {
+        if (bar.DataContext is not Core.Model.Cue { CanSeek: true } cue || bar.ActualWidth <= 0) return;
+        ViewModel.SeekCue(cue, Math.Clamp(e.GetPosition(bar).X / bar.ActualWidth, 0, 1));
     }
 
     private void OnCueGridSelectionChanged(object sender, SelectionChangedEventArgs e)

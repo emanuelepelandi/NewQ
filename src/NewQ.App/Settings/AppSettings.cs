@@ -50,17 +50,20 @@ public sealed class AppSettings
     /// <summary>Optional columns shown in the cue list (menu Visualizza); null = the default set.</summary>
     public List<string>? CueColumns { get; set; }
 
-    /// <summary>Cue properties panel hidden on the right.</summary>
+    /// <summary>Cue properties panel (at the bottom) hidden.</summary>
     public bool InspectorCollapsed { get; set; }
 
-    /// <summary>"In esecuzione" / "Log" panel under the cue list.</summary>
+    /// <summary>Height of the cue properties panel when open.</summary>
+    public double InspectorHeight { get; set; } = 260;
+
+    /// <summary>"In esecuzione" panel on the right of the cue list.</summary>
     public bool RunningPanelVisible { get; set; } = true;
 
-    /// <summary>Width of the cue properties panel when open.</summary>
-    public double InspectorWidth { get; set; } = 400;
+    /// <summary>Width of the "In esecuzione" panel.</summary>
+    public double RunningWidth { get; set; } = 380;
 
-    /// <summary>Timeline panel under the cue list.</summary>
-    public bool TimelineVisible { get; set; } = true;
+    /// <summary>Timeline panel under the cue list (off by default: a show run on GOs rarely needs it).</summary>
+    public bool TimelineVisible { get; set; }
     public double TimelineHeight { get; set; } = 240;
 
     /// <summary>Timeline lanes: one per route (true) or one per cue type (false).</summary>

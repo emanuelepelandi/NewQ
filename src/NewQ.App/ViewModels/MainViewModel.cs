@@ -410,6 +410,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(CanEdit));
             OnPropertyChanged(nameof(WindowTitle));
             if (value) StopTestSignals(); // nothing from the setup tools may stay on during the show
+            if (value) _logWindow?.Close(); // the log is a setup tool too
             CommandManager.InvalidateRequerySuggested();
             AddLog(EngineLogLevel.Info, value
                 ? "Modalità Safe attivata."
@@ -1025,7 +1026,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool? _inspectorBeforeSafe; // state to restore when Safe mode ends (null = Safe off)
 
     /// <summary>
-    /// The cue properties panel is hidden on the right (saved per machine). Safe mode hides it; if the operator opens
+    /// The cue properties panel at the bottom is hidden (saved per machine). Safe mode hides it; if the operator opens
     /// it again during Safe, it stays open. Leaving Safe brings back the state from before.
     /// </summary>
     public bool IsInspectorCollapsed
@@ -1040,14 +1041,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ------------------------------------------------------------------ running cues / log panel
+    // ------------------------------------------------------------------ running cues panel, log window
 
     private bool _runningPanelVisible;
 
     public ICommand ToggleRunningPanelCommand => _toggleRunningPanel ??= new RelayCommand(() => IsRunningPanelVisible = !IsRunningPanelVisible);
     private ICommand? _toggleRunningPanel;
 
-    /// <summary>The "In esecuzione" / "Log" panel under the cue list (saved per machine).</summary>
+    /// <summary>The "In esecuzione" panel on the right of the cue list (saved per machine).</summary>
     public bool IsRunningPanelVisible
     {
         get => _runningPanelVisible;
@@ -1059,12 +1060,39 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Remembers the width of the open properties panel (the window calls it after a resize).</summary>
-    public void SaveInspectorWidth(double width)
+    /// <summary>Remembers the height of the open properties panel (the window calls it after a resize).</summary>
+    public void SaveInspectorHeight(double height)
     {
-        if (Math.Abs(_settings.InspectorWidth - width) < 1) return;
-        _settings.InspectorWidth = width;
+        if (Math.Abs(_settings.InspectorHeight - height) < 1) return;
+        _settings.InspectorHeight = height;
         TrySaveSettings();
+    }
+
+    /// <summary>Remembers the width of the "In esecuzione" panel.</summary>
+    public void SaveRunningWidth(double width)
+    {
+        if (Math.Abs(_settings.RunningWidth - width) < 1) return;
+        _settings.RunningWidth = width;
+        TrySaveSettings();
+    }
+
+    private Views.LogWindow? _logWindow;
+
+    /// <summary>Strumenti → Log: a window of its own, only outside Safe mode (it closes when Safe starts).</summary>
+    public ICommand OpenLogCommand => _openLog ??= new RelayCommand(OpenLog, () => CanEdit);
+    private ICommand? _openLog;
+
+    private void OpenLog()
+    {
+        if (!CanEdit) return;
+        if (_logWindow is { IsVisible: true })
+        {
+            _logWindow.Activate();
+            return;
+        }
+        _logWindow = new Views.LogWindow { DataContext = this, Owner = Application.Current.MainWindow };
+        _logWindow.Closed += (_, _) => _logWindow = null;
+        _logWindow.Show();
     }
 
     // ------------------------------------------------------------------ timeline

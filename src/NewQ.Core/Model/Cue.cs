@@ -49,7 +49,7 @@ public abstract class Cue : ObservableObject
     private static readonly HashSet<string> RuntimeProperties = new()
     {
         nameof(RunState), nameof(Progress), nameof(ElapsedSeconds), nameof(ElapsedText),
-        nameof(RemainingText), nameof(RuntimeDuration), nameof(IsPlayhead), nameof(ErrorMessage), nameof(CanSeek), nameof(MeterDb), nameof(Clipped),
+        nameof(RemainingText), nameof(RuntimeDuration), nameof(RuntimeDurationText), nameof(IsPlayhead), nameof(ErrorMessage), nameof(CanSeek), nameof(MeterDb), nameof(Clipped),
         nameof(IsFadingOut),
     };
 
@@ -177,8 +177,11 @@ public abstract class Cue : ObservableObject
     public double? RuntimeDuration
     {
         get => _runtimeDuration;
-        set { if (SetField(ref _runtimeDuration, value)) OnPropertyChanged(nameof(RemainingText)); }
+        set { if (SetField(ref _runtimeDuration, value)) { OnPropertyChanged(nameof(RemainingText)); OnPropertyChanged(nameof(RuntimeDurationText)); } }
     }
+
+    /// <summary>Length of the running cue (its pre-wait while waiting); "∞" = until stopped.</summary>
+    [JsonIgnore] public string RuntimeDurationText => RuntimeDuration is double d ? TimeFormat.Format(d) : "∞";
 
     [JsonIgnore] public string ElapsedText => TimeFormat.Format(ElapsedSeconds);
 

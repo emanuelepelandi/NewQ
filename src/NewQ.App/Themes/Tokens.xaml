@@ -66,6 +66,12 @@
     <SolidColorBrush x:Key="PausedBrush" Color="#7FA6E2" />
     <SolidColorBrush x:Key="ClipBrush" Color="#E0504B" />
     <SolidColorBrush x:Key="SafeBrush" Color="#7AB4E6" />
+    <!-- In esecuzione: the row's fill follows the cue (played part), by state; cues without an end fill softly. -->
+    <SolidColorBrush x:Key="RunningFillBrush" Color="#664CB27E" />
+    <SolidColorBrush x:Key="EndlessFillBrush" Color="#2E4CB27E" />
+    <SolidColorBrush x:Key="PreWaitFillBrush" Color="#4DDDBA6A" />
+    <SolidColorBrush x:Key="PausedFillBrush" Color="#4D7FA6E2" />
+    <SolidColorBrush x:Key="FadingFillBrush" Color="#4DE2A945" />
 
     <!-- ============ Cue types: categorical, low saturation; defaults of Impostazioni → Grafica. No green: it marks the progress on the timeline. ============ -->
     <Color x:Key="CueAudioColor">#6FA3E0</Color>

@@ -46,7 +46,7 @@
                         VerticalAlignment="Bottom" Margin="0,0,8,12"
                         Command="{Binding DataContext.BrowseFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         CommandParameter="{Binding}" />
-                <TextBox ui:ControlHelper.Header="File" Text="{Binding FilePath, UpdateSourceTrigger=LostFocus}" />
+                <TextBox ui:ControlHelper.Header="File" Text="{Binding FilePath, UpdateSourceTrigger=LostFocus}" Width="440" />
             </DockPanel>
         </DataTemplate>
 
@@ -64,194 +64,320 @@
                       SelectedValue="{Binding AudioRouteId}" Loaded="OnRoutePickerLoaded" />
         </DataTemplate>
 
-        <!-- ======================= Inspector templates ======================= -->
+        <!-- ======================= Inspector pages (one tab each; MainWindow.InspectorPages lists them per cue type) =======================
+             Fields flow left to right in rows (the panel is wide and short); the inspector's styles give them their width. -->
 
-        <DataTemplate DataType="{x:Type m:AudioCue}">
+        <DataTemplate x:Key="PageBase">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Numero" Text="{Binding Number}" Width="88" />
+                <TextBox ui:ControlHelper.Header="Nome" Text="{Binding Name}" Width="320" />
+                <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}" Width="424"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" MaxHeight="96" VerticalScrollBarVisibility="Auto" />
+                <CheckBox Content="Armata" IsChecked="{Binding Armed}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <!-- SHOW START / SHOW END markers: fixed rows, only notes (and, for START, how GO goes on) can change. -->
+        <DataTemplate x:Key="PageMarker">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}" Width="424"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" MaxHeight="96" VerticalScrollBarVisibility="Auto" />
+                <CheckBox Content="GO dedicato" IsChecked="{Binding HasOwnGo}"
+                          Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PageTrigger">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Pre-wait (s)" Text="{Binding PreWait}" />
+                <TextBox ui:ControlHelper.Header="Post-wait (s)" Text="{Binding PostWait}" />
+                <ComboBox ui:ControlHelper.Header="Follow" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
+                          SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}" />
+                <ComboBox ui:ControlHelper.Header="Link" ItemsSource="{x:Static c:EnumSources.LinkActions}"
+                          SelectedItem="{Binding LinkAction}" ItemTemplate="{StaticResource EnumItem}" />
+                <TextBox ui:ControlHelper.Header="Cue (numero)" Text="{Binding LinkTarget}"
+                         Visibility="{Binding LinkAction, Converter={StaticResource EnumMatch}, ConverterParameter='Start,Stop,FadeOut'}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PageAudio">
+            <WrapPanel>
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" Focusable="False" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" Focusable="False" />
+                <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PageAudioTime">
             <StackPanel>
-                <TextBlock Text="AUDIO" Style="{StaticResource SectionHeader}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
-                    <CheckBox Content="Loop" IsChecked="{Binding Loop}" VerticalAlignment="Bottom" />
+                <WrapPanel>
                     <TextBox ui:ControlHelper.Header="Inizio (s)" Text="{Binding StartTime}" />
                     <TextBox ui:ControlHelper.Header="Fine (s, 0 = fine file)" Text="{Binding EndTime}" />
                     <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
                     <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
-                </UniformGrid>
+                    <CheckBox Content="Loop" IsChecked="{Binding Loop}" />
+                </WrapPanel>
                 <TextBlock Style="{StaticResource Hint}">
                     <Run Text="Durata cue:" /> <Run Text="{Binding DurationText, Mode=OneWay}" />
                 </TextBlock>
             </StackPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:VideoCue}">
-            <StackPanel>
-                <TextBlock Text="VIDEO" Style="{StaticResource SectionHeader}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Layer" Text="{Binding Layer}" />
-                    <ComboBox ui:ControlHelper.Header="Adattamento" ItemsSource="{x:Static c:EnumSources.FitModes}"
-                              SelectedItem="{Binding FitMode}" ItemTemplate="{StaticResource EnumItem}" />
-                    <TextBox ui:ControlHelper.Header="Opacità (0–1)" Text="{Binding Opacity}" />
-                    <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
-                    <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
-                    <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
-                    <CheckBox Content="Loop" IsChecked="{Binding Loop}" />
-                </UniformGrid>
-            </StackPanel>
+        <DataTemplate x:Key="PageVideo">
+            <WrapPanel>
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" Focusable="False" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" Focusable="False" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" Focusable="False" />
+                <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
+            </WrapPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:ImageCue}">
-            <StackPanel>
-                <TextBlock Text="IMMAGINE" Style="{StaticResource SectionHeader}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Layer" Text="{Binding Layer}" />
-                    <ComboBox ui:ControlHelper.Header="Adattamento" ItemsSource="{x:Static c:EnumSources.FitModes}"
-                              SelectedItem="{Binding FitMode}" ItemTemplate="{StaticResource EnumItem}" />
-                    <TextBox ui:ControlHelper.Header="Opacità (0–1)" Text="{Binding Opacity}" />
-                    <TextBox ui:ControlHelper.Header="Durata (s, 0 = finché fermata)" Text="{Binding HoldDuration}" />
-                    <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
-                    <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
-                </UniformGrid>
-            </StackPanel>
+        <!-- Layer, fit and opacity of a visual cue (video, image, capture). -->
+        <DataTemplate x:Key="PageDisplay">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Layer" Text="{Binding Layer}" />
+                <ComboBox ui:ControlHelper.Header="Adattamento" ItemsSource="{x:Static c:EnumSources.FitModes}"
+                          SelectedItem="{Binding FitMode}" ItemTemplate="{StaticResource EnumItem}" />
+                <TextBox ui:ControlHelper.Header="Opacità (0–1)" Text="{Binding Opacity}" />
+            </WrapPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:LiveCue}">
-            <StackPanel>
-                <TextBlock Text="CATTURA" Style="{StaticResource SectionHeader}" />
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="&#xE72C;"
-                            VerticalAlignment="Bottom" Margin="0,0,8,12" ToolTip="Aggiorna sorgenti"
-                            Command="{Binding DataContext.RefreshDevicesCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+        <DataTemplate x:Key="PageVideoTime">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
+                <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
+                <CheckBox Content="Loop" IsChecked="{Binding Loop}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PageImage">
+            <WrapPanel>
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FilePicker}" Focusable="False" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" Focusable="False" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PageImageTime">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Durata (s, 0 = finché fermata)" Text="{Binding HoldDuration}" />
+                <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
+                <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PageLiveSource">
+            <WrapPanel>
+                <StackPanel Orientation="Horizontal">
                     <ComboBox ui:ControlHelper.Header="Sorgente" IsEditable="True"
                               ItemsSource="{Binding DataContext.VideoCaptureDevices, RelativeSource={RelativeSource AncestorType=Window}}"
                               Text="{Binding DeviceName, UpdateSourceTrigger=LostFocus}" />
-                </DockPanel>
+                    <Button Style="{StaticResource SquareButton}" ctl:ButtonIcon.Glyph="&#xE72C;"
+                            VerticalAlignment="Bottom" Margin="0,0,8,12" ToolTip="Aggiorna sorgenti"
+                            Command="{Binding DataContext.RefreshDevicesCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                </StackPanel>
                 <ComboBox ui:ControlHelper.Header="Audio (vuoto = nessuno)" IsEditable="True"
                           ItemsSource="{Binding DataContext.AudioCaptureDevices, RelativeSource={RelativeSource AncestorType=Window}}"
                           Text="{Binding AudioDeviceName, UpdateSourceTrigger=LostFocus}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Risoluzione" Text="{Binding Resolution}"
-                             ui:ControlHelper.PlaceholderText="predefinita, es. 1920x1080" />
-                    <TextBox ui:ControlHelper.Header="Frame rate (0 = auto)" Text="{Binding FrameRate}" />
-                </UniformGrid>
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" />
-                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Layer" Text="{Binding Layer}" />
-                    <ComboBox ui:ControlHelper.Header="Adattamento" ItemsSource="{x:Static c:EnumSources.FitModes}"
-                              SelectedItem="{Binding FitMode}" ItemTemplate="{StaticResource EnumItem}" />
-                    <TextBox ui:ControlHelper.Header="Opacità (0–1)" Text="{Binding Opacity}" />
-                    <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
-                    <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
-                </UniformGrid>
-            </StackPanel>
+                <TextBox ui:ControlHelper.Header="Risoluzione" Text="{Binding Resolution}"
+                         ui:ControlHelper.PlaceholderText="predefinita, es. 1920x1080" />
+                <TextBox ui:ControlHelper.Header="Frame rate (0 = auto)" Text="{Binding FrameRate}" />
+            </WrapPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:MidiCue}">
-            <StackPanel>
-                <TextBlock Text="MIDI" Style="{StaticResource SectionHeader}" />
-                <ComboBox ui:ControlHelper.Header="Dispositivo (vuoto = predefinito)" IsEditable="True"
-                          ItemsSource="{Binding DataContext.MidiDevices, RelativeSource={RelativeSource AncestorType=Window}}"
-                          Text="{Binding DeviceName, UpdateSourceTrigger=LostFocus}" />
-                <ComboBox ui:ControlHelper.Header="Messaggio" ItemsSource="{x:Static c:EnumSources.MidiKinds}"
-                          SelectedItem="{Binding Kind}" ItemTemplate="{StaticResource EnumItem}" />
+        <DataTemplate x:Key="PageLiveOutput">
+            <WrapPanel>
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VideoRoutePicker}" Focusable="False" />
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioRoutePicker}" Focusable="False" />
+                <TextBox ui:ControlHelper.Header="Volume (dB)" Text="{Binding VolumeDb}" />
+                <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
+            </WrapPanel>
+        </DataTemplate>
 
-                <UniformGrid Columns="2"
-                             Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='NoteOn,NoteOff,ControlChange,ProgramChange,PitchBend'}">
-                    <TextBox ui:ControlHelper.Header="Canale (1–16)" Text="{Binding Channel}" />
-                    <TextBox ui:ControlHelper.Header="Nota / CC / Programma / Valore" Text="{Binding Data1}" />
+        <DataTemplate x:Key="PageMidi">
+            <StackPanel>
+                <WrapPanel>
+                    <ComboBox ui:ControlHelper.Header="Dispositivo (vuoto = predefinito)" IsEditable="True"
+                              ItemsSource="{Binding DataContext.MidiDevices, RelativeSource={RelativeSource AncestorType=Window}}"
+                              Text="{Binding DeviceName, UpdateSourceTrigger=LostFocus}" />
+                    <ComboBox ui:ControlHelper.Header="Messaggio" ItemsSource="{x:Static c:EnumSources.MidiKinds}"
+                              SelectedItem="{Binding Kind}" ItemTemplate="{StaticResource EnumItem}" />
+                    <TextBox ui:ControlHelper.Header="Canale (1–16)" Text="{Binding Channel}"
+                             Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='NoteOn,NoteOff,ControlChange,ProgramChange,PitchBend'}" />
+                    <TextBox ui:ControlHelper.Header="Nota / CC / Programma / Valore" Text="{Binding Data1}"
+                             Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='NoteOn,NoteOff,ControlChange,ProgramChange,PitchBend'}" />
                     <TextBox ui:ControlHelper.Header="Velocity / Valore CC" Text="{Binding Data2}"
                              Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='NoteOn,NoteOff,ControlChange'}" />
-                </UniformGrid>
-
+                    <TextBox ui:ControlHelper.Header="Byte SysEx (esadecimale)" Text="{Binding SysExHex}" Width="424"
+                             Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='SysEx'}" />
+                </WrapPanel>
                 <StackPanel Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='ShowControl'}">
-                    <UniformGrid Columns="2">
+                    <WrapPanel>
                         <ComboBox ui:ControlHelper.Header="Comando MSC" ItemsSource="{x:Static c:EnumSources.MscCommands}"
                                   SelectedItem="{Binding MscCommand}" />
                         <TextBox ui:ControlHelper.Header="Device ID (127 = tutti)" Text="{Binding MscDeviceId}" />
                         <TextBox ui:ControlHelper.Header="Numero cue" Text="{Binding MscCueNumber}" />
                         <TextBox ui:ControlHelper.Header="Cue list" Text="{Binding MscCueList}" />
                         <TextBox ui:ControlHelper.Header="Command format" Text="{Binding MscCommandFormat}" />
-                    </UniformGrid>
+                    </WrapPanel>
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Command format: 1 luci · 16 suono · 48 macchinari · 64 video · 127 tutti" />
                 </StackPanel>
-
-                <TextBox ui:ControlHelper.Header="Byte SysEx (esadecimale)" Text="{Binding SysExHex}"
-                         Visibility="{Binding Kind, Converter={StaticResource EnumMatch}, ConverterParameter='SysEx'}" />
             </StackPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:NetworkCue}">
+        <DataTemplate x:Key="PageNetwork">
             <StackPanel>
-                <TextBlock Text="RETE" Style="{StaticResource SectionHeader}" />
-                <ComboBox ui:ControlHelper.Header="Protocollo" ItemsSource="{x:Static c:EnumSources.NetworkProtocols}"
-                          SelectedItem="{Binding Protocol}" ItemTemplate="{StaticResource EnumItem}" />
-                <UniformGrid Columns="2">
+                <WrapPanel>
+                    <ComboBox ui:ControlHelper.Header="Protocollo" ItemsSource="{x:Static c:EnumSources.NetworkProtocols}"
+                              SelectedItem="{Binding Protocol}" ItemTemplate="{StaticResource EnumItem}" />
                     <TextBox ui:ControlHelper.Header="Host / IP" Text="{Binding Host}" />
                     <TextBox ui:ControlHelper.Header="Porta" Text="{Binding Port}" />
-                </UniformGrid>
-                <StackPanel Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='OscUdp,OscTcp'}">
-                    <TextBox ui:ControlHelper.Header="Indirizzo OSC" Text="{Binding OscAddress}" />
-                    <TextBox ui:ControlHelper.Header="Argomenti" Text="{Binding OscArguments}" />
-                    <TextBlock Style="{StaticResource Hint}"
-                               Text="1 int · 0.5 float · true/false bool · &quot;testo&quot; string" />
-                </StackPanel>
-                <StackPanel Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='Udp,Tcp'}">
-                    <TextBox ui:ControlHelper.Header="Messaggio" Text="{Binding Payload}" AcceptsReturn="False" />
-                    <TextBlock Style="{StaticResource Hint}"
-                               Text="Escape: \r \n \t \0 \\ \xHH" />
-                </StackPanel>
+                    <TextBox ui:ControlHelper.Header="Indirizzo OSC" Text="{Binding OscAddress}"
+                             Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='OscUdp,OscTcp'}" />
+                    <TextBox ui:ControlHelper.Header="Argomenti" Text="{Binding OscArguments}" Width="424"
+                             Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='OscUdp,OscTcp'}" />
+                    <TextBox ui:ControlHelper.Header="Messaggio" Text="{Binding Payload}" AcceptsReturn="False" Width="424"
+                             Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='Udp,Tcp'}" />
+                </WrapPanel>
+                <TextBlock Style="{StaticResource Hint}" Text="1 int · 0.5 float · true/false bool · &quot;testo&quot; string"
+                           Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='OscUdp,OscTcp'}" />
+                <TextBlock Style="{StaticResource Hint}" Text="Escape: \r \n \t \0 \\ \xHH"
+                           Visibility="{Binding Protocol, Converter={StaticResource EnumMatch}, ConverterParameter='Udp,Tcp'}" />
             </StackPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:WaitCue}">
-            <StackPanel>
-                <TextBlock Text="ATTESA" Style="{StaticResource SectionHeader}" />
+        <DataTemplate x:Key="PageWait">
+            <WrapPanel>
                 <TextBox ui:ControlHelper.Header="Durata (s)" Text="{Binding WaitDuration}" />
-            </StackPanel>
+            </WrapPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:FadeCue}">
-            <StackPanel>
-                <TextBlock Text="FADE" Style="{StaticResource SectionHeader}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Cue target (numero)" Text="{Binding TargetNumber}" />
-                    <TextBox ui:ControlHelper.Header="Durata (s)" Text="{Binding FadeDuration}" />
-                    <CheckBox Content="Fade volume" IsChecked="{Binding FadeVolume}" VerticalAlignment="Bottom" />
-                    <TextBox ui:ControlHelper.Header="Volume finale (dB, -60 = muto)" Text="{Binding TargetVolumeDb}" />
-                    <CheckBox Content="Fade opacità (video/immagini)" IsChecked="{Binding FadeOpacity}" VerticalAlignment="Bottom" />
-                    <TextBox ui:ControlHelper.Header="Opacità finale (0–1)" Text="{Binding TargetOpacity}" />
-                </UniformGrid>
+        <DataTemplate x:Key="PageFade">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Cue target (numero)" Text="{Binding TargetNumber}" />
+                <TextBox ui:ControlHelper.Header="Durata (s)" Text="{Binding FadeDuration}" />
                 <CheckBox Content="Stop a fine fade" IsChecked="{Binding StopWhenDone}" />
-            </StackPanel>
+                <CheckBox Content="Fade volume" IsChecked="{Binding FadeVolume}" />
+                <TextBox ui:ControlHelper.Header="Volume finale (dB, -60 = muto)" Text="{Binding TargetVolumeDb}" />
+                <CheckBox Content="Fade opacità (video/immagini)" IsChecked="{Binding FadeOpacity}" />
+                <TextBox ui:ControlHelper.Header="Opacità finale (0–1)" Text="{Binding TargetOpacity}" />
+            </WrapPanel>
         </DataTemplate>
 
-        <!-- SHOW START / SHOW END markers: fixed rows, only notes (and, for START, how GO goes on) can change. -->
-        <DataTemplate DataType="{x:Type m:ShowMarkerCue}">
-            <StackPanel>
-                <TextBlock Text="{Binding Name}" Style="{StaticResource SectionHeaderFirst}" />
-                <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}"
-                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
-                <CheckBox Content="GO dedicato" IsChecked="{Binding HasOwnGo}"
-                          Visibility="{Binding IsStart, Converter={StaticResource BoolToVis}}" />
-            </StackPanel>
+        <DataTemplate x:Key="PageStop">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Cue target (vuoto = tutte)" Text="{Binding TargetNumber}" />
+                <TextBox ui:ControlHelper.Header="Fade out (s)" Text="{Binding FadeTime}" />
+            </WrapPanel>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type m:StopCue}">
-            <StackPanel>
-                <TextBlock Text="STOP" Style="{StaticResource SectionHeader}" />
-                <UniformGrid Columns="2">
-                    <TextBox ui:ControlHelper.Header="Cue target (vuoto = tutte)" Text="{Binding TargetNumber}" />
-                    <TextBox ui:ControlHelper.Header="Fade out (s)" Text="{Binding FadeTime}" />
-                </UniformGrid>
-            </StackPanel>
+        <!-- ======================= In esecuzione: one row per running cue, QLab style ======================= -->
+        <DataTemplate x:Key="RunningRow">
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- The bar: the fill follows the cue; paused, a click or drag scrubs it. -->
+                <Border x:Name="Bar" Height="44" Background="{StaticResource ControlBrush}" CornerRadius="{StaticResource RadiusControl}"
+                        ClipToBounds="True" Cursor="Arrow"
+                        MouseLeftButtonDown="OnRunningBarDown" MouseMove="OnRunningBarMove" MouseLeftButtonUp="OnRunningBarUp">
+                    <Grid>
+                        <Rectangle x:Name="Fill" HorizontalAlignment="Stretch" RenderTransformOrigin="0,0.5" Fill="{StaticResource RunningFillBrush}">
+                            <Rectangle.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding Progress}" />
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                        <!-- Cues without an end (loop, capture, held image): no position, the whole bar shows they are on. -->
+                        <Rectangle x:Name="EndlessFill" Fill="{StaticResource EndlessFillBrush}" Visibility="Collapsed" />
+
+                        <Grid Margin="12,0,10,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Number}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                                <Border Style="{StaticResource Badge}" Padding="4,0" Margin="0,0,8,0" Background="{StaticResource ClipBrush}"
+                                        VerticalAlignment="Center" Visibility="{Binding Clipped, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="CLIP" Style="{StaticResource BadgeText}" FontSize="9" FontWeight="Bold"
+                                               Foreground="{StaticResource TextOnAccentBrush}" />
+                                </Border>
+                                <!-- Length and time left. -->
+                                <TextBlock Text="{Binding RuntimeDurationText}" FontFamily="{StaticResource MonoFont}" FontSize="{StaticResource FontSmall}"
+                                           Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" ToolTip="Durata" />
+                                <TextBlock Text="{Binding RemainingText}" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold"
+                                           MinWidth="72" TextAlignment="Right" VerticalAlignment="Center" ToolTip="Mancante" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Level of an audio cue, along the bottom edge. -->
+                        <ctl:LevelMeter Height="3" SegmentWidth="3" Level="{Binding MeterDb}" VerticalAlignment="Bottom" Margin="12,0,10,4"
+                                        Visibility="{Binding TypeName, Converter={StaticResource EnumMatch}, ConverterParameter='Audio'}" />
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
+                    <Button Margin="0,0,4,0" Width="{StaticResource CompactControlHeight}" Padding="0"
+                            ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
+                            Command="{Binding DataContext.TogglePauseCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource CompactButton}">
+                                <Setter Property="ctl:ButtonIcon.Glyph" Value="{StaticResource IconPause}" />
+                                <Setter Property="ToolTip" Value="Pausa" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RunState}" Value="Paused">
+                                        <Setter Property="ctl:ButtonIcon.Glyph" Value="{StaticResource IconPlay}" />
+                                        <Setter Property="ToolTip" Value="Riprendi" />
+                                        <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
+                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0" Margin="0,0,4,0"
+                            ctl:ButtonIcon.Shape="{StaticResource IconFadeOutShape}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
+                            ToolTip="Fade out"
+                            Command="{Binding DataContext.FadeCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}" />
+                    <Button Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0"
+                            ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
+                            ToolTip="Stop"
+                            Command="{Binding DataContext.StopCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}" />
+                </StackPanel>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding RuntimeDuration}" Value="{x:Null}">
+                    <Setter TargetName="Fill" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="EndlessFill" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RunState}" Value="PreWait">
+                    <Setter TargetName="Fill" Property="Fill" Value="{StaticResource PreWaitFillBrush}" />
+                    <Setter TargetName="EndlessFill" Property="Fill" Value="{StaticResource PreWaitFillBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsFadingOut}" Value="True">
+                    <Setter TargetName="Fill" Property="Fill" Value="{StaticResource FadingFillBrush}" />
+                    <Setter TargetName="EndlessFill" Property="Fill" Value="{StaticResource FadingFillBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RunState}" Value="Paused">
+                    <Setter TargetName="Fill" Property="Fill" Value="{StaticResource PausedFillBrush}" />
+                    <Setter TargetName="EndlessFill" Property="Fill" Value="{StaticResource PausedFillBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CanSeek}" Value="True">
+                    <Setter TargetName="Bar" Property="Cursor" Value="SizeWE" />
+                    <Setter TargetName="Bar" Property="ToolTip" Value="Scorri" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RunState}" Value="Error">
+                    <Setter TargetName="Bar" Property="BorderBrush" Value="{StaticResource ErrorBrush}" />
+                    <Setter TargetName="Bar" Property="BorderThickness" Value="1" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
     </Window.Resources>
 
@@ -296,7 +422,7 @@
                           InputGestureText="{Binding ShortcutText[ToggleInspector]}" />
                 <MenuItem Header="Timeline" IsCheckable="True" IsChecked="{Binding IsTimelineVisible, Mode=TwoWay}"
                           InputGestureText="{Binding ShortcutText[ToggleTimeline]}" />
-                <MenuItem Header="In esecuzione e Log" IsCheckable="True" IsChecked="{Binding IsRunningPanelVisible, Mode=TwoWay}" />
+                <MenuItem Header="In esecuzione" IsCheckable="True" IsChecked="{Binding IsRunningPanelVisible, Mode=TwoWay}" />
                 <Separator />
                 <MenuItem Header="Colonne della lista">
                     <MenuItem Header="Destinazione" IsCheckable="True" StaysOpenOnClick="True" IsChecked="{Binding Columns[target], Mode=TwoWay}" />
@@ -325,6 +451,7 @@
                           IsChecked="{Binding IsSafeMode, Mode=TwoWay}" InputGestureText="{Binding ShortcutText[ToggleSafe]}" />
                 <Separator />
                 <MenuItem Header="Show Check…" InputGestureText="{Binding ShortcutText[ShowCheck]}" Command="{Binding ShowCheckCommand}" />
+                <MenuItem Header="Log…" Command="{Binding OpenLogCommand}" />
                 <Separator />
                 <MenuItem Header="Impostazioni…" Click="OnSettingsClick" IsEnabled="{Binding CanEdit}" />
                 <Separator />
@@ -571,28 +698,23 @@
             </DockPanel>
         </Border>
 
-        <!-- ======================= Main area: list | inspector, timeline below (full width) ======================= -->
+        <!-- ======================= Main area: list | in esecuzione, timeline, properties at the bottom (QLab style) ======================= -->
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="*" MinHeight="240" />
+                <RowDefinition Height="*" MinHeight="160" />
                 <RowDefinition x:Name="TimelineSplitterRow" Height="5" />
                 <RowDefinition x:Name="TimelineRow" Height="240" MinHeight="140" />
+                <RowDefinition x:Name="InspectorSplitterRow" Height="5" />
+                <RowDefinition x:Name="InspectorRow" Height="260" MinHeight="150" />
             </Grid.RowDefinitions>
         <Grid Background="{StaticResource PanelBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="500" />
-                <ColumnDefinition x:Name="InspectorSplitterColumn" Width="5" />
-                <ColumnDefinition x:Name="InspectorColumn" Width="400" MinWidth="320" />
+                <ColumnDefinition x:Name="RunningSplitterColumn" Width="5" />
+                <ColumnDefinition x:Name="RunningColumn" Width="380" MinWidth="280" />
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
-                <!-- List and running cues share the height (the timeline below takes its own): neither can vanish. -->
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="2*" MinHeight="110" />
-                    <RowDefinition x:Name="RunningSplitterRow" Height="5" />
-                    <RowDefinition x:Name="RunningRow" Height="*" MinHeight="90" />
-                </Grid.RowDefinitions>
-
                 <!-- Cue list -->
                 <DataGrid x:Name="CueGrid"
                           ItemsSource="{Binding Workspace.Cues}"
@@ -759,143 +881,84 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-
-                <GridSplitter x:Name="RunningSplitter" Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows" />
-
-                <!-- Active cues + log (Visualizza → In esecuzione e Log) -->
-                <TabControl x:Name="RunningPanel" Grid.Row="2" Padding="8,0">
-                    <TabItem Header="In esecuzione">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="16,8,12,8">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="56" />
-                                                <ColumnDefinition Width="2*" />
-                                                <ColumnDefinition Width="3*" />
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Number}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-
-                                            <!-- Timeline: a progress bar while playing, a draggable slider while paused. -->
-                                            <ProgressBar Grid.Column="2" Value="{Binding Progress, Mode=OneWay}" Maximum="1" Height="4" Margin="8,0"
-                                                         VerticalAlignment="Center"
-                                                         Visibility="{Binding CanSeek, Converter={StaticResource InverseBoolToVis}}" />
-                                            <!-- The wrapper sees the mouse before the slider's own handling moves the value. -->
-                                            <Border Grid.Column="2" Background="Transparent" Margin="8,0" VerticalAlignment="Center"
-                                                    Visibility="{Binding CanSeek, Converter={StaticResource BoolToVis}}"
-                                                    PreviewMouseLeftButtonDown="OnScrubStart"
-                                                    PreviewMouseLeftButtonUp="OnScrubEnd">
-                                                <Slider Value="{Binding Progress, Mode=OneWay}" Minimum="0" Maximum="1"
-                                                        Focusable="False" IsMoveToPointEnabled="True"
-                                                        ToolTip="Scorri"
-                                                        LostMouseCapture="OnScrubEnd"
-                                                        ValueChanged="OnScrubValueChanged" />
-                                            </Border>
-
-                                            <TextBlock Grid.Column="3" Text="{Binding ElapsedText}" FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="4" Text="{Binding RemainingText}" FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextMutedBrush}" />
-                                            <!-- Level of this audio cue + clip marker -->
-                                            <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
-                                                        Visibility="{Binding TypeName, Converter={StaticResource EnumMatch}, ConverterParameter='Audio'}">
-                                                <ctl:LevelMeter Width="90" Height="6" SegmentWidth="3" Level="{Binding MeterDb}" VerticalAlignment="Center" />
-                                                <Border Style="{StaticResource Badge}" Padding="4,0" Margin="8,0,0,0" Background="{StaticResource ClipBrush}"
-                                                        Visibility="{Binding Clipped, Converter={StaticResource BoolToVis}}">
-                                                    <TextBlock Text="CLIP" Style="{StaticResource BadgeText}" FontSize="9" FontWeight="Bold"
-                                                               Foreground="{StaticResource TextOnAccentBrush}" />
-                                                </Border>
-                                            </StackPanel>
-                                            <Button Grid.Column="6" Margin="0,0,4,0" Width="{StaticResource CompactControlHeight}" Padding="0"
-                                                    ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
-                                                    Command="{Binding DataContext.TogglePauseCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource CompactButton}">
-                                                        <Setter Property="ctl:ButtonIcon.Glyph" Value="{StaticResource IconPause}" />
-                                                        <Setter Property="ToolTip" Value="Metti in pausa questa cue" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding RunState}" Value="Paused">
-                                                                <Setter Property="ctl:ButtonIcon.Glyph" Value="{StaticResource IconPlay}" />
-                                                                <Setter Property="ToolTip" Value="Riprendi questa cue" />
-                                                                <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
-                                                                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                            <Button Grid.Column="7" Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0" Margin="0,0,4,0"
-                                                    ctl:ButtonIcon.Shape="{StaticResource IconFadeOutShape}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
-                                                    ToolTip="Fade out"
-                                                    Command="{Binding DataContext.FadeCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}" />
-                                            <Button Grid.Column="8" Style="{StaticResource CompactButton}" Width="{StaticResource CompactControlHeight}" Padding="0"
-                                                    ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
-                                                    ToolTip="Ferma questa cue"
-                                                    Command="{Binding DataContext.StopCueCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </TabItem>
-                    <TabItem Header="Log">
-                        <ListBox ItemsSource="{Binding Log}" Focusable="False" Background="Transparent" Padding="8,4">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FontSmall}">
-                                        <Run Text="{Binding TimeText, Mode=OneWay}" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource MonoFont}" />
-                                        <Run Text="{Binding Level, Mode=OneWay}" FontWeight="SemiBold" />
-                                        <Run Text="{Binding Message, Mode=OneWay}" />
-                                    </TextBlock>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </TabItem>
-                </TabControl>
             </Grid>
 
-            <GridSplitter x:Name="InspectorSplitter" Grid.Column="1" HorizontalAlignment="Stretch" ResizeDirection="Columns"
-                          DragCompleted="OnInspectorResized" />
+            <GridSplitter x:Name="RunningSplitter" Grid.Column="1" HorizontalAlignment="Stretch" ResizeDirection="Columns"
+                          DragCompleted="OnRunningResized" />
 
-            <!-- ======================= Inspector ======================= -->
-            <DockPanel x:Name="InspectorPanel" Grid.Column="2">
-                <DockPanel.Resources>
-                    <!-- Form rhythm, scoped here so it doesn't affect the DataGrid's editing cells. -->
-                    <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBox}" />
-                    <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBox}" />
-                    <Style TargetType="CheckBox" BasedOn="{StaticResource FormCheckBox}" />
-                </DockPanel.Resources>
-
-                <Border DockPanel.Dock="Top" Height="37" Padding="16,0,4,0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
-                    <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE76C;"
-                            Command="{Binding ToggleInspectorCommand}"
-                            ToolTip="{Binding ShortcutHint[ToggleInspector], Converter={StaticResource Format}, ConverterParameter='Comprimi il pannello a destra ({0})'}" />
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="PROPRIETÀ CUE" Style="{StaticResource SectionHeaderFirst}" Margin="0" VerticalAlignment="Center" />
-                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0"
-                                Background="{Binding SelectedCue.TypeName, Converter={StaticResource TypeBackground}}"
-                                Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
-                            <TextBlock Text="{Binding SelectedCue.TypeName}" Style="{StaticResource BadgeText}"
-                                       Foreground="{Binding SelectedCue.TypeName, Converter={StaticResource TypeForeground}}" />
-                        </Border>
-                    </StackPanel>
-                    </DockPanel>
+            <!-- ======================= In esecuzione (Visualizza → In esecuzione) ======================= -->
+            <DockPanel x:Name="RunningPanel" Grid.Column="2">
+                <Border DockPanel.Dock="Top" Height="37" Padding="16,0,8,0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+                    <TextBlock Text="IN ESECUZIONE" Style="{StaticResource SectionHeaderFirst}" Margin="0" VerticalAlignment="Center" />
                 </Border>
-
                 <Grid>
-                    <TextBlock Text="Nessuna cue selezionata" Foreground="{StaticResource TextMutedBrush}"
+                    <TextBlock Text="Nessuna cue in esecuzione" Foreground="{StaticResource TextMutedBrush}"
                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveCues.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding ActiveCues}" ItemTemplate="{StaticResource RunningRow}"
+                                      Margin="8,8,8,4" Focusable="False" />
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </Grid>
+
+        <GridSplitter x:Name="TimelineSplitter" Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                      Background="{StaticResource PanelBrush}" DragCompleted="OnTimelineResized" />
+        <views:TimelinePanel x:Name="TimelineArea" Grid.Row="2" />
+
+        <GridSplitter x:Name="InspectorSplitter" Grid.Row="3" HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                      Background="{StaticResource PanelBrush}" DragCompleted="OnInspectorResized" />
+
+        <!-- ======================= Inspector: the selected cue, one page per tab ======================= -->
+        <Grid x:Name="InspectorPanel" Grid.Row="4" Background="{StaticResource PanelBrush}">
+            <Grid.Resources>
+                <!-- Form rhythm, scoped here so it doesn't affect the DataGrid's editing cells; fields flow in rows. -->
+                <Style TargetType="TextBox" BasedOn="{StaticResource FormTextBox}">
+                    <Setter Property="Width" Value="208" />
+                    <Setter Property="VerticalAlignment" Value="Top" />
+                </Style>
+                <Style TargetType="ComboBox" BasedOn="{StaticResource FormComboBox}">
+                    <Setter Property="Width" Value="208" />
+                    <Setter Property="VerticalAlignment" Value="Top" />
+                </Style>
+                <Style TargetType="CheckBox" BasedOn="{StaticResource FormCheckBox}">
+                    <Setter Property="MinWidth" Value="120" />
+                    <Setter Property="Margin" Value="0,25,16,12" />
+                    <Setter Property="VerticalAlignment" Value="Top" />
+                </Style>
+            </Grid.Resources>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Which cue: type, number, name; Safe mode and errors. -->
+            <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="16,12,12,12">
+                <StackPanel>
+                    <TextBlock Text="PROPRIETÀ CUE" Style="{StaticResource SectionHeaderFirst}" />
+                    <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                            Background="{Binding SelectedCue.TypeName, Converter={StaticResource TypeBackground}}"
+                            Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
+                        <TextBlock Text="{Binding SelectedCue.TypeName}" Style="{StaticResource BadgeText}"
+                                   Foreground="{Binding SelectedCue.TypeName, Converter={StaticResource TypeForeground}}" />
+                    </Border>
+                    <TextBlock FontSize="{StaticResource FontTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,8,0,0"
+                               Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
+                        <Run Text="{Binding SelectedCue.Number, Mode=OneWay}" Foreground="{StaticResource PlayheadBrush}" />
+                        <Run Text="{Binding SelectedCue.Name, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Text="Nessuna cue selezionata" Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,0">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -907,63 +970,45 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedCue}"
-                                  Visibility="{Binding Converter={StaticResource NotEmpty}}">
-                        <StackPanel Margin="16,12,8,16">
-                        <!-- Safe mode: fields are read-only (scrolling still works). -->
-                        <Border Style="{StaticResource Badge}" HorizontalAlignment="Stretch" Padding="8,6" Margin="0,0,8,12"
-                                Background="{StaticResource InfoTintBrush}"
-                                Visibility="{Binding DataContext.IsSafeMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}">
-                            <DockPanel>
-                                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IconLock}" Foreground="{StaticResource SafeBrush}"
-                                           VerticalAlignment="Top" Margin="0,1,8,0" />
-                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SafeBrush}" FontSize="{StaticResource FontSmall}"
-                                           Text="Modalità Safe: sola lettura" />
-                            </DockPanel>
-                        </Border>
-                        <StackPanel IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}">
-                            <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource ErrorBrush}" TextWrapping="Wrap"
-                                       Margin="0,0,8,12" Visibility="{Binding ErrorMessage, Converter={StaticResource NotEmpty}}" />
-                            <!-- Common fields (the show markers have their own, reduced set in their template). -->
-                            <StackPanel Visibility="{Binding IsShowMarker, Converter={StaticResource InverseBoolToVis}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="88" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox ui:ControlHelper.Header="Numero" Text="{Binding Number}" />
-                                <TextBox Grid.Column="1" ui:ControlHelper.Header="Nome" Text="{Binding Name}" />
-                            </Grid>
-                            <TextBox ui:ControlHelper.Header="Note" Text="{Binding Notes}"
-                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
-                            <UniformGrid Columns="2">
-                                <TextBox ui:ControlHelper.Header="Pre-wait (s)" Text="{Binding PreWait}" />
-                                <TextBox ui:ControlHelper.Header="Post-wait (s)" Text="{Binding PostWait}" />
-                            </UniformGrid>
-                            <ComboBox ui:ControlHelper.Header="Follow" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
-                                      SelectedItem="{Binding ContinueMode}" ItemTemplate="{StaticResource EnumItem}" />
-                            <UniformGrid Columns="2">
-                                <ComboBox ui:ControlHelper.Header="Link" ItemsSource="{x:Static c:EnumSources.LinkActions}"
-                                          SelectedItem="{Binding LinkAction}" ItemTemplate="{StaticResource EnumItem}" />
-                                <TextBox ui:ControlHelper.Header="Cue (numero)" Text="{Binding LinkTarget}"
-                                         Visibility="{Binding LinkAction, Converter={StaticResource EnumMatch}, ConverterParameter='Start,Stop,FadeOut'}" />
-                            </UniformGrid>
-                            <CheckBox Content="Armata" IsChecked="{Binding Armed}" />
-                            </StackPanel>
-
-                            <ContentControl Content="{Binding}" Focusable="False" />
+                    <!-- Safe mode: fields are read-only. -->
+                    <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Padding="8,4" Margin="0,12,0,0"
+                            Background="{StaticResource InfoTintBrush}"
+                            Visibility="{Binding IsSafeMode, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IconLock}" Foreground="{StaticResource SafeBrush}"
+                                       FontSize="{StaticResource FontSmall}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Foreground="{StaticResource SafeBrush}" FontSize="{StaticResource FontSmall}" Text="Sola lettura" />
                         </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
-            </DockPanel>
+                    </Border>
+                    <TextBlock Text="{Binding SelectedCue.ErrorMessage}" Foreground="{StaticResource ErrorBrush}" TextWrapping="Wrap"
+                               FontSize="{StaticResource FontSmall}" Margin="0,12,0,0"
+                               Visibility="{Binding SelectedCue.ErrorMessage, Converter={StaticResource NotEmpty}}" />
+                </StackPanel>
+            </Border>
 
+            <!-- Pages of the selected cue (built by MainWindow.ShowInspectorPages). -->
+            <TabControl x:Name="InspectorTabs" Grid.Column="1" Padding="0" Focusable="False"
+                        Visibility="{Binding SelectedCue, Converter={StaticResource NotEmpty}}">
+                <TabControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Header}" />
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <ContentControl Content="{Binding Cue}" ContentTemplate="{Binding Template}" Focusable="False" Margin="16,12,8,0"
+                                            IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}" />
+                        </ScrollViewer>
+                    </DataTemplate>
+                </TabControl.ContentTemplate>
+            </TabControl>
+
+            <Button Grid.Column="1" Style="{StaticResource IconButton}" ctl:ButtonIcon.Glyph="&#xE70D;"
+                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,8,0"
+                    Command="{Binding ToggleInspectorCommand}"
+                    ToolTip="{Binding ShortcutHint[ToggleInspector], Converter={StaticResource Format}, ConverterParameter='Comprimi le proprietà ({0})'}" />
         </Grid>
-
-        <GridSplitter x:Name="TimelineSplitter" Grid.Row="1" HorizontalAlignment="Stretch" ResizeDirection="Rows"
-                      Background="{StaticResource PanelBrush}" DragCompleted="OnTimelineResized" />
-        <views:TimelinePanel x:Name="TimelineArea" Grid.Row="2" />
         </Grid>
     </DockPanel>
 
