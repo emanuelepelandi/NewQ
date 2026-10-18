@@ -138,3 +138,8 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Aggiunto**: per le cue Video, **Hold on finish** (pagina *Tempo e loop*), come *Hold at end* di QLab: a fine file resta l'ultimo fotogramma e la cue resta attiva finché non viene fermata o sfumata; il follow parte alla fine del file. Senza effetto con Loop; il fade out finale non si applica.
 - **Cambiato**: la finestra di anteprima video non si ridimensiona più trascinando i bordi né si ingrandisce: larghezza e altezza in pixel si impostano in *Impostazioni → Generale → Finestra di anteprima video* (960×540 di default).
 - **Corretto**: i video non riempivano del tutto le uscite (due sottili bande nere ai lati): libVLC forniva i fotogrammi alla dimensione codificata (es. 1920×1088 invece di 1920×1080). Ora si usano le dimensioni reali della traccia, anche per i file che le comunicano solo dopo l'avvio (MPEG-TS).
+
+### 2026-10-19 - Inizio e fine dei video, editor con forma d'onda (commit `c9fa070`)
+- **Aggiunto**: le cue Video si riproducono da un punto di inizio a un punto di fine del file, come già l'audio (anche in loop e con Hold on finish). La durata dei video compare nella lista.
+- **Aggiunto**: nella pagina *Tempo e loop* di audio e video, un editor con la forma d'onda del file: si trascinano inizio, fine, fade in e fade out (Ctrl = preciso, frecce per i ritocchi, Ctrl+rotella = zoom); una linea verde mostra la posizione mentre la cue suona.
+- **Corretto**: dopo un GO che cambiava il tipo di cue mostrato nelle Proprietà, il cursore poteva finire nel campo Note (uno Spazio scriveva invece di dare GO). Ora la tastiera torna alla lista, e un clic sulle linguette delle Proprietà non le toglie più il focus.
