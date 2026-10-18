@@ -303,7 +303,7 @@ internal sealed class GpuRenderer : IDisposable
             }
 
             if (layer.Source is not IFrameSource source || GetTexture(source, frame) is not CachedTexture texture) continue;
-            var (x, y, qw, qh) = OutputGeometry.Fit(layer.Fit, texture.Width, texture.Height, canvas.Width, canvas.Height);
+            var (x, y, qw, qh) = OutputGeometry.Fit(layer.Fit, source.DisplayWidth, source.DisplayHeight, canvas.Width, canvas.Height);
             SetParams(new Params { P0 = new Vector4((float)opacity, -1, (float)now, frame) });
             ctx.PSSetShader(_psLayer);
             ctx.PSSetShaderResource(0, texture.View);

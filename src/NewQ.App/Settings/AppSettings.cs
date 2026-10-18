@@ -44,6 +44,10 @@ public sealed class AppSettings
 
     public string? LastWorkspace { get; set; }
 
+    /// <summary>Size of the video preview window's picture in pixels (set only here, not by dragging).</summary>
+    public int PreviewWidth { get; set; } = 960;
+    public int PreviewHeight { get; set; } = 540;
+
     /// <summary>Keyboard shortcuts that differ from the defaults: action name → gesture ("" = none).</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = new();
 

@@ -21,6 +21,10 @@ public interface IFrameSource
     int Width { get; }
     int Height { get; }
 
+    /// <summary>Size of the picture as it must look (fitting, original size): the frame's, unless stretched.</summary>
+    int DisplayWidth => Width;
+    int DisplayHeight => Height;
+
     /// <summary>Changes every time a new frame is available (0 = nothing yet).</summary>
     long FrameNumber { get; }
 

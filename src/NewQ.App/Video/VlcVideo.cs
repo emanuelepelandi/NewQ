@@ -120,15 +120,15 @@ internal sealed class PreparedVideo : IDisposable
         Player = new MediaPlayer(VlcRuntime.LibVlc) { EnableKeyInput = false, EnableMouseInput = false, Volume = 0 };
         // Before Play, so the sound never starts on the default device.
         if (DirectSoundDevices.Of(audioDevice) is string device) Player.SetOutputDevice(device, null);
-        Frames = new VideoFrameSource(Player);
+        _media = new Media(VlcRuntime.LibVlc, source.Location, source.Type);
+        foreach (var option in source.Options) _media.AddOption(option);
+        Frames = new VideoFrameSource(Player, _media);
         Frames.FirstFrame += () => Post(OnFirstFrame);
         Player.EncounteredError += (_, _) => Post(() => Fail(source.IsLive
             ? "sorgente non disponibile (scollegata o in uso?)"
             : "file non riproducibile"));
         Player.EndReached += (_, _) => Post(() => Ended?.Invoke());
 
-        _media = new Media(VlcRuntime.LibVlc, source.Location, source.Type);
-        foreach (var option in source.Options) _media.AddOption(option);
         Player.Play(_media);
     }
 
@@ -154,12 +154,51 @@ internal sealed class PreparedVideo : IDisposable
     {
         IsClaimed = true;
         if (IsReady) Player.SetPause(false);
+        WatchPictureSize();
+    }
+
+    private DispatcherTimer? _sizeWatch;
+
+    /// <summary>
+    /// The picture's real size, once libVLC knows it: some files (MPEG-TS) only tell it after playback starts, when
+    /// the frames already have another shape. Checked a few times a second for 3 s, then left alone.
+    /// </summary>
+    private void WatchPictureSize()
+    {
+        if (IsLive || _sizeWatch is not null || ReadPictureSize()) return;
+        var tries = 0;
+        _sizeWatch = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = TimeSpan.FromMilliseconds(200) };
+        _sizeWatch.Tick += (_, _) =>
+        {
+            if (_disposed || ReadPictureSize() || ++tries >= 15) _sizeWatch.Stop();
+        };
+        _sizeWatch.Start();
+    }
+
+    /// <summary>True once the size is known and given to the frames.</summary>
+    private bool ReadPictureSize()
+    {
+        try
+        {
+            uint width = 0, height = 0;
+            if (!Player.Size(0, ref width, ref height) || width == 0 || height == 0) return false;
+            double displayWidth = width;
+            foreach (var track in _media.Tracks)
+                if (track.TrackType == TrackType.Video && track.Data.Video is { SarNum: > 0, SarDen: > 0 } v && v.SarNum != v.SarDen)
+                    displayWidth = displayWidth * v.SarNum / v.SarDen;
+            Frames.SetDisplaySize((int)Math.Round(displayWidth), (int)height);
+            if (Frames.DisplayWidth != Frames.Width || Frames.DisplayHeight != Frames.Height)
+                VlcRuntime.Debug($"picture {Frames.DisplayWidth}x{Frames.DisplayHeight} drawn from frames {Frames.Width}x{Frames.Height}");
+            return true;
+        }
+        catch { return true; } // no size from libVLC: keep the frames' shape
     }
 
     private void OnFirstFrame()
     {
         if (_disposed || IsReady) return;
         IsReady = true;
+        if (!IsLive) ReadPictureSize();
         if (IsClaimed || IsLive) return; // GO came while preloading, or a live source: keep playing
         Player.SetPause(true);
         Player.Time = 0; // libVLC decodes and displays frame 0 again
@@ -179,6 +218,7 @@ internal sealed class PreparedVideo : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _sizeWatch?.Stop();
         var player = Player;
         var media = _media;
         var frames = Frames;

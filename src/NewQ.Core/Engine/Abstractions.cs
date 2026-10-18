@@ -75,20 +75,32 @@ public sealed class CueContext
 {
     private readonly Action _completed;
     private readonly Action<string> _error;
+    private readonly Action? _actionDone;
     private readonly Workspace _workspace;
     private int _done;
+    private int _actionDoneOnce;
 
-    public CueContext(Action completed, Action<string> error, Workspace workspace)
+    public CueContext(Action completed, Action<string> error, Workspace workspace, Action? actionDone = null)
     {
         _completed = completed;
         _error = error;
         _workspace = workspace;
+        _actionDone = actionDone;
     }
 
     /// <summary>Signals the end of the cue. Extra calls are ignored.</summary>
     public void Completed()
     {
         if (Interlocked.Exchange(ref _done, 1) == 0) _completed();
+    }
+
+    /// <summary>
+    /// The cue's action is over but it stays running (a video holding its last frame): its follow fires now.
+    /// Extra calls are ignored.
+    /// </summary>
+    public void ActionDone()
+    {
+        if (Interlocked.Exchange(ref _actionDoneOnce, 1) == 0) _actionDone?.Invoke();
     }
 
     public void Error(string message) => _error(message);

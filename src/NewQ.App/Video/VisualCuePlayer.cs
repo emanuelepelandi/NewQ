@@ -337,6 +337,8 @@ internal sealed class VideoLayer : VisualLayer
     private readonly double _routeGain;
     private bool _paused;
     private bool _autoFading; // the automatic fade-out before the end (as opposed to a stop/fade cue)
+    private readonly bool _hold; // Hold on finish (QLab's Hold at end); no effect with Loop
+    private TimeSpan? _heldAt;   // holding the last frame since the end of the file, which lasted this long
 
     public VideoLayer(VideoCue cue, PreparedVideo prepared, CompositionHub hub, Guid routeId, double routeGain, CueContext context)
         : base(cue, hub, routeId, prepared.Frames, context)
@@ -345,6 +347,8 @@ internal sealed class VideoLayer : VisualLayer
         _prepared = prepared;
         _routeGain = routeGain;
         _volume = new VolumeRamp(prepared.Player, Dispatcher.CurrentDispatcher);
+        _hold = cue.HoldAtEnd && !cue.Loop;
+        prepared.Frames.KeepLastFrame = _hold;
 
         prepared.Ended += OnEnded;
         prepared.Failed += OnFailed;
@@ -354,12 +358,13 @@ internal sealed class VideoLayer : VisualLayer
         _volume.RampTo(Decibels.ToGain(cue.VolumeDb) * routeGain, cue.FadeIn);
     }
 
-    public override TimeSpan Elapsed => TimeSpan.FromMilliseconds(Math.Max(0, _prepared.Player.Time));
+    public override TimeSpan Elapsed => _heldAt ?? TimeSpan.FromMilliseconds(Math.Max(0, _prepared.Player.Time));
 
     public override TimeSpan? Duration
     {
         get
         {
+            if (_heldAt is TimeSpan held) return held; // full bar, nothing left
             if (_cue.Loop) return null;
             var length = _prepared.Player.Length;
             return length > 0 ? TimeSpan.FromMilliseconds(length) : null;
@@ -369,16 +374,16 @@ internal sealed class VideoLayer : VisualLayer
     public override void Pause()
     {
         _paused = true;
-        _prepared.Player.SetPause(true);
+        if (_heldAt is null) _prepared.Player.SetPause(true);
     }
 
     public override void Resume()
     {
         _paused = false;
-        _prepared.Player.SetPause(false);
+        if (_heldAt is null) _prepared.Player.SetPause(false);
     }
 
-    public override bool CanSeek => !_cue.Loop && _prepared.Player.Length > 0;
+    public override bool CanSeek => !_cue.Loop && _heldAt is null && _prepared.Player.Length > 0;
 
     public override void Seek(TimeSpan position)
     {
@@ -402,7 +407,7 @@ internal sealed class VideoLayer : VisualLayer
 
     protected override void OnTick()
     {
-        if (_paused || _cue.Loop || _cue.FadeOut <= 0 || FadingOut) return;
+        if (_paused || _cue.Loop || _hold || _cue.FadeOut <= 0 || FadingOut) return; // holding: no final fade-out
         var length = _prepared.Player.Length;
         var time = _prepared.Player.Time;
         if (length <= 0 || time < 0) return;
@@ -414,7 +419,22 @@ internal sealed class VideoLayer : VisualLayer
         _volume.RampTo(0, Math.Max(0, remaining));
     }
 
-    private void OnEnded() => Finish();
+    /// <summary>
+    /// End of the file. Hold on finish: the last frame stays and the cue keeps running until stopped or faded (as in
+    /// QLab); its follow fires now.
+    /// </summary>
+    private void OnEnded()
+    {
+        if (!_hold || FadingOut)
+        {
+            Finish();
+            return;
+        }
+        var length = _prepared.Player.Length;
+        _heldAt = TimeSpan.FromMilliseconds(Math.Max(0, length > 0 ? length : _prepared.Player.Time));
+        _volume.Stop();
+        Context.ActionDone();
+    }
 
     private void OnFailed(string message)
     {

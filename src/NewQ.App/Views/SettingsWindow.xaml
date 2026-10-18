@@ -58,6 +58,12 @@
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Comandi compatibili QLab: /go, /stop, /panic, /pause, /resume, /playhead/next, /playhead/previous, /cue/{numero}/start, /cue/{numero}/stop." />
 
+                    <TextBlock Text="FINESTRA DI ANTEPRIMA VIDEO" Style="{StaticResource SectionHeader}" />
+                    <UniformGrid Columns="2">
+                        <TextBox x:Name="PreviewWidthBox" ui:ControlHelper.Header="Larghezza (px)" />
+                        <TextBox x:Name="PreviewHeightBox" ui:ControlHelper.Header="Altezza (px)" />
+                    </UniformGrid>
+
                     <TextBlock Text="CONTROLLO WEB" Style="{StaticResource SectionHeader}" />
                     <UniformGrid Columns="2">
                         <CheckBox x:Name="WebEnabledBox" Content="Pagina di controllo in rete" VerticalAlignment="Bottom" />

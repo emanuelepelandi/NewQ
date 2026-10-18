@@ -72,6 +72,8 @@ internal sealed class FakePlayer : ICuePlayer
         public void Stop(TimeSpan fade) { StoppedWithFade = fade; Context.Completed(); }
         public void Fade(FadeRequest request) => Fades.Add(request);
         public void Finish() => Context.Completed();
+        /// <summary>A video reaching the end of its file while it holds the last frame.</summary>
+        public void ReachEndAndHold() => Context.ActionDone();
     }
 
     public List<Handle> Started { get; } = new();

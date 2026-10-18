@@ -26,6 +26,7 @@
         <c:NotEmptyToVisibilityConverter x:Key="NotEmpty" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <c:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <c:InverseBoolConverter x:Key="InverseBool" />
 
         <DataTemplate x:Key="EnumItem">
             <TextBlock Text="{Binding Converter={StaticResource EnumDisplay}}" />
@@ -145,8 +146,13 @@
         <DataTemplate x:Key="PageVideoTime">
             <WrapPanel>
                 <TextBox ui:ControlHelper.Header="Fade in (s)" Text="{Binding FadeIn}" />
-                <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}" />
+                <!-- Holding the last frame, there is no final fade-out. -->
+                <TextBox ui:ControlHelper.Header="Fade out finale (s)" Text="{Binding FadeOut}"
+                         IsEnabled="{Binding HoldAtEnd, Converter={StaticResource InverseBool}}" />
                 <CheckBox Content="Loop" IsChecked="{Binding Loop}" />
+                <CheckBox Content="Hold on finish" IsChecked="{Binding HoldAtEnd}"
+                          IsEnabled="{Binding Loop, Converter={StaticResource InverseBool}}"
+                          ToolTip="A fine video resta l'ultimo fotogramma finché la cue non viene fermata" />
             </WrapPanel>
         </DataTemplate>
 

@@ -114,6 +114,23 @@ public class TimelineTests
     }
 
     [Fact]
+    public void Hold_on_finish_keeps_the_bar_open_and_follows_at_the_end_of_the_file()
+    {
+        var video = new VideoCue { Number = "1", FilePath = "v.mp4", HoldAtEnd = true, FadeOut = 2, ContinueMode = ContinueMode.AutoFollow };
+        var t = TimelineBuilder.Build(new Cue[] { video, Audio("2", 5) }, c => c is VideoCue ? 10 : c.Duration);
+        var held = ItemOf(t, "1");
+        Assert.True(held.IsOpenEnded);
+        Assert.Equal(new TimelinePoint(0, 10), held.HoldFrom);
+        Assert.Empty(held.Envelope);                                   // no final fade-out while holding
+        Assert.Equal(new TimelinePoint(0, 10), ItemOf(t, "2").Start);  // the follow fires at the end of the file
+        Assert.Single(t.Blocks);
+        Assert.Equal(15, t.Blocks[0].Length);
+
+        video.Loop = true;                                             // with Loop, Hold has no effect
+        Assert.Null(ItemOf(TimelineBuilder.Build(new Cue[] { video }, c => null), "1").HoldFrom);
+    }
+
+    [Fact]
     public void Auto_follow_on_a_cue_that_never_ends_stops_the_chain()
     {
         var loop = new AudioCue { Number = "1", Loop = true, ContinueMode = ContinueMode.AutoFollow, FilePath = "l.wav" };

@@ -45,8 +45,9 @@ internal sealed class RenderSurface : HwndHost
 }
 
 /// <summary>
-/// One physical output: a monitor (borderless, topmost, covering the whole screen) or the resizable preview
-/// window. Everything shown on it is composed by its <see cref="GpuRenderer"/>.
+/// One physical output: a monitor (borderless, topmost, covering the whole screen) or the preview window, whose
+/// size comes from the settings only (it can't be resized by dragging). Everything shown on it is composed by its
+/// <see cref="GpuRenderer"/>.
 /// </summary>
 public sealed class OutputWindow : Window
 {
@@ -55,8 +56,11 @@ public sealed class OutputWindow : Window
     private readonly RenderSurface _surface = new();
     private GpuRenderer? _renderer;
 
-    public OutputWindow(int screenIndex, System.Drawing.Rectangle? bounds, CompositionHub hub)
+    private System.Drawing.Size _previewSize;
+
+    public OutputWindow(int screenIndex, System.Drawing.Rectangle? bounds, CompositionHub hub, System.Drawing.Size previewSize)
     {
+        _previewSize = previewSize;
         ScreenIndex = screenIndex;
         _bounds = bounds;
         _hub = hub;
@@ -68,9 +72,11 @@ public sealed class OutputWindow : Window
         {
             Title = "NewQ – Anteprima uscita video";
             Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/NewQ.ico"));
-            Width = 960;
-            Height = 540;
+            ResizeMode = ResizeMode.CanMinimize; // no resize borders, no maximize
+            SizeToContent = SizeToContent.WidthAndHeight;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            ApplyPreviewSize();
+            DpiChanged += (_, _) => ApplyPreviewSize();
         }
         else
         {
@@ -92,6 +98,22 @@ public sealed class OutputWindow : Window
     }
 
     public int ScreenIndex { get; }
+
+    /// <summary>Preview window: its picture becomes this many pixels (Impostazioni → Generale).</summary>
+    public void SetPreviewSize(System.Drawing.Size size)
+    {
+        if (_bounds is not null || size == _previewSize) return;
+        _previewSize = size;
+        ApplyPreviewSize();
+    }
+
+    /// <summary>The picture area in physical pixels, whatever the screen's scaling.</summary>
+    private void ApplyPreviewSize()
+    {
+        var dpi = VisualTreeHelper.GetDpi(this);
+        _surface.Width = Math.Max(160, _previewSize.Width) / dpi.DpiScaleX;
+        _surface.Height = Math.Max(90, _previewSize.Height) / dpi.DpiScaleY;
+    }
 
     /// <summary>When false (default), outputs are only hidden or closed by the application.</summary>
     public bool AllowClose { get; set; }
@@ -133,12 +155,25 @@ public sealed class OutputWindowManager : IDisposable
 {
     private readonly Dictionary<int, OutputWindow> _windows = new();
 
+    private System.Drawing.Size _previewSize = new(960, 540);
+
     public OutputWindowManager(CompositionHub hub)
     {
         Hub = hub;
     }
 
     public CompositionHub Hub { get; }
+
+    /// <summary>Size of the preview window's picture in pixels; applied at once to an open preview.</summary>
+    public System.Drawing.Size PreviewSize
+    {
+        get => _previewSize;
+        set
+        {
+            _previewSize = value;
+            if (_windows.TryGetValue(VideoOutput.PreviewWindow, out var preview)) preview.SetPreviewSize(value);
+        }
+    }
 
     public event Action<string>? Warning;
 
@@ -168,7 +203,7 @@ public sealed class OutputWindowManager : IDisposable
 
         foreach (var index in wanted.Where(i => !_windows.ContainsKey(i)))
         {
-            var window = new OutputWindow(index, index >= 0 ? screens[index].Bounds : null, Hub);
+            var window = new OutputWindow(index, index >= 0 ? screens[index].Bounds : null, Hub, _previewSize);
             window.RendererFailed += message => window.Dispatcher.BeginInvoke(() => Warning?.Invoke(message));
             _windows[index] = window;
             window.Show();

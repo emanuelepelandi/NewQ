@@ -65,6 +65,14 @@ public sealed class InverseBoolToVisibilityConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+/// <summary>True when false and the other way round (e.g. a field disabled by an option).</summary>
+public sealed class InverseBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is not true;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => value is not true;
+}
+
 /// <summary>Collapsed when the value is null or an empty string.</summary>
 public sealed class NotEmptyToVisibilityConverter : IValueConverter
 {

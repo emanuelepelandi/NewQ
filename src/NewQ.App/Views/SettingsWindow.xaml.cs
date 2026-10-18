@@ -52,6 +52,8 @@ public partial class SettingsWindow : Window
         WebEnabledBox.IsChecked = settings.WebRemoteEnabled;
         WebPortBox.Text = settings.WebRemotePort.ToString(CultureInfo.CurrentCulture);
         WebPasswordBox.Text = settings.WebRemotePassword;
+        PreviewWidthBox.Text = settings.PreviewWidth.ToString(CultureInfo.CurrentCulture);
+        PreviewHeightBox.Text = settings.PreviewHeight.ToString(CultureInfo.CurrentCulture);
 
         PanicFadeBox.Text = workspaceSettings.PanicFadeSeconds.ToString(CultureInfo.CurrentCulture);
         LockoutBox.Text = workspaceSettings.GoLockoutMs.ToString(CultureInfo.CurrentCulture);
@@ -97,6 +99,8 @@ public partial class SettingsWindow : Window
             Result.WebRemoteEnabled = WebEnabledBox.IsChecked == true;
             Result.WebRemotePort = Math.Clamp(ParseInt(WebPortBox, "Porta HTTP"), 1, 65535);
             Result.WebRemotePassword = WebPasswordBox.Text.Trim();
+            Result.PreviewWidth = Math.Clamp(ParseInt(PreviewWidthBox, "Larghezza anteprima"), 160, 7680);
+            Result.PreviewHeight = Math.Clamp(ParseInt(PreviewHeightBox, "Altezza anteprima"), 90, 4320);
 
             // Parse both before touching the (live) workspace settings.
             var panicFade = ParseDouble(PanicFadeBox, "Fade dello Stop");

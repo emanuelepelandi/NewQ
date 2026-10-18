@@ -227,6 +227,40 @@ public class CueEngineTests
     }
 
     [Fact]
+    public void Hold_on_finish_fires_the_follow_at_the_end_and_keeps_the_cue_running()
+    {
+        var video = new VideoCue { Number = "1", ContinueMode = ContinueMode.AutoFollow, HoldAtEnd = true };
+        var engine = CreateEngine(video, Audio("2", ContinueMode.AutoFollow), Audio("3"));
+
+        engine.Go();
+        _scheduler.Flush();
+        _player.Started[0].ReachEndAndHold();   // end of the file: the last frame stays
+        _scheduler.Flush();
+        Assert.Equal(new[] { "1", "2" }, _player.StartedNumbers);
+        Assert.Contains(engine.Running, r => r.Cue == video && !r.IsFinished);
+
+        _player.Started[0].ReachEndAndHold();   // a second end signal does nothing
+        _player.Started[0].Finish();            // stopped later: no second follow
+        _scheduler.Flush();
+        Assert.Equal(new[] { "1", "2" }, _player.StartedNumbers);
+        Assert.DoesNotContain(engine.Running, r => r.Cue == video);
+    }
+
+    [Fact]
+    public void Hold_on_finish_stopped_before_the_end_fires_no_follow()
+    {
+        var video = new VideoCue { Number = "1", ContinueMode = ContinueMode.AutoFollow, HoldAtEnd = true };
+        var engine = CreateEngine(video, Audio("2"));
+
+        engine.Go();
+        _scheduler.Flush();
+        engine.StopAll(TimeSpan.Zero);
+        _player.Started[0].ReachEndAndHold();
+        _scheduler.Flush();
+        Assert.Equal(new[] { "1" }, _player.StartedNumbers);
+    }
+
+    [Fact]
     public void AutoFollow_does_not_fire_when_cue_is_stopped_manually()
     {
         var engine = CreateEngine(Audio("1", ContinueMode.AutoFollow), Audio("2"));

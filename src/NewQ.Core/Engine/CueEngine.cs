@@ -32,6 +32,9 @@ public sealed class RunningCue
     internal IDisposable? SafetyTimer { get; set; }
     internal bool StoppedManually { get; set; }
 
+    /// <summary>Its follow has already fired (at the end of a video that holds its last frame).</summary>
+    internal bool FollowFired { get; set; }
+
     /// <summary>Fading out to a stop (Stop/Panic with fade, Fade cue that stops, Fade out link).</summary>
     public bool IsFadingOut { get; internal set; }
     public bool IsPaused { get; internal set; }
@@ -347,7 +350,8 @@ public sealed class CueEngine
         var context = new CueContext(
             completed: () => _scheduler.Post(() => Complete(rc)),
             error: message => _scheduler.Post(() => ReportError(cue, message)),
-            workspace: Workspace);
+            workspace: Workspace,
+            actionDone: () => _scheduler.Post(() => ActionDone(rc)));
 
         if (!cue.Armed || cue.IsShowMarker) // --SHOW START-- / --SHOW END-- do nothing
         {
@@ -463,10 +467,22 @@ public sealed class CueEngine
         RefreshState(rc.Cue);
         RunningChanged?.Invoke(this, EventArgs.Empty);
 
-        if (ShowSequence.Follows(rc.Cue) && !rc.StoppedManually && NextCue(rc.Cue) is Cue next)
+        if (!rc.FollowFired && ShowSequence.Follows(rc.Cue) && !rc.StoppedManually && NextCue(rc.Cue) is Cue next)
             ScheduleFollow(next, TimeSpan.FromSeconds(ShowSequence.FollowDelay(rc.Cue)), rc);
         else if (_running.Count == 0 && Playhead is null && Workspace.ShowEnd is ShowMarkerCue end)
             SetPlayhead(end); // everything is over: the playhead waits on --SHOW END--
+    }
+
+    /// <summary>
+    /// A cue that stays running after its action (a video holding its last frame, as QLab's Hold at end): the follow
+    /// fires now, as if it had ended; stopping it later fires nothing more.
+    /// </summary>
+    private void ActionDone(RunningCue rc)
+    {
+        if (rc.IsFinished || rc.FollowFired || rc.StoppedManually) return;
+        rc.FollowFired = true;
+        if (ShowSequence.Follows(rc.Cue) && NextCue(rc.Cue) is Cue next)
+            ScheduleFollow(next, TimeSpan.FromSeconds(ShowSequence.FollowDelay(rc.Cue)), rc);
     }
 
     /// <summary>Follow: the next cue, in the same group, now (auto) or after the post-wait (wait follow).</summary>

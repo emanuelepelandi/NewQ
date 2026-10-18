@@ -106,6 +106,14 @@ public sealed class VideoCue : VisualCue
     public double VolumeDb { get => _volumeDb; set => SetField(ref _volumeDb, Math.Clamp(value, Decibels.Floor, 12)); }
     public override double? ListVolumeDb => VolumeDb;
     public bool Loop { get => _loop; set => SetField(ref _loop, value); }
+
+    /// <summary>
+    /// "Hold on finish" (QLab's Hold at end): at the end of the file the last frame stays on screen and the cue stays
+    /// running until stopped or faded. Its follow still fires at the end of the file. No effect with Loop; the final
+    /// fade-out is not applied.
+    /// </summary>
+    public bool HoldAtEnd { get => _holdAtEnd; set => SetField(ref _holdAtEnd, value); }
+    private bool _holdAtEnd;
 }
 
 public sealed class ImageCue : VisualCue

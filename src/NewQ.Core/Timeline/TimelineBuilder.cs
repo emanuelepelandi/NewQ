@@ -66,12 +66,13 @@ public static class TimelineBuilder
                 }
                 // A follow on a cue that never ends never fires (Show Check warns about it).
                 if (ShowSequence.Follows(cue) && ShowSequence.NextInList(cues, cue) is Cue next
-                    && item.End is TimelinePoint end && end.Block == block)
+                    && item.ActionEnd is TimelinePoint end && end.Block == block)
                     pending.Add((end.Time + ShowSequence.FollowDelay(cue), order++, next));
             }
 
             var length = blockItems.Select(it => it.Start.Time)
                 .Concat(blockItems.Concat(carried).Where(it => it.End?.Block == block).Select(it => it.End!.Value.Time))
+                .Concat(blockItems.Where(it => it.HoldFrom?.Block == block).Select(it => it.HoldFrom!.Value.Time))
                 .Concat(blockItems.Concat(carried).SelectMany(it => it.Envelope).Where(p => p.At.Block == block).Select(p => p.At.Time))
                 .DefaultIfEmpty(0).Max();
             blocks.Add(new TimelineBlock(block, cues[i], length));
@@ -107,6 +108,12 @@ public static class TimelineBuilder
             _ => 0,
         };
         if (length is double l) item.End = start with { Time = start.Time + Math.Max(0, l) };
+        // Hold on finish: the last frame stays until something stops it; the follow still fires at the end of the file.
+        if (cue is VideoCue { HoldAtEnd: true, Loop: false } && cue.Armed && item.End is TimelinePoint fileEnd)
+        {
+            item.HoldFrom = fileEnd;
+            item.End = null;
+        }
 
         if (kind == TimelineItemKind.Media && cue.Armed && cue is MediaCue media)
         {

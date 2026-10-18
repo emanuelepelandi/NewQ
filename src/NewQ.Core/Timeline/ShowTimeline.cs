@@ -38,6 +38,15 @@ public sealed class TimelineItem
     /// <summary>When the cue ends; null = it keeps going to the end of the show (loop, live, held image).</summary>
     public TimelinePoint? End { get; set; }
 
+    /// <summary>
+    /// A video that holds its last frame (Hold on finish): where the file ends and its follow fires; the bar goes on
+    /// (<see cref="End"/> null) until something stops it.
+    /// </summary>
+    public TimelinePoint? HoldFrom { get; set; }
+
+    /// <summary>When its follow fires: the end, or where a held video's file ends.</summary>
+    public TimelinePoint? ActionEnd => End ?? HoldFrom;
+
     /// <summary>The cue doesn't end by itself and nothing stops it (drawn as open to the right).</summary>
     public bool IsOpenEnded => End is null;
 

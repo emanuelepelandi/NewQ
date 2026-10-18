@@ -72,7 +72,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Thumbnails.Updated += ScheduleTimeline;
         ShortcutText = new ShortcutTexts(_shortcuts);
         ShortcutHint = new ShortcutTexts(_shortcuts, asHint: true);
-        _outputs = new OutputWindowManager(_hub);
+        _outputs = new OutputWindowManager(_hub) { PreviewSize = new(_settings.PreviewWidth, _settings.PreviewHeight) };
 
         Engine = new CueEngine(
             new DispatcherScheduler(dispatcher),
@@ -1313,8 +1313,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return _progressList;
     }
 
-    /// <summary>A cue that goes on until stopped (loop, live source, held image): its playback time says nothing of the show.</summary>
-    private bool Endless(Cue cue) => cue is MediaCue && LengthOf(cue) is null;
+    /// <summary>A cue that goes on until stopped (loop, live source, held image or video): its playback time says nothing of the show.</summary>
+    private bool Endless(Cue cue) => cue is MediaCue && LengthOf(cue) is null || cue is VideoCue { HoldAtEnd: true };
 
     private static bool Before(TimelinePoint a, TimelinePoint b) => a.Block < b.Block || a.Block == b.Block && a.Time < b.Time;
 
@@ -1427,6 +1427,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ShortcutHint.Update(_shortcuts);
         TrySaveSettings();
         ApplyDeviceSettings();
+        _outputs.PreviewSize = new(settings.PreviewWidth, settings.PreviewHeight);
         OnPropertyChanged(nameof(Settings));
     }
 

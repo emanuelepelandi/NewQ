@@ -64,9 +64,12 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
     private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
     private readonly MediaPlayer.LibVLCVideoUnlockCb _unlock;
     private readonly MediaPlayer.LibVLCVideoDisplayCb _display;
+    private readonly Media? _media;
 
-    public VideoFrameSource(MediaPlayer player)
+    /// <param name="media">The file played: its track gives the picture's real size (see <see cref="OnFormat"/>).</param>
+    public VideoFrameSource(MediaPlayer player, Media? media = null)
     {
+        _media = media;
         _format = OnFormat;
         _cleanup = OnCleanup;
         _lockCb = OnLock;
@@ -80,8 +83,34 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
     public int Height { get; private set; }
     public long FrameNumber => Interlocked.Read(ref _frameNumber);
 
+    private int _displayWidth, _displayHeight; // 0 = the frame's own size
+
+    /// <summary>
+    /// The picture's real size: when libVLC's buffer was sized before it was known (some files, e.g. MPEG-TS), the
+    /// frame is the whole picture stretched; drawing it at this size gives the right proportions.
+    /// </summary>
+    public int DisplayWidth => _displayWidth > 0 ? _displayWidth : Width;
+    public int DisplayHeight => _displayHeight > 0 ? _displayHeight : Height;
+
+    /// <summary>Sets <see cref="DisplayWidth"/>/<see cref="DisplayHeight"/> (from the player, once known).</summary>
+    public void SetDisplaySize(int width, int height)
+    {
+        if (width <= 0 || height <= 0) return;
+        if (Width > Height != width > height) (width, height) = (height, width); // rotated by libVLC
+        _displayWidth = width;
+        _displayHeight = height;
+    }
+
     /// <summary>While true, new frames are dropped and the current one stays (pausing a live source).</summary>
     public bool Frozen { get; set; }
+
+    /// <summary>
+    /// Hold on finish: when libVLC closes the video at the end of the file, the last frame is kept (copied) and
+    /// served until the source is disposed.
+    /// </summary>
+    public bool KeepLastFrame { get; set; }
+
+    private byte[]? _held; // the last frame, Width × Height BGRA rows without padding
 
     /// <summary>Raised (on a libVLC thread) for the first displayed frame.</summary>
     public event Action? FirstFrame;
@@ -90,9 +119,17 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
     {
         lock (_lock)
         {
-            if (_front < 0 || _disposed) return false;
-            var src = (byte*)_buffers[_front];
+            if (_disposed) return false;
             var rowBytes = Width * 4;
+            if (_front < 0)
+            {
+                if (_held is null) return false;
+                fixed (byte* held = _held)
+                    for (var y = 0; y < Height; y++)
+                        Buffer.MemoryCopy(held + (long)y * rowBytes, (byte*)destination + (long)y * destinationPitch, destinationPitch, rowBytes);
+                return true;
+            }
+            var src = (byte*)_buffers[_front];
             for (var y = 0; y < Height; y++)
                 Buffer.MemoryCopy(src + (long)y * _pitch, (byte*)destination + (long)y * destinationPitch, destinationPitch, rowBytes);
             return true;
@@ -105,6 +142,17 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
     {
         // Ask for BGRA, at the source size (scaled down only if huge).
         Marshal.Copy(new[] { (byte)'R', (byte)'V', (byte)'3', (byte)'2' }, 0, chroma, 4);
+        // libVLC offers the coded size (H.264 1080p: 1920×1088, plus rounding) and then scales the picture into it:
+        // fitted on a 16:9 output that left thin black bars on the sides. Ask for the visible size instead
+        // (the track's, with its pixel aspect ratio); libVLC scales to whatever is asked.
+        var offered = $"{width}x{height}";
+        if (VisibleSize() is (uint w, uint h))
+        {
+            if (width > height != w > h) (w, h) = (h, w); // rotated by libVLC (phone videos)
+            width = w;
+            height = h;
+        }
+        VlcRuntime.Debug($"video format: libVLC {offered}, used {width}x{height}");
         if (width > MaxDimension || height > MaxDimension)
         {
             var scale = Math.Min((double)MaxDimension / width, (double)MaxDimension / height);
@@ -116,6 +164,7 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
         lock (_lock)
         {
             FreeBuffers();
+            _held = null; // new frames are coming
             Width = (int)width;
             Height = (int)height;
             _pitch = pitch;
@@ -131,9 +180,44 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
         return BufferCount;
     }
 
+    /// <summary>Visible size of the video track, pixel aspect ratio applied; null if unknown (e.g. live sources).</summary>
+    private (uint Width, uint Height)? VisibleSize()
+    {
+        try
+        {
+            if (_media is null) return null;
+            foreach (var track in _media.Tracks)
+            {
+                if (track.TrackType != TrackType.Video) continue;
+                var v = track.Data.Video;
+                if (v.Width == 0 || v.Height == 0) return null;
+                double width = v.Width;
+                if (v.SarNum > 0 && v.SarDen > 0 && v.SarNum != v.SarDen) width = width * v.SarNum / v.SarDen;
+                return ((uint)Math.Round(width), v.Height);
+            }
+        }
+        catch { /* track info unavailable: keep libVLC's size */ }
+        return null;
+    }
+
     private void OnCleanup(ref IntPtr opaque)
     {
-        lock (_lock) FreeBuffers();
+        lock (_lock)
+        {
+            if (KeepLastFrame && !_disposed && _front >= 0) KeepFront();
+            FreeBuffers();
+        }
+    }
+
+    /// <summary>Copies the front buffer before libVLC's buffers go (caller holds the lock).</summary>
+    private unsafe void KeepFront()
+    {
+        var rowBytes = Width * 4;
+        _held = new byte[rowBytes * Height];
+        var src = (byte*)_buffers[_front];
+        fixed (byte* held = _held)
+            for (var y = 0; y < Height; y++)
+                Buffer.MemoryCopy(src + (long)y * _pitch, held + (long)y * rowBytes, rowBytes, rowBytes);
     }
 
     private IntPtr OnLock(IntPtr opaque, IntPtr planes)
@@ -195,6 +279,7 @@ public sealed class VideoFrameSource : IFrameSource, IDisposable
         lock (_lock)
         {
             _disposed = true;
+            _held = null;
             FreeBuffers();
         }
     }
