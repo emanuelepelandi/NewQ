@@ -163,3 +163,6 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Cambiato**: *Fluidità* ridotto all'essenziale: cinque barre alla stessa velocità, ciascuna aggiornata al proprio framerate (60, 50, 30, 25, 24 fps, indicati a fianco), e il contatore dei frame. Tolti timecode, Hz misurati, frame persi, striscia e legenda.
 - **Cambiato**: i testi dei pattern (contatore, framerate, risoluzione della griglia, valori della rampa) usano Segoe UI, il font dell'interfaccia, al posto del font a punti.
 - **Corretto**: *Identifica uscite* torna alle cifre di prima.
+
+### 2026-11-11 - Script di rilascio
+- **Corretto**: `Build-Release.ps1` falliva se in `artifacts\releases` restavano i pacchetti di una build locale della stessa versione (vpk rifiuta una versione già presente). Ora la cartella si svuota prima di scaricare la release precedente.

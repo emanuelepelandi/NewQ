@@ -77,6 +77,8 @@ Copy-Item (Join-Path $root 'samples') (Join-Path $publishDir 'samples') -Recurse
 
 # ---- 4. previous release (for the delta update)
 Step 'Release precedente da GitHub'
+# Emptied first: packages left by an earlier local build of the same version would make vpk refuse to pack it.
+if (Test-Path $releaseDir) { Remove-Item $releaseDir -Recurse -Force }
 New-Item -ItemType Directory -Force $releaseDir | Out-Null
 $download = @('download', 'github', '--repoUrl', $RepoUrl, '--outputDir', $releaseDir)
 if ($Token) { $download += @('--token', $Token) }
