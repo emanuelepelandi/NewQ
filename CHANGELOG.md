@@ -146,3 +146,9 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 
 ### 2026-10-19 - Pagine delle Proprietà cliccabili (commit `b731c17`)
 - **Corretto**: dopo la modifica precedente le pagine delle Proprietà non si potevano più aprire con un clic. Ora un clic apre la pagina e la tastiera resta sulla lista (Spazio = GO).
+
+### 2026-11-11 - Scelta della scheda grafica, decodifica video su GPU
+- **Aggiunto**: *Impostazioni → Generale → Video → Scheda grafica*: "Predefinita di Windows" o una scheda precisa. Composizione e uscite passano subito alla scheda scelta; se manca si usa la predefinita (avviso nel log).
+- **Aggiunto**: *Decodifica hardware* (attiva di default), per tornare alla decodifica su CPU in caso di problemi del driver.
+- **Corretto**: i video erano decodificati sempre dalla CPU: libVLC spegne la decodifica hardware quando i fotogrammi arrivano in memoria, come in NewQ. Ora i file chiedono di nuovo la GPU (D3D11VA, poi DXVA2, altrimenti CPU). Stress test: CPU media 13 → 11 %, massimo 23 → 12 %.
+- **Corretto**: il compositore usava sempre la scheda predefinita di Windows, ignorando quella scelta. La decodifica di libVLC usa per forza la scheda predefinita del processo: sui PC con scheda integrata e dedicata NewQ imposta la preferenza GPU di Windows per NewQ.exe (attiva dal prossimo avvio); dove Windows non lo consente lo dice il log.
