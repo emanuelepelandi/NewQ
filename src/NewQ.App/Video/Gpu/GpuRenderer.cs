@@ -43,6 +43,7 @@ internal sealed class GpuRenderer : IDisposable
         public Vector4 P1;          // canvas w, canvas h, output index, identify
         public Vector4 Blend;       // left, right, top, bottom
         public Vector4 BlendShape;  // gamma, curve
+        public Vector4 P2;          // measured refresh (Hz), dropped frames (motion pattern)
     }
 
     private sealed class CachedTexture : IDisposable
@@ -91,6 +92,16 @@ internal sealed class GpuRenderer : IDisposable
     private int _width, _height;
     private long _frame;
     private int _adapterVersion;
+
+    // Frame pacing, measured for the motion test pattern.
+    private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    private FrameStatistics _lastStats;
+    private bool _hasStats;
+    private int _windowRefresh;
+    private long _windowQpc, _windowStart, _windowFrames, _windowDrops, _lastPresent;
+    private double _hz;
+    private long _drops;
+    private long _motionStart = -1, _motionLast = -10;
 
     public GpuRenderer(IntPtr hwnd, int screenIndex, CompositionHub hub)
     {
@@ -146,6 +157,8 @@ internal sealed class GpuRenderer : IDisposable
     {
         var levels = new[] { FeatureLevel.Level_11_0, FeatureLevel.Level_10_1, FeatureLevel.Level_10_0 };
         _adapterVersion = GpuAdapters.Version;
+        _hasStats = false;
+        _lastPresent = 0;
         ID3D11Device? device = null;
         ID3D11DeviceContext? context = null;
         using (var factory1 = DXGI.CreateDXGIFactory1<IDXGIFactory1>())
@@ -286,6 +299,7 @@ internal sealed class GpuRenderer : IDisposable
             DrawOutput(_canvases[route.RouteId], output);
 
         _swapChain!.Present(1, PresentFlags.None).CheckError();
+        MeasurePresent();
         PruneCaches(frame);
     }
 
@@ -312,10 +326,12 @@ internal sealed class GpuRenderer : IDisposable
 
             if (layer.Pattern is TestPatternKind kind)
             {
+                if (kind == TestPatternKind.Motion) TrackMotionPattern(frame);
                 SetParams(new Params
                 {
                     P0 = new Vector4((float)opacity, (float)kind, (float)now, frame),
                     P1 = new Vector4(canvas.Width, canvas.Height, 0, 0),
+                    P2 = new Vector4((float)_hz, _drops, 0, 0),
                 });
                 ctx.PSSetShader(_psPattern);
                 DrawQuad(0, 0, 1, 1);
@@ -330,6 +346,64 @@ internal sealed class GpuRenderer : IDisposable
             DrawQuad(x, y, qw, qh);
         }
         ctx.PSSetShaderResource(0, null!);
+    }
+
+    /// <summary>Drops count from when the motion pattern appears on this screen (the first half second is ignored).</summary>
+    private void TrackMotionPattern(long frame)
+    {
+        if (_motionLast < frame - 1) _motionStart = frame;
+        _motionLast = frame;
+        if (frame - _motionStart < 30) _drops = 0;
+    }
+
+    /// <summary>
+    /// After each Present: refreshes that showed no new frame (DXGI frame statistics; without them, a present
+    /// interval over 1.5 refreshes) and the screen's real refresh rate (vblank count over vblank time).
+    /// </summary>
+    private void MeasurePresent()
+    {
+        var now = _clock.ElapsedTicks;
+        long missed = 0;
+        var precise = _swapChain!.GetFrameStatistics(out var st).Success && st.SyncQPCTime != 0;
+        if (precise)
+        {
+            if (_hasStats)
+            {
+                long presents = (uint)unchecked(st.PresentCount - _lastStats.PresentCount);
+                long refreshes = (uint)unchecked(st.PresentRefreshCount - _lastStats.PresentRefreshCount);
+                if (presents > 0 && refreshes > presents && refreshes - presents < 1000) missed = refreshes - presents;
+            }
+            else { _windowRefresh = st.SyncRefreshCount; _windowQpc = st.SyncQPCTime; }
+            _lastStats = st;
+            _hasStats = true;
+            var qpcSeconds = (st.SyncQPCTime - _windowQpc) / (double)System.Diagnostics.Stopwatch.Frequency;
+            if (qpcSeconds >= 1)
+            {
+                _hz = (uint)unchecked(st.SyncRefreshCount - _windowRefresh) / qpcSeconds;
+                _windowRefresh = st.SyncRefreshCount;
+                _windowQpc = st.SyncQPCTime;
+            }
+        }
+        else
+        {
+            _hasStats = false;
+            if (_hz > 0 && _lastPresent > 0)
+            {
+                var periods = (now - _lastPresent) / (double)System.Diagnostics.Stopwatch.Frequency * _hz;
+                if (periods > 1.5) missed = (long)Math.Round(periods) - 1;
+            }
+            var seconds = (now - _windowStart) / (double)System.Diagnostics.Stopwatch.Frequency;
+            if (seconds >= 2)
+            {
+                _hz = (_windowFrames + _windowDrops) / seconds;
+                _windowStart = now;
+                _windowFrames = _windowDrops = 0;
+            }
+        }
+        _lastPresent = now;
+        _drops += missed;
+        _windowDrops += missed;
+        _windowFrames++;
     }
 
     private void DrawOutput(Canvas canvas, OutputSnapshot output)

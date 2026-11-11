@@ -27,10 +27,10 @@ public partial class TestVideoPanel : UserControl
 
     public static readonly IReadOnlyList<PatternInfo> All = new[]
     {
-        new PatternInfo(TestPatternKind.Motion, "Fluidità (movimento)", "Scatti, judder, frame persi."),
-        new PatternInfo(TestPatternKind.Grid, "Griglia di allineamento", "Keystone, warp, fuoco, overscan."),
-        new PatternInfo(TestPatternKind.ColorBars, "Barre colore", "Colori, canali RGB, saturazione."),
-        new PatternInfo(TestPatternKind.GrayRamp, "Rampa di grigi", "Gamma, nero, banding."),
+        new PatternInfo(TestPatternKind.Motion, "Fluidità (movimento)", "Frame persi, Hz reali, sync tra uscite."),
+        new PatternInfo(TestPatternKind.Grid, "Griglia di allineamento", "Keystone, warp, fuoco, overscan, pixel."),
+        new PatternInfo(TestPatternKind.ColorBars, "Barre colore", "Colori, saturazione, nero (PLUGE)."),
+        new PatternInfo(TestPatternKind.GrayRamp, "Rampa di grigi", "Gamma, nero, bianchi, banding."),
         new PatternInfo(TestPatternKind.Checkerboard, "Scacchiera", "Nitidezza, contrasto, convergenza."),
         new PatternInfo(TestPatternKind.White, "Bianco pieno", "Uniformità, hot spot, blend."),
         new PatternInfo(TestPatternKind.Gray50, "Grigio 50 %", "Uniformità, bande nel blend."),
