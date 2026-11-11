@@ -158,3 +158,8 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Cambiato**: *Griglia* simmetrica dal centro (prima le linee centrali erano sdoppiate), con cerchi negli angoli, frecce sui bordi, area di sicurezza al 5 %, zone a righe di 1 pixel e risoluzione del canvas.
 - **Cambiato**: *Barre colore* in disposizione SMPTE con PLUGE; *Rampa di grigi* con gradini numerati e zone 0–10 % e 90–100 %; *Scacchiera* con caselle quadrate dal centro.
 - **Cambiato**: testi dei pattern e numero di *Identifica uscite* con un font a punti nitido a ogni risoluzione. Costo GPU di ogni pattern pari a un colore pieno (~2 % su GTX 1070, 1080p a 75 Hz).
+
+### 2026-11-11 - Fluidità semplificata, testi in Segoe UI
+- **Cambiato**: *Fluidità* ridotto all'essenziale: cinque barre alla stessa velocità, ciascuna aggiornata al proprio framerate (60, 50, 30, 25, 24 fps, indicati a fianco), e il contatore dei frame. Tolti timecode, Hz misurati, frame persi, striscia e legenda.
+- **Cambiato**: i testi dei pattern (contatore, framerate, risoluzione della griglia, valori della rampa) usano Segoe UI, il font dell'interfaccia, al posto del font a punti.
+- **Corretto**: *Identifica uscite* torna alle cifre di prima.
