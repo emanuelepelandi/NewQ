@@ -25,6 +25,12 @@ public static class VlcRuntime
 
     public static LibVLC LibVlc => Instance.Value;
 
+    /// <summary>
+    /// Decode files on the GPU (Impostazioni → Generale). libVLC turns hardware decoding off for players with video
+    /// callbacks, as NewQ's are, so each file asks for it again; frames are copied back to memory for the renderers.
+    /// </summary>
+    public static volatile bool HardwareDecoding = true;
+
     private static readonly System.Diagnostics.Stopwatch DebugClock = System.Diagnostics.Stopwatch.StartNew();
     private static readonly string? DebugFile = Environment.GetEnvironmentVariable("NEWQ_DEBUG") is null
         ? null : System.IO.Path.Combine(System.IO.Path.GetTempPath(), "newq-debug.log");
@@ -76,13 +82,14 @@ internal sealed record VideoSource(string Location, FromType Type, bool Loop, bo
     /// <summary>A file, played from <paramref name="start"/> to <paramref name="end"/> (0 = end of file), optionally looping that region.</summary>
     public static VideoSource File(string path, bool loop, double start = 0, double end = 0)
     {
-        var options = new List<string>();
+        var hardware = VlcRuntime.HardwareDecoding;
+        var options = new List<string> { hardware ? ":avcodec-hw=any" : ":avcodec-hw=none" }; // any: d3d11va, dxva2, else CPU
         var invariant = System.Globalization.CultureInfo.InvariantCulture;
         if (start > 0) options.Add(":start-time=" + start.ToString("0.###", invariant));
         if (end > start) options.Add(":stop-time=" + end.ToString("0.###", invariant));
         if (loop) options.Add(":input-repeat=65535"); // seamless loop handled by libVLC (of the region, if trimmed)
         return new(path, FromType.FromPath, loop, false,
-            $"file|{path.ToLowerInvariant()}|{loop}|{start.ToString(invariant)}|{end.ToString(invariant)}", options)
+            $"file|{path.ToLowerInvariant()}|{loop}|{start.ToString(invariant)}|{end.ToString(invariant)}|{hardware}", options)
         { StartSeconds = start };
     }
 

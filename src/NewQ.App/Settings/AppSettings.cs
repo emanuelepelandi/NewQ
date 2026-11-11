@@ -48,6 +48,15 @@ public sealed class AppSettings
     public int PreviewWidth { get; set; } = 960;
     public int PreviewHeight { get; set; } = 540;
 
+    /// <summary>Graphics card for video composition and decoding (GpuAdapters key); "" = the Windows default.</summary>
+    public string GpuAdapter { get; set; } = "";
+
+    /// <summary>Video files decoded on the GPU (off = on the CPU, as a fallback for a misbehaving driver).</summary>
+    public bool HardwareDecoding { get; set; } = true;
+
+    /// <summary>NewQ wrote the Windows GPU preference of NewQ.exe (so it may remove it again).</summary>
+    public bool GpuPreferenceByNewQ { get; set; }
+
     /// <summary>Keyboard shortcuts that differ from the defaults: action name → gesture ("" = none).</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = new();
 

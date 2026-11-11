@@ -417,3 +417,26 @@ Istanza di prova con il controllo web attivo (porta 8090), workspace di 2 video 
 | Thread | inizio 71 - fine 54 |
 | Oggetti GDI / USER | inizio 37 / 68 - fine 37 / 67 |
 | Working set a fine giro, MB | 324 330 337 341 345 337 341 347 353 345 336 312 |
+
+## 2026-11-11 18:21 - go-overlap - decodifica GPU (avcodec-hw=any), scelta scheda
+
+- Commit: `a5b1e07+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 4.0 - p95 9.0 - max 12.5 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.25 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 21.4 - p99 medio 19.4 - max assoluto 49.4 |
+| Rendering timeline, ms | media 1.5 - max 2.3 (8 campioni) |
+| Ricostruzione timeline, ms | media 9.6 - max 17.4 (2) |
+| CPU per giro, % (tutti i core) | media 10.6 - max 12.1 |
+| Working set, MB | inizio 246 - picco 510 - fine 245 |
+| Private bytes, MB | inizio 271 - fine 222 |
+| Memoria gestita, MB (fine) | 15 |
+| GC gen0 / gen2 (totale) | 169 / 131 |
+| Handle | inizio 1493 - fine 1462 |
+| Thread | inizio 80 - fine 53 |
+| Oggetti GDI / USER | inizio 31 / 74 - fine 31 / 64 |
+| Working set a fine giro, MB | 429 475 474 482 491 488 479 509 489 510 492 463 |

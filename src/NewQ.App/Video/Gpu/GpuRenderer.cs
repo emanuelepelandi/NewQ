@@ -90,6 +90,7 @@ internal sealed class GpuRenderer : IDisposable
     private readonly Dictionary<Guid, Canvas> _canvases = new();
     private int _width, _height;
     private long _frame;
+    private int _adapterVersion;
 
     public GpuRenderer(IntPtr hwnd, int screenIndex, CompositionHub hub)
     {
@@ -103,6 +104,9 @@ internal sealed class GpuRenderer : IDisposable
     /// <summary>Raised on the render thread if the renderer stops because of an error.</summary>
     public event Action<string>? Failed;
 
+    /// <summary>The card this screen is drawn on (null until the device exists).</summary>
+    public string? AdapterName { get; private set; }
+
     /// <summary>Frames presented (diagnostics, stress tests).</summary>
     public long FramesPresented => Interlocked.Read(ref _frame);
 
@@ -115,6 +119,7 @@ internal sealed class GpuRenderer : IDisposable
         {
             try
             {
+                if (_device is not null && _adapterVersion != GpuAdapters.Version) ReleaseDevice(); // another card chosen
                 if (_device is null) CreateDevice();
                 RenderFrame();
                 failures = 0;
@@ -140,8 +145,18 @@ internal sealed class GpuRenderer : IDisposable
     private void CreateDevice()
     {
         var levels = new[] { FeatureLevel.Level_11_0, FeatureLevel.Level_10_1, FeatureLevel.Level_10_0 };
-        if (D3D11.D3D11CreateDevice(IntPtr.Zero, DriverType.Hardware, DeviceCreationFlags.BgraSupport, levels, out var device, out var context).Failure)
-            D3D11.D3D11CreateDevice(IntPtr.Zero, DriverType.Warp, DeviceCreationFlags.BgraSupport, levels, out device, out context).CheckError();
+        _adapterVersion = GpuAdapters.Version;
+        ID3D11Device? device = null;
+        ID3D11DeviceContext? context = null;
+        using (var factory1 = DXGI.CreateDXGIFactory1<IDXGIFactory1>())
+        using (var chosen = GpuAdapters.Open(factory1, GpuAdapters.Selected))
+        {
+            // The chosen card (Impostazioni → Generale); missing or failing: the default one, then the software one.
+            var created = chosen is not null
+                && D3D11.D3D11CreateDevice(chosen, DriverType.Unknown, DeviceCreationFlags.BgraSupport, levels, out device, out context).Success;
+            if (!created && D3D11.D3D11CreateDevice(IntPtr.Zero, DriverType.Hardware, DeviceCreationFlags.BgraSupport, levels, out device, out context).Failure)
+                D3D11.D3D11CreateDevice(IntPtr.Zero, DriverType.Warp, DeviceCreationFlags.BgraSupport, levels, out device, out context).CheckError();
+        }
         _device = device!;
         _context = context!;
 
@@ -162,7 +177,12 @@ internal sealed class GpuRenderer : IDisposable
         _opaque = _device.CreateBlendState(BlendDescription.Opaque);
         _noCull = _device.CreateRasterizerState(RasterizerDescription.CullNone);
 
-        using var factory = DXGI.CreateDXGIFactory1<IDXGIFactory2>();
+        // The swap chain must come from the factory of the device's own card.
+        using var dxgiDevice = _device.QueryInterface<IDXGIDevice>();
+        using var adapter = dxgiDevice.GetAdapter();
+        using var factory = adapter.GetParent<IDXGIFactory2>();
+        AdapterName = GpuAdapters.NameOf(adapter);
+        VlcRuntime.Debug($"render {_screenIndex}: {AdapterName} luid_0x{adapter.Description.Luid.HighPart:X8}_0x{adapter.Description.Luid.LowPart:X8}");
         var (w, h) = ClientSize();
         _swapChain = factory.CreateSwapChainForHwnd(_device, _hwnd, new SwapChainDescription1
         {

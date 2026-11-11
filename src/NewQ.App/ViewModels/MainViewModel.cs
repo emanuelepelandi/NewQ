@@ -60,6 +60,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _dispatcher = dispatcher;
         _settings = AppSettings.Load();
         CueColors.Apply(_settings.CueColors);
+        GpuAdapters.Select(_settings.GpuAdapter); // before any output window opens
+        VlcRuntime.HardwareDecoding = _settings.HardwareDecoding;
         _shortcuts = ShortcutMap.FromSettings(_settings.Shortcuts);
         Columns = new CueColumns(_settings.CueColumns);
         Columns.Changed += () => { _settings.CueColumns = Columns.Visible; TrySaveSettings(); };
@@ -1445,8 +1447,35 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(Settings));
     }
 
+    private string? _gpuApplied;
+
+    /// <summary>The chosen graphics card: renderers move to it at once, libVLC's decoding at the next start.</summary>
+    private void ApplyGpu()
+    {
+        if (_gpuApplied == _settings.GpuAdapter) return;
+        var first = _gpuApplied is null;
+        _gpuApplied = _settings.GpuAdapter;
+        GpuAdapters.Select(_settings.GpuAdapter);
+
+        var cards = GpuAdapters.List();
+        var chosen = cards.FirstOrDefault(c => c.Key == _settings.GpuAdapter);
+        var used = chosen ?? cards.FirstOrDefault();
+        if (_settings.GpuAdapter.Length > 0 && chosen is null)
+            AddLog(EngineLogLevel.Warning, $"GPU scelta non trovata: uso {used?.Name ?? "la predefinita"}.");
+        else if (used is not null && (!first || chosen is not null))
+            AddLog(EngineLogLevel.Info, $"GPU video: {used.Name}.");
+
+        if (chosen is null && _settings.GpuAdapter.Length > 0) return; // missing card: leave Windows as it is
+        var owned = _settings.GpuPreferenceByNewQ;
+        var message = GpuAdapters.ApplyDecoderPreference(_settings.GpuAdapter, ref owned);
+        if (owned != _settings.GpuPreferenceByNewQ) { _settings.GpuPreferenceByNewQ = owned; TrySaveSettings(); }
+        if (message is not null) AddLog(EngineLogLevel.Info, message);
+    }
+
     private void ApplyDeviceSettings()
     {
+        ApplyGpu();
+        VlcRuntime.HardwareDecoding = _settings.HardwareDecoding;
         ReconfigureAudio();
 
         _oscListener?.Dispose();

@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using NewQ.App.Audio;
 using NewQ.App.Infrastructure;
 using NewQ.App.Settings;
+using NewQ.App.Video.Gpu;
 using NewQ.App.Views.Setup;
 using NewQ.Core;
 using NewQ.Core.Model;
@@ -52,6 +53,9 @@ public partial class SettingsWindow : Window
         WebEnabledBox.IsChecked = settings.WebRemoteEnabled;
         WebPortBox.Text = settings.WebRemotePort.ToString(CultureInfo.CurrentCulture);
         WebPasswordBox.Text = settings.WebRemotePassword;
+        GpuBox.ItemsSource = GpuChoices(settings.GpuAdapter);
+        GpuBox.SelectedItem = ((IEnumerable<GpuChoice>)GpuBox.ItemsSource).First(c => c.Key == settings.GpuAdapter);
+        HardwareDecodingBox.IsChecked = settings.HardwareDecoding;
         PreviewWidthBox.Text = settings.PreviewWidth.ToString(CultureInfo.CurrentCulture);
         PreviewHeightBox.Text = settings.PreviewHeight.ToString(CultureInfo.CurrentCulture);
 
@@ -63,6 +67,22 @@ public partial class SettingsWindow : Window
     }
 
     public AppSettings Result { get; }
+
+    private sealed record GpuChoice(string Key, string Label);
+
+    /// <summary>"Predefinita di Windows", then each card; a chosen card that is missing stays listed as such.</summary>
+    private static List<GpuChoice> GpuChoices(string selected)
+    {
+        var cards = GpuAdapters.List();
+        var list = new List<GpuChoice>
+        {
+            new("", cards.Count > 0 ? $"Predefinita di Windows ({cards[0].Name})" : "Predefinita di Windows"),
+        };
+        list.AddRange(cards.Select(c => new GpuChoice(c.Key,
+            (cards.Count(o => o.Name == c.Name) > 1 ? $"{c.Name} #{int.Parse(c.Key[(c.Key.LastIndexOf(':') + 1)..]) + 1}" : c.Name) + (c.MemoryMB > 0 ? $" · {c.MemoryMB / 1024.0:0.#} GB" : ""))));
+        if (selected.Length > 0 && cards.All(c => c.Key != selected)) list.Add(new(selected, "Scheda scelta (non trovata)"));
+        return list;
+    }
 
     private void OnDriverChanged(object sender, SelectionChangedEventArgs e) => UpdatePanels();
 
@@ -99,6 +119,8 @@ public partial class SettingsWindow : Window
             Result.WebRemoteEnabled = WebEnabledBox.IsChecked == true;
             Result.WebRemotePort = Math.Clamp(ParseInt(WebPortBox, "Porta HTTP"), 1, 65535);
             Result.WebRemotePassword = WebPasswordBox.Text.Trim();
+            Result.GpuAdapter = (GpuBox.SelectedItem as GpuChoice)?.Key ?? "";
+            Result.HardwareDecoding = HardwareDecodingBox.IsChecked == true;
             Result.PreviewWidth = Math.Clamp(ParseInt(PreviewWidthBox, "Larghezza anteprima"), 160, 7680);
             Result.PreviewHeight = Math.Clamp(ParseInt(PreviewHeightBox, "Altezza anteprima"), 90, 4320);
 
