@@ -152,3 +152,9 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Aggiunto**: *Decodifica hardware* (attiva di default), per tornare alla decodifica su CPU in caso di problemi del driver.
 - **Corretto**: i video erano decodificati sempre dalla CPU: libVLC spegne la decodifica hardware quando i fotogrammi arrivano in memoria, come in NewQ. Ora i file chiedono di nuovo la GPU (D3D11VA, poi DXVA2, altrimenti CPU). Stress test: CPU media 13 → 11 %, massimo 23 → 12 %.
 - **Corretto**: il compositore usava sempre la scheda predefinita di Windows, ignorando quella scelta. La decodifica di libVLC usa per forza la scheda predefinita del processo: sui PC con scheda integrata e dedicata NewQ imposta la preferenza GPU di Windows per NewQ.exe (attiva dal prossimo avvio); dove Windows non lo consente lo dice il log.
+
+### 2026-11-11 - Test pattern più professionali
+- **Cambiato**: *Fluidità* ridisegnato: Hz reali dello schermo e frame persi misurati (statistiche DXGI, da quando il pattern appare), timecode dell'orologio comune uguale su tutte le uscite (sync tra proiettori), tre corsie a passo fisso per frame (4/8/16 px), striscia con una cella per refresh e scia, legenda essenziale.
+- **Cambiato**: *Griglia* simmetrica dal centro (prima le linee centrali erano sdoppiate), con cerchi negli angoli, frecce sui bordi, area di sicurezza al 5 %, zone a righe di 1 pixel e risoluzione del canvas.
+- **Cambiato**: *Barre colore* in disposizione SMPTE con PLUGE; *Rampa di grigi* con gradini numerati e zone 0–10 % e 90–100 %; *Scacchiera* con caselle quadrate dal centro.
+- **Cambiato**: testi dei pattern e numero di *Identifica uscite* con un font a punti nitido a ogni risoluzione. Costo GPU di ogni pattern pari a un colore pieno (~2 % su GTX 1070, 1080p a 75 Hz).
