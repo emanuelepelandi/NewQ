@@ -134,7 +134,7 @@ Scelte principali:
 
 ## Sviluppo
 
-Requisiti: .NET SDK 7 o successivo, Windows 10/11.
+Requisiti: .NET SDK 10 o successivo, Windows 10/11.
 
 ```powershell
 dotnet build
@@ -169,10 +169,9 @@ Crea `dist\NewQ\NewQ.exe` e `dist\NewQ-win-x64.zip`: una build *self-contained* 
 
 ## Roadmap suggerita
 
-1. **Passaggio a .NET 8 LTS**: .NET 7 non è più supportato. Basta installare l'SDK 8 e cambiare `net7.0` in `net8.0` nei `.csproj`.
-2. Preload dei file audio per un GO ancora più rapido; audio dei video anche su ASIO.
-3. **Group cue** (playlist, start simultaneo) e cue list multiple.
-4. **Patch di rete**: destinazioni con nome (es. "Banco luci") condivise da più cue.
-5. Trigger da **MIDI in** e **hotkey** per singola cue.
-6. Video: crossfade diretto tra due video (oggi il fade passa dal nero), maschere per uscita, salvataggio e richiamo di preset di geometria.
-7. Associazione dei file `.newq` all'installazione; installer firmato digitalmente.
+1. Preload dei file audio per un GO ancora più rapido; audio dei video anche su ASIO.
+2. **Group cue** (playlist, start simultaneo) e cue list multiple.
+3. **Patch di rete**: destinazioni con nome (es. "Banco luci") condivise da più cue.
+4. Trigger da **MIDI in** e **hotkey** per singola cue.
+5. Video: crossfade diretto tra due video (oggi il fade passa dal nero), maschere per uscita, salvataggio e richiamo di preset di geometria.
+6. Associazione dei file `.newq` all'installazione; installer firmato digitalmente.

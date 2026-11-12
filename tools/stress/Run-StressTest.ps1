@@ -19,7 +19,7 @@
     powershell -ExecutionPolicy Bypass -File tools\stress\Run-StressTest.ps1 -Label "after link loops"
 #>
 param(
-    [string]$Exe = (Join-Path $PSScriptRoot '..\..\src\NewQ.App\bin\Debug\net7.0-windows\NewQ.exe'),
+    [string]$Exe = (Join-Path $PSScriptRoot '..\..\src\NewQ.App\bin\Debug\net10.0-windows\NewQ.exe'),
     [string[]]$Videos = @('D:\Download\BearGrylls-contro i castori infernali(PARODIA).mp4',
                           'D:\Download\COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4'),
     [int]$Rounds = 12,
@@ -42,7 +42,7 @@ $Exe = (Resolve-Path $Exe).Path
 $work = Join-Path $env:TEMP 'newq-stress'
 New-Item -ItemType Directory -Force $work | Out-Null
 $kit = Join-Path $PSScriptRoot 'StressKit'
-$kitExe = Join-Path $kit 'bin\Release\net7.0-windows\StressKit.exe'
+$kitExe = Join-Path $kit 'bin\Release\net10.0-windows\StressKit.exe'
 & dotnet build $kit -c Release -v q -nologo | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'StressKit build failed' }
 

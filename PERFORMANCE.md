@@ -463,3 +463,159 @@ Istanza di prova con il controllo web attivo (porta 8090), workspace di 2 video 
 | Thread | inizio 78 - fine 54 |
 | Oggetti GDI / USER | inizio 31 / 74 - fine 31 / 64 |
 | Working set a fine giro, MB | 406 474 481 496 488 496 479 482 513 481 588 476 |
+
+## 2026-11-12 01:57 - go-overlap - riferimento .NET 7 prima della migrazione
+
+- Commit: `d1d3408` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.4 - p95 8.4 - max 9.4 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.17 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 27.5 - p99 medio 19.6 - max assoluto 44.3 |
+| Rendering timeline, ms | media 1.9 - max 3.3 (8 campioni) |
+| Ricostruzione timeline, ms | media 11.7 - max 22.1 (2) |
+| CPU per giro, % (tutti i core) | media 11.5 - max 16.2 |
+| Working set, MB | inizio 260 - picco 599 - fine 256 |
+| Private bytes, MB | inizio 274 - fine 237 |
+| Memoria gestita, MB (fine) | 14 |
+| GC gen0 / gen2 (totale) | 164 / 126 |
+| Handle | inizio 1478 - fine 1487 |
+| Thread | inizio 80 - fine 56 |
+| Oggetti GDI / USER | inizio 34 / 76 - fine 34 / 67 |
+| Working set a fine giro, MB | 410 469 471 484 506 514 514 502 508 599 514 483 |
+
+## 2026-11-12 02:05 - go-overlap - .NET 10
+
+- Commit: `d1d3408+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.3 - p95 7.7 - max 9.8 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 21.4 - p99 medio 19.6 - max assoluto 46.7 |
+| Rendering timeline, ms | media 4.8 - max 33.7 (9 campioni) |
+| Ricostruzione timeline, ms | media 12.5 - max 22.5 (2) |
+| CPU per giro, % (tutti i core) | media 12.6 - max 25.7 |
+| Working set, MB | inizio 254 - picco 587 - fine 257 |
+| Private bytes, MB | inizio 295 - fine 243 |
+| Memoria gestita, MB (fine) | 17 |
+| GC gen0 / gen2 (totale) | 157 / 121 |
+| Handle | inizio 1372 - fine 1360 |
+| Thread | inizio 80 - fine 56 |
+| Oggetti GDI / USER | inizio 34 / 76 - fine 34 / 67 |
+| Working set a fine giro, MB | 449 485 465 482 508 503 500 511 504 514 587 469 |
+
+## 2026-11-12 02:07 - go-overlap - .NET 10, ripetizione
+
+- Commit: `d1d3408+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 4.0 - p95 8.5 - max 25.8 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.17 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 21.5 - p99 medio 19.1 - max assoluto 50.1 |
+| Rendering timeline, ms | media 3.6 - max 20.2 (9 campioni) |
+| Ricostruzione timeline, ms | media 10.6 - max 19.2 (2) |
+| CPU per giro, % (tutti i core) | media 11.9 - max 17.1 |
+| Working set, MB | inizio 259 - picco 527 - fine 255 |
+| Private bytes, MB | inizio 297 - fine 235 |
+| Memoria gestita, MB (fine) | 15 |
+| GC gen0 / gen2 (totale) | 159 / 123 |
+| Handle | inizio 1372 - fine 1351 |
+| Thread | inizio 80 - fine 55 |
+| Oggetti GDI / USER | inizio 34 / 76 - fine 34 / 67 |
+| Working set a fine giro, MB | 487 497 495 484 494 499 492 508 527 525 526 465 |
+
+## 2026-11-12 02:08 - go-overlap - .NET 10, terza esecuzione
+
+- Commit: `d1d3408+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.4 - p95 7.0 - max 18.0 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 27.6 - p99 medio 20.0 - max assoluto 43.4 |
+| Rendering timeline, ms | media 4.2 - max 27.0 (9 campioni) |
+| Ricostruzione timeline, ms | media 10.6 - max 18.5 (2) |
+| CPU per giro, % (tutti i core) | media 11.9 - max 16.4 |
+| Working set, MB | inizio 264 - picco 608 - fine 257 |
+| Private bytes, MB | inizio 295 - fine 236 |
+| Memoria gestita, MB (fine) | 18 |
+| GC gen0 / gen2 (totale) | 157 / 121 |
+| Handle | inizio 1379 - fine 1362 |
+| Thread | inizio 81 - fine 56 |
+| Oggetti GDI / USER | inizio 34 / 77 - fine 34 / 67 |
+| Working set a fine giro, MB | 469 479 509 496 495 519 527 503 508 608 520 488 |
+
+## 2026-11-12 02:34 - go-overlap - build pubblicata .NET 7 (0.3.0, ReadyToRun)
+
+- Commit: `d1d3408+modifiche` (build: `D:\Programmazione\Applications\NewQ\artifacts\publish`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.4 - p95 7.0 - max 10.2 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.18 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 30.1 - p99 medio 19.8 - max assoluto 90.4 |
+| Rendering timeline, ms | media 1.5 - max 2.2 (8 campioni) |
+| Ricostruzione timeline, ms | media 7.1 - max 12.0 (2) |
+| CPU per giro, % (tutti i core) | media 11.0 - max 12.1 |
+| Working set, MB | inizio 264 - picco 514 - fine 248 |
+| Private bytes, MB | inizio 304 - fine 269 |
+| Memoria gestita, MB (fine) | 20 |
+| GC gen0 / gen2 (totale) | 160 / 122 |
+| Handle | inizio 1346 - fine 1328 |
+| Thread | inizio 80 - fine 55 |
+| Oggetti GDI / USER | inizio 34 / 76 - fine 34 / 67 |
+| Working set a fine giro, MB | 427 470 491 490 503 503 501 484 514 490 513 475 |
+
+## 2026-11-12 02:35 - go-overlap - build pubblicata .NET 10 (ReadyToRun)
+
+- Commit: `d1d3408+modifiche` (build: `D:\Download\NewQ-test\pub10`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.5 - p95 8.2 - max 13.1 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.25 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 22.6 - p99 medio 18.2 - max assoluto 64.0 |
+| Rendering timeline, ms | media 9.8 - max 50.3 (10 campioni) |
+| Ricostruzione timeline, ms | media 8.2 - max 14.1 (2) |
+| CPU per giro, % (tutti i core) | media 11.5 - max 14.7 |
+| Working set, MB | inizio 271 - picco 612 - fine 254 |
+| Private bytes, MB | inizio 305 - fine 234 |
+| Memoria gestita, MB (fine) | 14 |
+| GC gen0 / gen2 (totale) | 157 / 121 |
+| Handle | inizio 1370 - fine 1351 |
+| Thread | inizio 80 - fine 55 |
+| Oggetti GDI / USER | inizio 34 / 76 - fine 34 / 67 |
+| Working set a fine giro, MB | 481 480 500 497 500 507 514 507 604 505 612 458 |
+
+### 2026-11-12 - Migrazione a .NET 10: confronto
+
+Stesse condizioni, una dopo l'altra. Stress test: le sezioni sopra (Debug: riferimento .NET 7 e tre esecuzioni .NET 10; build pubblicate ReadyToRun: 0.3.0 .NET 7 e .NET 10).
+
+| Misura | .NET 7 | .NET 10 |
+|---|---|---|
+| GO, ms (media - p95) | 3.4 - 7.0/8.4 | 3.3-4.0 - 7.0/8.5 |
+| CPU per giro, % (media) | 11.0-11.5 | 11.5-12.6 |
+| Ritardo thread UI, p99 medio ms | 19.6-19.8 | 18.2-20.0 |
+| GC gen0 / gen2 | 160-164 / 122-126 | 157-159 / 121-123 |
+| Avvio build pubblicata, finestra ms (Demo / 72 cue) | 1026 / 1072 | 1070-1089 / 1074-1107 |
+| CPU nei primi 10 s, ms (Demo / 72 cue) | 3841 / 7481 | 4067-4664 / 7617-7727 |
+| GPU 3D, % (video / pattern) | 5.3 / 2.3-3.3 | 4.5 / 1.8-2.9 |
+| Dimensione build pubblicata, MB | 278 | 285 |
+
+- Il primo disegno della timeline con 72 cue registra 20-50 ms su .NET 10 (sotto 16 ms su .NET 7): il lavoro è lo stesso (~13 ms), ma su .NET 10 cade in quel momento una GC gen1 di avvio (~12-15 ms) che su .NET 7 arriva poco dopo. Una volta sola, al caricamento; a regime 0.9-3 ms.
+- Su entrambe le versioni le gen2 sono quasi quante le gen0 (allocazioni grandi: miniature, forme d'onda, ultimo fotogramma tenuto), quasi tutte in background.

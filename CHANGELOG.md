@@ -166,3 +166,7 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 
 ### 2026-11-11 - Script di rilascio
 - **Corretto**: `Build-Release.ps1` falliva se in `artifacts\releases` restavano i pacchetti di una build locale della stessa versione (vpk rifiuta una versione già presente). Ora la cartella si svuota prima di scaricare la release precedente.
+
+### 2026-11-12 - .NET 10
+- **Cambiato**: NewQ passa da .NET 7 (fuori supporto da maggio 2024) a .NET 10 LTS (supportato fino a novembre 2028). Serve l'SDK .NET 10; sul PC dello show non cambia nulla (build self-contained).
+- **Cambiato**: avviso WFO0003 disattivato come WFAC010 (DPI già dichiarato in `app.manifest`); README, guida di rilascio e stress test aggiornati.

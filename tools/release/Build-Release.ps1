@@ -11,7 +11,7 @@
     6. With -Publish: creates the GitHub release vX.Y.Z with those files. Installed copies of NewQ see it at
        their next start and ask whether to install it.
 
-    Needs a .NET runtime 8 or newer installed (for vpk; NewQ itself still builds with the .NET 7 SDK).
+    Needs a .NET runtime 8 or newer installed (for vpk); NewQ builds with the .NET 10 SDK.
     For -Publish: a GitHub token with "Contents: read and write" on the repository, in -Token or in the
     GITHUB_TOKEN environment variable.
 

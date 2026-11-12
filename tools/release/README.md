@@ -4,7 +4,7 @@ Lo script `Build-Release.ps1` crea l'installer e i pacchetti di aggiornamento co
 
 ## Una volta sola: preparazione
 
-1. **.NET**: serve l'SDK .NET 7 (per compilare NewQ) e un **runtime .NET 8 o successivo** (per lo strumento di pacchettizzazione `vpk`). Su questo PC c'è già il runtime .NET 9. Controllo:
+1. **.NET**: serve l'SDK .NET 10 (per compilare NewQ; contiene anche il runtime usato dallo strumento di pacchettizzazione `vpk`). Controllo:
    ```powershell
    dotnet --list-sdks
    dotnet --list-runtimes
