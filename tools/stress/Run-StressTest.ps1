@@ -90,7 +90,7 @@ try {
 
     function FindId($id) { $main.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty, $id))) }
     $go = Find 'GO'; $pause = Find 'Pausa'; $fade = Find 'Fade cue'
-    $panic = FindId 'TransportStop'   # "Stop": fade out of everything, twice = immediate (was Panic)
+    $panic = FindId 'TransportPanic'  # PANIC: fade out of everything, twice = immediate
     Press (Find 'Adatta')
     $totalSeconds = 30 + $Rounds * ($GosPerRound * $IntervalMs / 1000 + 4)
     $levels = Join-Path $work 'levels.txt'

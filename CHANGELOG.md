@@ -170,3 +170,7 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 ### 2026-11-12 - .NET 10
 - **Cambiato**: NewQ passa da .NET 7 (fuori supporto da maggio 2024) a .NET 10 LTS (supportato fino a novembre 2028). Serve l'SDK .NET 10; sul PC dello show non cambia nulla (build self-contained).
 - **Cambiato**: avviso WFO0003 disattivato come WFAC010 (DPI già dichiarato in `app.manifest`); README, guida di rilascio e stress test aggiornati.
+
+### 2026-11-12 - Stop e PANIC
+- **Cambiato**: **Stop** (S) ferma subito la cue selezionata.
+- **Cambiato**: **E-STOP** torna **PANIC** (Esc): fade out di tutte le cue in esecuzione nel tempo impostato (*Impostazioni → Controllo → PANIC*). Menu, controllo web e risposte OSC aggiornati; indirizzi OSC invariati.

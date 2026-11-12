@@ -235,7 +235,7 @@ public sealed class CueEngine
             ? TimeSpan.Zero
             : TimeSpan.FromSeconds(Workspace.Settings.PanicFadeSeconds);
         _lastPanic = now;
-        Info(fade == TimeSpan.Zero ? "Stop: immediato" : $"Stop: fade out {fade.TotalSeconds:0.##} s");
+        Info(fade == TimeSpan.Zero ? "PANIC: immediato" : $"PANIC: fade out {fade.TotalSeconds:0.##} s");
         StopAll(fade);
     }
 

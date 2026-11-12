@@ -131,7 +131,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         GoCommand = new RelayCommand(() => Engine.Go());
-        StopAllCommand = new RelayCommand(() => Engine.StopAll(TimeSpan.Zero));
+        StopSelectedCommand = new RelayCommand(StopSelected);
         PanicCommand = new RelayCommand(() => { Engine.Panic(); StopTestSignals(); });
         TogglePauseCommand = new RelayCommand(TogglePause);
         StopCueCommand = new RelayCommand(p => { if (p is Cue c) Engine.Stop(c, TimeSpan.Zero); });
@@ -239,7 +239,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     // ------------------------------------------------------------------ commands
 
     public ICommand GoCommand { get; }
-    public ICommand StopAllCommand { get; }
+    public ICommand StopSelectedCommand { get; }
     public ICommand PanicCommand { get; }
     public ICommand TogglePauseCommand { get; }
     public ICommand StopCueCommand { get; }
@@ -1366,7 +1366,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         ShortcutAction.Go => GoCommand,
         ShortcutAction.PauseResume => TogglePauseCommand,
-        ShortcutAction.StopAll => StopAllCommand,
+        ShortcutAction.StopAll => StopSelectedCommand,
         ShortcutAction.Panic => PanicCommand,
         ShortcutAction.FadeSelected => FadeSelectedCommand,
         ShortcutAction.FireSelected => FireSelectedCommand,
@@ -1431,6 +1431,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
         FadeOut(cue);
+    }
+
+    /// <summary>Stops the selected cue at once, if it is running.</summary>
+    private void StopSelected()
+    {
+        if (SelectedCue is not Cue cue) return;
+        if (!Engine.Running.Any(r => ReferenceEquals(r.Cue, cue) && !r.IsFinished))
+        {
+            StatusText = $"Cue {cue.Number} non in esecuzione.";
+            return;
+        }
+        Engine.Stop(cue, TimeSpan.Zero);
+        StatusText = $"Stop di {cue.Number} {cue.Name}";
     }
 
     public void ApplySettings(AppSettings settings)

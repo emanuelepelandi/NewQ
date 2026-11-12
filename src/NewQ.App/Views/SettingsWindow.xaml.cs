@@ -125,7 +125,7 @@ public partial class SettingsWindow : Window
             Result.PreviewHeight = Math.Clamp(ParseInt(PreviewHeightBox, "Altezza anteprima"), 90, 4320);
 
             // Parse both before touching the (live) workspace settings.
-            var panicFade = ParseDouble(PanicFadeBox, "Fade dello Stop");
+            var panicFade = ParseDouble(PanicFadeBox, "Fade del PANIC");
             var lockout = ParseInt(LockoutBox, "Blocco doppio GO");
             var cueFade = ParseDouble(CueFadeBox, "Fade cue");
             Result.Shortcuts = ShortcutsPage.Map.ToSettings();

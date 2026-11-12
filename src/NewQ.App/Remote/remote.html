@@ -169,7 +169,7 @@
       </button>
       <button class="estop" data-cmd="estop">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 1.8L15 14H1Z"/><path d="M8 6v3.6M8 11.6v.1" stroke-linecap="round"/></svg>
-        E&#8209;STOP
+        PANIC
       </button>
     </div>
   </div>
@@ -222,7 +222,7 @@ async function send(cmd, button) {
 }
 document.querySelectorAll("[data-cmd]").forEach(b => b.addEventListener("click", () => send(b.dataset.cmd, b)));
 document.addEventListener("keydown", e => {
-  const keys = { ArrowUp: "up", ArrowDown: "down", " ": "go", Escape: "stop" };
+  const keys = { ArrowUp: "up", ArrowDown: "down", " ": "go", Escape: "estop" };
   if (keys[e.key]) { e.preventDefault(); send(keys[e.key]); }
 });
 

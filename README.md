@@ -31,7 +31,7 @@ I workspace salvati con le versioni precedenti si convertono all'apertura: ogni 
 
 **Modalità Safe** (Strumenti → Safe, Ctrl+Maiusc+L): da usare durante lo spettacolo.
 - **Bloccato**: creazione, eliminazione, spostamento e modifica delle cue, trascinamento di file, Nuovo/Apri, Impostazioni, Log (la finestra si chiude), "Chiudi uscite video" e "Aggiorna dispositivi".
-- **Sempre attivo**: GO, Stop, E-STOP, Pausa e timeline, spostamento del playhead, Show Check e salvataggio.
+- **Sempre attivo**: GO, Stop, PANIC, Pausa e timeline, spostamento del playhead, Show Check e salvataggio.
 - Chiudere NewQ con Safe attivo richiede una conferma.
 
 **Pausa e timeline**: ogni cue in esecuzione si può mettere in pausa da sola. In pausa, la barra di avanzamento di audio e video diventa trascinabile.
@@ -46,11 +46,11 @@ I workspace salvati con le versioni precedenti si convertono all'apertura: ogni 
 Un doppio clic su un problema seleziona la cue interessata.
 
 **Controllo remoto OSC** (UDP, porta 53000 di default), con indirizzi compatibili QLab:
-`/go`, `/stop` (E-STOP), `/panic` (Stop), `/pause`, `/resume`, `/playhead/next`, `/playhead/previous`, `/cue/{n}/start`, `/cue/{n}/stop`, `/cue/{n}/select` (accettato anche il prefisso `/newq`).
+`/go`, `/stop` (ferma subito tutto), `/panic` (PANIC), `/pause`, `/resume`, `/playhead/next`, `/playhead/previous`, `/cue/{n}/start`, `/cue/{n}/stop`, `/cue/{n}/select` (accettato anche il prefisso `/newq`).
 
 ### Controllo web
 
-*Impostazioni → Generale → Controllo web* (spento all'inizio): NewQ serve una pagina per telefoni e tablet sulla rete locale, all'indirizzo mostrato nella barra di stato (es. `http://192.168.1.10:8080`). La pagina mostra la prossima cue e le cue *In esecuzione* come nell'app (riga verde che segue l'avanzamento, durata e tempo mancante, stessi colori per pre-wait, pausa e fade, pulsanti pausa, fade e stop per ogni cue), e ha i tasti GO, Pausa/Riprendi, Fade cue, Stop, E-STOP e le frecce del playhead (anche da tastiera: frecce, Spazio, Esc). I comandi arrivano come dai tasti dell'app e sono registrati nel log; funzionano anche in modalità Safe. Con una **password** (stesse impostazioni; vuota = pagina libera) la pagina chiede prima l'accesso; il browser resta autenticato finché la password non cambia o NewQ non si riavvia; dopo 5 password sbagliate quel dispositivo aspetta 30 secondi. La pagina usa HTTP semplice: la password protegge da accessi casuali, non da chi intercetta la rete, quindi usarla su una rete dello show, non su una pubblica. L'indirizzo da aprire è nelle impostazioni e nella barra di stato (il tooltip li elenca tutti, un clic lo copia). La prima volta Windows può chiedere il permesso del firewall per le reti private.
+*Impostazioni → Generale → Controllo web* (spento all'inizio): NewQ serve una pagina per telefoni e tablet sulla rete locale, all'indirizzo mostrato nella barra di stato (es. `http://192.168.1.10:8080`). La pagina mostra la prossima cue e le cue *In esecuzione* come nell'app (riga verde che segue l'avanzamento, durata e tempo mancante, stessi colori per pre-wait, pausa e fade, pulsanti pausa, fade e stop per ogni cue), e ha i tasti GO, Pausa/Riprendi, Fade cue, Stop, PANIC e le frecce del playhead (anche da tastiera: frecce, Spazio, Esc). I comandi arrivano come dai tasti dell'app e sono registrati nel log; funzionano anche in modalità Safe. Con una **password** (stesse impostazioni; vuota = pagina libera) la pagina chiede prima l'accesso; il browser resta autenticato finché la password non cambia o NewQ non si riavvia; dopo 5 password sbagliate quel dispositivo aspetta 30 secondi. La pagina usa HTTP semplice: la password protegge da accessi casuali, non da chi intercetta la rete, quindi usarla su una rete dello show, non su una pubblica. L'indirizzo da aprire è nelle impostazioni e nella barra di stato (il tooltip li elenca tutti, un clic lo copia). La prima volta Windows può chiedere il permesso del firewall per le reti private.
 
 Tecnica: server HTTP integrato (`src/NewQ.App/Remote`), senza dipendenze; stato in tempo reale con Server-Sent Events (`/api/events`, 10 Hz quando cambia), comandi con `POST /api/cmd/{go|pause|fade|stop|estop|up|down}` e, per una cue in esecuzione, `POST /api/cue/{id}/{pause|fade|stop}`; accesso con `POST /login` (cookie di sessione).
 
@@ -73,7 +73,7 @@ Le cue non scelgono più un monitor o una scheda audio: scelgono una **route**. 
 
 I test non sopravvivono mai allo spettacolo: **Stop**, l'attivazione di **Safe** e la chiusura della finestra li spengono tutti. Lo **Show Check** segnala route audio su schede non collegate o canali inesistenti, route mute, route video senza uscite o su schermi non collegati, nomi duplicati e cue che puntano a route rimosse.
 
-**Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Controllo*, dove si imposta anche il fade dello **Stop** (fade out di tutto). **E-STOP** ferma subito tutto, senza fade. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade. Una cue che sta sfumando verso lo stop diventa arancione nella timeline.
+**Fade cue** (trasporto, tasto F): sfuma suono e immagine della cue selezionata e poi la ferma, nel tempo impostato in *Impostazioni → Controllo*, dove si imposta anche il fade del **PANIC** (fade out di tutto; premuto di nuovo entro 1,5 s = immediato). **Stop** ferma subito la cue selezionata, senza fade. Ogni cue nel pannello *In esecuzione* ha anche il proprio pulsante di fade. Una cue che sta sfumando verso lo stop diventa arancione nella timeline.
 
 **Timeline** (Visualizza → Timeline, Ctrl+T; spenta all'inizio): sotto la lista, a tutta larghezza, lo show previsto GO per GO. Ogni GO apre un blocco con le cue che lancia (pre-wait, follow, link); ogni blocco è preceduto da un varco tratteggiato con l'etichetta **GO n** (verde pieno: il prossimo GO; verde tenue: i successivi; grigio: quelli già passati, sempre rispetto al playhead): lì l'operatore preme GO, e il tempo di attesa non è contato. Ogni cue è una barra la cui forma è il suo livello nel tempo: fade in, fade out, cue Fade che la abbassano, Stop che la chiudono. Le cue di controllo (Fade, Attesa) sono barre rosa uniformi, senza livello. Le cue senza fine (loop, live, immagini fisse) proseguono tratteggiate nei blocchi successivi finché qualcosa non le ferma. Video e immagini mostrano il primo fotogramma; la durata dei video viene letta dal file. Corsie per route o per tipo di cue; zoom (Ctrl+rotella), "Adatta", "Segui il playhead" (a show fermo mostra il prossimo GO; durante lo show la vista avanza con lo show quando esce dallo schermo); durante lo show la parte già riprodotta di ogni cue in corso diventa verde, sul tempo reale di riproduzione (pause e scorrimenti inclusi); in alternativa (*Impostazioni → Grafica → Avanzamento: Cursori*) un cursore verde per ogni GO in corso e uno arancio nel varco del prossimo GO a show finito. Le cue senza fine attive (loop, Cattura, immagini fisse), che non hanno una posizione nello show, lampeggiano piano di verde. Il verde è riservato all'avanzamento: i colori dei tipi di cue (badge e timeline) si cambiano in *Impostazioni → Grafica*. La pagina web segue le stesse scelte. Un clic su una cue la seleziona. Le anteprime si generano in background e mai mentre lo show è in riproduzione; una lettura incompleta viene ritentata da sola, e **Ricalcola** rilegge tutti i file e ricostruisce la timeline.
 
@@ -92,9 +92,9 @@ I test non sopravvivono mai allo spettacolo: **Stop**, l'attivazione di **Safe**
 | Tasto | Azione |
 |---|---|
 | Spazio | GO |
-| Esc | Stop (fade out di tutto; premuto di nuovo entro 1,5 s = immediato) |
+| Esc | PANIC (fade out di tutto; premuto di nuovo entro 1,5 s = immediato) |
 | F | Fade out della cue selezionata |
-| S | E-STOP (ferma subito tutto) |
+| S | Stop (ferma subito la cue selezionata) |
 | P | Pausa / Riprendi |
 | Ctrl+Invio | Avvia la cue selezionata senza spostare il playhead |
 | Ctrl+↑ / Ctrl+↓ | Sposta la cue |

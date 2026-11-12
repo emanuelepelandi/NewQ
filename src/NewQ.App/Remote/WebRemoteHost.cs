@@ -39,8 +39,8 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
             ["go"] = () => vm.GoCommand,
             ["pause"] = () => vm.TogglePauseCommand,
             ["fade"] = () => vm.FadeSelectedCommand,
-            ["stop"] = () => vm.PanicCommand,      // Stop: fade out of everything, twice = immediate
-            ["estop"] = () => vm.StopAllCommand,   // E-STOP: everything at once
+            ["stop"] = () => vm.StopSelectedCommand, // Stop: the selected cue, at once
+            ["estop"] = () => vm.PanicCommand,        // PANIC: fade out of everything, twice = immediate
             ["up"] = () => vm.PlayheadUpCommand,
             ["down"] = () => vm.PlayheadDownCommand,
         };
@@ -102,7 +102,7 @@ public sealed class WebRemoteHost : IWebRemoteHost, IDisposable
         "pause" => "Pausa / Riprendi",
         "fade" => "Fade cue",
         "stop" => "Stop",
-        "estop" => "E-STOP",
+        "estop" => "PANIC",
         "up" => "Playhead su",
         _ => "Playhead giù",
     };

@@ -619,3 +619,26 @@ Stesse condizioni, una dopo l'altra. Stress test: le sezioni sopra (Debug: rifer
 
 - Il primo disegno della timeline con 72 cue registra 20-50 ms su .NET 10 (sotto 16 ms su .NET 7): il lavoro è lo stesso (~13 ms), ma su .NET 10 cade in quel momento una GC gen1 di avvio (~12-15 ms) che su .NET 7 arriva poco dopo. Una volta sola, al caricamento; a regime 0.9-3 ms.
 - Su entrambe le versioni le gen2 sono quasi quante le gen0 (allocazioni grandi: miniature, forme d'onda, ultimo fotogramma tenuto), quasi tutte in background.
+
+## 2026-11-12 11:18 - go-overlap - Stop sulla cue selezionata (S), PANIC (Esc)
+
+- Commit: `667fcbb+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.0 - p95 6.2 - max 8.7 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.25 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 30.9 - p99 medio 12.8 - max assoluto 65.0 |
+| Rendering timeline, ms | media 4.9 - max 31.6 (9 campioni) |
+| Ricostruzione timeline, ms | media 10.8 - max 19.3 (2) |
+| CPU per giro, % (tutti i core) | media 12.3 - max 17.3 |
+| Working set, MB | inizio 260 - picco 527 - fine 259 |
+| Private bytes, MB | inizio 300 - fine 245 |
+| Memoria gestita, MB (fine) | 15 |
+| GC gen0 / gen2 (totale) | 157 / 121 |
+| Handle | inizio 1383 - fine 1368 |
+| Thread | inizio 80 - fine 56 |
+| Oggetti GDI / USER | inizio 40 / 76 - fine 40 / 67 |
+| Working set a fine giro, MB | 463 498 503 508 510 527 519 518 509 524 502 458 |

@@ -434,8 +434,8 @@
                 <MenuItem Header="Avvia cue selezionata" InputGestureText="{Binding ShortcutText[FireSelected]}" Command="{Binding FireSelectedCommand}" />
                 <MenuItem Header="Pausa / Riprendi" InputGestureText="{Binding ShortcutText[PauseResume]}" Command="{Binding TogglePauseCommand}" />
                 <MenuItem Header="Fade out della cue selezionata" InputGestureText="{Binding ShortcutText[FadeSelected]}" Command="{Binding FadeSelectedCommand}" />
-                <MenuItem Header="Stop" InputGestureText="{Binding ShortcutText[Panic]}" Command="{Binding PanicCommand}" />
-                <MenuItem Header="E-STOP" InputGestureText="{Binding ShortcutText[StopAll]}" Command="{Binding StopAllCommand}" />
+                <MenuItem Header="Stop della cue selezionata" InputGestureText="{Binding ShortcutText[StopAll]}" Command="{Binding StopSelectedCommand}" />
+                <MenuItem Header="PANIC" InputGestureText="{Binding ShortcutText[Panic]}" Command="{Binding PanicCommand}" />
             </MenuItem>
             <MenuItem Header="_Visualizza">
                 <MenuItem Header="Mostra / comprimi Proprietà cue" Command="{Binding ToggleInspectorCommand}"
@@ -610,13 +610,13 @@
                 <Button Content="Fade cue" Command="{Binding FadeSelectedCommand}" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
                         ctl:ButtonIcon.Shape="{StaticResource IconFadeOutShape}" ctl:ButtonIcon.Brush="{StaticResource PausedBrush}"
                         ToolTip="{Binding ShortcutHint[FadeSelected], Converter={StaticResource Format}, ConverterParameter='Fade out della cue selezionata ({0})'}" />
-                <Button Content="Stop" Command="{Binding PanicCommand}" AutomationProperties.AutomationId="TransportStop" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
+                <Button Content="Stop" Command="{Binding StopSelectedCommand}" AutomationProperties.AutomationId="TransportStop" Style="{StaticResource TransportButton}" Margin="0,0,8,0"
                         ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
-                        ToolTip="{Binding ShortcutHint[Panic], Converter={StaticResource Format}, ConverterParameter='Fade out di tutto · due volte = immediato ({0})'}" />
-                <Button Content="E-STOP" Command="{Binding StopAllCommand}" AutomationProperties.AutomationId="TransportEStop" Style="{StaticResource TransportButton}"
+                        ToolTip="{Binding ShortcutHint[StopAll], Converter={StaticResource Format}, ConverterParameter='Ferma subito la cue selezionata ({0})'}" />
+                <Button Content="PANIC" Command="{Binding PanicCommand}" AutomationProperties.AutomationId="TransportPanic" Style="{StaticResource TransportButton}"
                         BorderBrush="{StaticResource ErrorBrush}"
                         ctl:ButtonIcon.Glyph="{StaticResource IconWarning}" ctl:ButtonIcon.Brush="{StaticResource ErrorBrush}"
-                        ToolTip="{Binding ShortcutHint[StopAll], Converter={StaticResource Format}, ConverterParameter='Ferma subito tutto ({0})'}" />
+                        ToolTip="{Binding ShortcutHint[Panic], Converter={StaticResource Format}, ConverterParameter='Fade out di tutto · due volte = immediato ({0})'}" />
             </StackPanel>
         </Grid>
         </Border>
