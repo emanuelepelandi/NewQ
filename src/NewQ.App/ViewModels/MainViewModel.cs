@@ -142,7 +142,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         PlayheadUpCommand = new RelayCommand(() => Engine.MovePlayhead(-1));
         PlayheadDownCommand = new RelayCommand(() => Engine.MovePlayhead(1));
 
-        NewCommand = new RelayCommand(() => { if (ConfirmDiscard()) LoadWorkspace(new Workspace()); }, () => CanEdit);
+        NewCommand = new RelayCommand(() => { if (ConfirmDiscard()) LoadWorkspace(NewWorkspace()); }, () => CanEdit);
         OpenCommand = new RelayCommand(Open, () => CanEdit);
         SaveCommand = new RelayCommand(() => Save(saveAs: false));
         SaveAsCommand = new RelayCommand(() => Save(saveAs: true));
@@ -174,7 +174,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         RefreshDevices();
         ApplyDeviceSettings();
 
-        var workspace = new Workspace();
+        var workspace = NewWorkspace();
         if (_settings.LastWorkspace is string last && File.Exists(last))
         {
             try { workspace = WorkspaceSerializer.Load(last); }
@@ -209,11 +209,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public string AudioStatus
     {
         get => _audioStatus;
-        private set { if (SetField(ref _audioStatus, value)) OnPropertyChanged(nameof(IsAudioReady)); }
+        private set
+        {
+            if (!SetField(ref _audioStatus, value)) return;
+            OnPropertyChanged(nameof(IsAudioReady));
+            OnPropertyChanged(nameof(IsAudioUnused));
+        }
     }
 
     /// <summary>The audio graph is running (status bar light).</summary>
     public bool IsAudioReady => _audio.IsReady;
+
+    /// <summary>No audio route and no cue that needs one: the status bar light is neutral, not an error.</summary>
+    public bool IsAudioUnused => Workspace.AudioRoutes.Count == 0 && !Workspace.Cues.Any(Workspace.NeedsAudioRoute);
 
     /// <summary>The OSC remote input is listening (status bar light).</summary>
     public bool IsOscListening => _oscListener is not null;
@@ -496,9 +504,17 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     // ------------------------------------------------------------------ workspace
 
+    /// <summary>A new workspace: one audio route, one video route without outputs (no window opens).</summary>
+    private static Workspace NewWorkspace()
+    {
+        var workspace = new Workspace();
+        workspace.AddDefaultRoutes();
+        return workspace;
+    }
+
     private void LoadWorkspace(Workspace workspace)
     {
-        // Version-1 files (cues targeting a monitor) are converted to routes; new workspaces get default routes.
+        // Version-1 files (cues targeting a monitor) are converted to routes.
         var converted = workspace.FilePath is not null && workspace.FormatVersion < Workspace.CurrentFormatVersion;
         workspace.EnsureRoutes(System.Windows.Forms.Screen.AllScreens.Length);
         workspace.EnsureShowMarkers(); // the playhead starts on --SHOW START--
@@ -550,6 +566,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnAudioRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.NewItems is not null) foreach (var cue in Workspace.Cues) Workspace.AssignDefaultRoutes(cue); // cues created without one
         RoutesVersion++;
         ScheduleTimeline();
         if (e.OldItems is not null) foreach (AudioRoute r in e.OldItems) r.PropertyChanged -= OnAudioRouteChanged;
@@ -575,6 +592,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnVideoRoutesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.NewItems is not null) foreach (var cue in Workspace.Cues) Workspace.AssignDefaultRoutes(cue); // cues created without one
         RoutesVersion++;
         ScheduleTimeline();
         IsDirty = true;
@@ -670,6 +688,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Engine.SchedulePreload(); // reordering can change what the next GO fires
         ScheduleTimeline();
         OnPropertyChanged(nameof(HasProgramCues));
+        OnPropertyChanged(nameof(IsAudioUnused));
     }
 
     /// <summary>The workspace has cues besides --SHOW START-- / --SHOW END-- (the empty-list hint hides).</summary>
@@ -840,37 +859,35 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             "wait" => new WaitCue(),
             "fade" => new FadeCue { TargetNumber = SelectedCue is MediaCue m ? m.Number : "" },
             "stop" => new StopCue(),
+            "note" => new NoteCue(),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
         cue.Name = cue.TypeName;
         return cue;
     }
 
-    /// <summary>New cues get the first route explicitly, so the inspector shows which one they use.</summary>
-    private void AssignDefaultRoutes(Cue cue)
+    /// <summary>
+    /// Raised after creating cues that need a route the workspace doesn't have (video, audio). The cues stay;
+    /// the window tells the user and opens the route settings. They get the route as soon as it is created.
+    /// </summary>
+    public event Action<bool, bool>? RoutesMissing;
+
+    private void WarnMissingRoutes(IReadOnlyCollection<Cue> created)
     {
-        switch (cue)
-        {
-            case AudioCue a: a.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id; break;
-            case VideoCue v:
-                v.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id;
-                v.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id;
-                break;
-            case ImageCue i: i.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id; break;
-            case LiveCue l:
-                l.VideoRouteId ??= Workspace.VideoRoutes.FirstOrDefault()?.Id;
-                l.AudioRouteId ??= Workspace.AudioRoutes.FirstOrDefault()?.Id;
-                break;
-        }
+        var video = Workspace.VideoRoutes.Count == 0 && created.Any(Workspace.NeedsVideoRoute);
+        var audio = Workspace.AudioRoutes.Count == 0 && created.Any(Workspace.NeedsAudioRoute);
+        if (video || audio) RoutesMissing?.Invoke(video, audio);
     }
 
-    private void AddCue(Cue cue)
+    /// <param name="checkRoutes">False when the caller adds several cues and checks the routes once at the end.</param>
+    private void AddCue(Cue cue, bool checkRoutes = true)
     {
-        AssignDefaultRoutes(cue);
+        Workspace.AssignDefaultRoutes(cue); // explicit, so the inspector shows which route they use
         if (string.IsNullOrEmpty(cue.Number)) cue.Number = Workspace.NextCueNumber();
         var index = SelectedCue is null ? Workspace.Cues.Count : Workspace.Cues.IndexOf(SelectedCue) + 1;
         Workspace.Cues.Insert(Workspace.ClampToProgram(index), cue); // after START, before END
         SelectedCue = cue;
+        if (checkRoutes) WarnMissingRoutes(new[] { cue });
     }
 
     public void AddFiles(IEnumerable<string> paths)
@@ -880,6 +897,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             AddLog(EngineLogLevel.Warning, "Modalità Safe: impossibile aggiungere cue.");
             return;
         }
+        var added = new List<Cue>();
         foreach (var path in paths)
         {
             var ext = Path.GetExtension(path).ToLowerInvariant();
@@ -894,8 +912,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
             cue.FilePath = Workspace.MakePortablePath(path);
             cue.Name = Path.GetFileNameWithoutExtension(path);
-            AddCue(cue);
+            AddCue(cue, checkRoutes: false);
+            added.Add(cue);
         }
+        WarnMissingRoutes(added);
     }
 
     private void DeleteSelected()
@@ -955,13 +975,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         };
         if (dialog.ShowDialog() != true) return;
 
+        var added = new List<Cue>();
         foreach (var path in dialog.FileNames)
         {
             var cue = (MediaCue)CreateCue(kind);
             cue.FilePath = Workspace.MakePortablePath(path);
             cue.Name = Path.GetFileNameWithoutExtension(path);
-            AddCue(cue);
+            AddCue(cue, checkRoutes: false);
+            added.Add(cue);
         }
+        WarnMissingRoutes(added);
     }
 
     private void BrowseFile(MediaCue cue)

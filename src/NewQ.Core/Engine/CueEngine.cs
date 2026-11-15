@@ -353,7 +353,7 @@ public sealed class CueEngine
             workspace: Workspace,
             actionDone: () => _scheduler.Post(() => ActionDone(rc)));
 
-        if (!cue.Armed || cue.IsShowMarker) // --SHOW START-- / --SHOW END-- do nothing
+        if (!cue.Armed || cue.IsShowMarker || cue is NoteCue) // --SHOW START-- / --SHOW END-- and notes do nothing
         {
             context.Completed();
             return InstantActiveCue.Instance;

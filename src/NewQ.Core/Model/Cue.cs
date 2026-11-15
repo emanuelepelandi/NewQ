@@ -42,6 +42,7 @@ public enum CueRunState { Idle, PreWait, Running, Paused, Error }
 [JsonDerivedType(typeof(WaitCue), "wait")]
 [JsonDerivedType(typeof(FadeCue), "fade")]
 [JsonDerivedType(typeof(StopCue), "stop")]
+[JsonDerivedType(typeof(NoteCue), "note")]
 [JsonDerivedType(typeof(ShowMarkerCue), "marker")]
 public abstract class Cue : ObservableObject
 {
@@ -115,6 +116,9 @@ public abstract class Cue : ObservableObject
 
     /// <summary>The fixed --SHOW START-- / --SHOW END-- rows (<see cref="ShowMarkerCue"/>).</summary>
     [JsonIgnore] public virtual bool IsShowMarker => false;
+
+    /// <summary>A <see cref="NoteCue"/>: a separator row of the list.</summary>
+    [JsonIgnore] public bool IsNote => this is NoteCue;
 
     /// <summary>Short description of what the cue targets (file, address, device...).</summary>
     [JsonIgnore] public virtual string Summary => "";

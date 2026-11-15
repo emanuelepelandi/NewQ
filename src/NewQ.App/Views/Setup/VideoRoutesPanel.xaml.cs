@@ -96,7 +96,14 @@ public partial class VideoRoutesPanel : UserControl
         var ws = _context.Workspace;
         if (ws.VideoRoutes.Count == 1)
         {
-            MessageBox.Show("Il workspace deve avere almeno una route video.", "Route video", MessageBoxButton.OK, MessageBoxImage.Information);
+            var needing = ws.Cues.Count(Workspace.NeedsVideoRoute);
+            if (needing > 0)
+            {
+                MessageBox.Show($"{needing} cue usano una route video: è l'ultima.", "Route video", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            _context.Hub.SetTestPattern(route.Id, null);
+            ws.VideoRoutes.Remove(route);
             return;
         }
 

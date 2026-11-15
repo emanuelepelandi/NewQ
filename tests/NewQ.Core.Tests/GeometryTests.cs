@@ -82,4 +82,20 @@ public class GeometryTests
         var o = new VideoOutput { TopRight = new(-1, 0), BottomRight = new(-1, 0) }; // right edge collapsed onto the left
         Assert.All(OutputGeometry.BuildMesh(o, 4), v => Assert.False(float.IsNaN(v.ScreenX) || float.IsNaN(v.ScreenY)));
     }
+
+    [Fact]
+    public void Place_scales_around_the_centre_and_moves_in_canvas_pixels()
+    {
+        var fitted = OutputGeometry.Fit(FitMode.Fit, 1920, 1080, 1920, 1080);
+        Assert.Equal((0.0, 0.0, 1.0, 1.0), OutputGeometry.Place(fitted, 1, 1, 0, 0, 1920, 1080));
+
+        var half = OutputGeometry.Place(fitted, 0.5, 0.5, 0, 0, 1920, 1080);
+        Assert.Equal((0.25, 0.25, 0.5, 0.5), half);
+
+        var moved = OutputGeometry.Place(fitted, 1, 2, 192, -108, 1920, 1080);
+        Assert.Equal(0.1, moved.X, 9);
+        Assert.Equal(-0.6, moved.Y, 9); // twice as tall, centre 108 px up
+        Assert.Equal(1.0, moved.W, 9);
+        Assert.Equal(2.0, moved.H, 9);
+    }
 }

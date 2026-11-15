@@ -126,6 +126,18 @@ public static class OutputGeometry
         double w = sourceWidth * scale / canvasWidth, h = sourceHeight * scale / canvasHeight;
         return ((1 - w) / 2, (1 - h) / 2, w, h);
     }
+
+    /// <summary>
+    /// Scales a fitted rectangle (normalized) around its centre and moves it by an offset in canvas pixels.
+    /// </summary>
+    public static (double X, double Y, double W, double H) Place((double X, double Y, double W, double H) fitted,
+        double scaleX, double scaleY, double offsetX, double offsetY, double canvasWidth, double canvasHeight)
+    {
+        var cx = fitted.X + fitted.W / 2 + (canvasWidth > 0 ? offsetX / canvasWidth : 0);
+        var cy = fitted.Y + fitted.H / 2 + (canvasHeight > 0 ? offsetY / canvasHeight : 0);
+        double w = fitted.W * scaleX, h = fitted.H * scaleY;
+        return (cx - w / 2, cy - h / 2, w, h);
+    }
 }
 
 /// <summary>Projective transform from the unit square to an arbitrary quadrilateral.</summary>

@@ -83,6 +83,7 @@
     <Color x:Key="CueWaitColor">#9A9FA8</Color>
     <Color x:Key="CueFadeColor">#D48FB6</Color>
     <Color x:Key="CueStopColor">#D98682</Color>
+    <Color x:Key="CueNoteColor">#C3C8D0</Color>
 
     <!-- ============ Spacing scale: 4 · 8 · 12 · 16 · 24 · 32 ============ -->
     <sys:Double x:Key="Space4">4</sys:Double>
@@ -130,6 +131,7 @@
     <!-- Fade out (Fade cue, per-cue fade): level, ramp down, silence. Drawn: the icon font has no ramp. -->
     <StreamGeometry x:Key="IconFadeOutShape">M1,3.5 L5,3.5 L12,13 L15,13</StreamGeometry>
     <sys:String x:Key="IconStop">&#xE71A;</sys:String>
+    <sys:String x:Key="IconNote">&#xE70B;</sys:String>
     <sys:String x:Key="IconPlay">&#xE768;</sys:String>
     <sys:String x:Key="IconPause">&#xE769;</sys:String>
     <sys:String x:Key="IconCopy">&#xE8C8;</sys:String>

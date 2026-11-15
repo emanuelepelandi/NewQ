@@ -224,6 +224,8 @@ internal abstract class VisualLayer : IActiveCue
         RouteId = routeId;
         Context = context;
         Layer = hub.AddLayer(routeId, source, null, cue.Layer, cue.FitMode);
+        Layer.Look = LayerLook.Of(cue);
+        cue.PropertyChanged += OnCuePropertyChanged;
         _tick = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(15) };
         _tick.Tick += (_, _) => { if (!_finished) OnTick(); };
         _tick.Start();
@@ -243,6 +245,12 @@ internal abstract class VisualLayer : IActiveCue
 
     public virtual bool CanSeek => false;
     public virtual void Seek(TimeSpan position) { }
+
+    /// <summary>Scale, position and effects edited while the cue plays show at once.</summary>
+    private void OnCuePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is string name && VisualCue.LookProperties.Contains(name)) Layer.Look = LayerLook.Of(VisualCue);
+    }
 
     protected virtual void AnimateVolume(double gain, double seconds) { }
     protected virtual void OnTick() { }
@@ -301,6 +309,7 @@ internal abstract class VisualLayer : IActiveCue
         _tick.Stop();
         _finishTimer?.Stop();
         _completionTimer?.Stop();
+        VisualCue.PropertyChanged -= OnCuePropertyChanged;
         Hub.RemoveLayer(RouteId, Layer);
         try { OnFinish(); } catch { /* already released */ }
         Context.Completed();

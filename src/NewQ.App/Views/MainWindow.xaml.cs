@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private void HookView()
     {
         ViewModel.Columns.PropertyChanged += (_, _) => ApplyColumns();
+        ViewModel.RoutesMissing += OnRoutesMissing;
         ViewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.IsInspectorCollapsed)) ApplyInspector();
@@ -141,8 +142,10 @@ public partial class MainWindow : Window
     {
         Core.Model.ShowMarkerCue => new[] { ("Base", "PageMarker") },
         Core.Model.AudioCue => Common(("Audio", "PageAudio"), ("Tempo e loop", "PageAudioTime")),
-        Core.Model.VideoCue => Common(("Video", "PageVideo"), ("Layer", "PageDisplay"), ("Tempo e loop", "PageVideoTime")),
-        Core.Model.ImageCue => Common(("Immagine", "PageImage"), ("Layer", "PageDisplay"), ("Tempo", "PageImageTime")),
+        Core.Model.VideoCue => Common(("Video", "PageVideo"), ("Layer", "PageDisplay"), ("Scala e posizione", "PageTransform"),
+            ("Effetti", "PageEffects"), ("Tempo e loop", "PageVideoTime")),
+        Core.Model.ImageCue => Common(("Immagine", "PageImage"), ("Layer", "PageDisplay"), ("Scala e posizione", "PageTransform"),
+            ("Effetti", "PageEffects"), ("Tempo", "PageImageTime")),
         Core.Model.LiveCue => Common(("Sorgente", "PageLiveSource"), ("Uscita", "PageLiveOutput"), ("Layer", "PageDisplay")),
         Core.Model.MidiCue => Common(("MIDI", "PageMidi")),
         Core.Model.NetworkCue => Common(("Rete", "PageNetwork")),
@@ -333,10 +336,20 @@ public partial class MainWindow : Window
         catch { /* clipboard busy */ }
     }
 
+    /// <summary>Cues were created without a route of their kind: tell the user and open that route page (the cues stay).</summary>
+    private void OnRoutesMissing(bool video, bool audio)
+    {
+        var text = video && audio ? "Nessuna route video e audio: creale nelle impostazioni."
+            : video ? "Nessuna route video: creala nelle impostazioni."
+            : "Nessuna route audio: creala nelle impostazioni.";
+        MessageBox.Show(this, text, "Route mancante", MessageBoxButton.OK, MessageBoxImage.Information);
+        OpenSettings(video ? SettingsWindow.VideoRoutesTab : SettingsWindow.AudioRoutesTab);
+    }
+
     private void OnSetupTabClick(object sender, RoutedEventArgs e)
         => OpenSettings(int.Parse((string)((FrameworkElement)sender).Tag, System.Globalization.CultureInfo.InvariantCulture));
 
-    /// <summary>Opens the settings on a tab: 0 general, 1 control, 2 audio routes, 3 video routes, 4 video tests, 5 audio tests, 6 shortcuts.</summary>
+    /// <summary>Opens the settings on a tab: 0 general, 1 control, 2 graphics, 3 audio routes, 4 video routes, 5 video tests, 6 audio tests, 7 shortcuts.</summary>
     public void OpenSettings(int tab)
     {
         if (!ViewModel.CanEdit) return; // Safe mode: no device or route changes during the show

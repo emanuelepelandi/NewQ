@@ -214,7 +214,10 @@ public static class ShowChecker
         foreach (var route in workspace.VideoRoutes)
         {
             if (route.Outputs.Count == 0)
-                issues.Add(new(CheckSeverity.Error, null, $"Route video \"{route.Name}\" senza uscite."));
+            {
+                var used = cues.OfType<VisualCue>().Any(c => (c.VideoRouteId ?? workspace.VideoRoutes[0].Id) == route.Id);
+                issues.Add(new(used ? CheckSeverity.Error : CheckSeverity.Info, null, $"Route video \"{route.Name}\" senza uscite."));
+            }
             foreach (var output in route.Outputs)
             {
                 if (output.ScreenIndex >= env.ScreenCount)
@@ -231,6 +234,11 @@ public static class ShowChecker
 
         void CheckReference(Cue cue, Guid? id, bool video)
         {
+            if (video ? workspace.VideoRoutes.Count == 0 : workspace.AudioRoutes.Count == 0)
+            {
+                issues.Add(new(CheckSeverity.Error, cue, $"Nessuna route {(video ? "video" : "audio")}."));
+                return;
+            }
             if (id is null) return;
             var exists = video ? workspace.VideoRoutes.Any(r => r.Id == id) : workspace.AudioRoutes.Any(r => r.Id == id);
             if (exists) return;

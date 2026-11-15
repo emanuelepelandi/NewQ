@@ -24,6 +24,7 @@ public static class CueColors
         ("Attesa", "CueWaitColor"),
         ("Fade", "CueFadeColor"),
         ("Stop", "CueStopColor"),
+        ("Nota", "CueNoteColor"),
         ("Show", "CueWaitColor"),
     };
 

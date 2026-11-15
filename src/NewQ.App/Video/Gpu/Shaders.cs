@@ -16,6 +16,8 @@ cbuffer Params : register(b0)
     float4 p1;          // xy = canvas size in pixels, z = output index, w = identify outputs (1/0)
     float4 blend;       // soft edge widths: left, right, top, bottom (fraction of the output)
     float4 blendShape;  // x = gamma, y = curve exponent
+    float4 color;       // layer effects: x = hue rotation (radians), y = saturation, z = contrast, w = brightness
+    float4 color2;      // x = invert colours (1/0)
 };
 
 struct VSIn  { float2 pos : POSITION; float2 uv : TEXCOORD0; float2 local : TEXCOORD1; };
@@ -288,10 +290,27 @@ float3 Pattern(float2 uv)
 
 // ---------------------------------------------------------------- canvas pass
 
+// Contrast and brightness, saturation (Rec. 709 luma), hue rotation around the grey axis, then invert.
+float3 Effects(float3 c)
+{
+    c = (c - 0.5) * color.z + 0.5 + color.w;
+    float l = dot(c, float3(0.2126, 0.7152, 0.0722));
+    c = lerp(float3(l, l, l), c, color.y);
+    if (color.x != 0)
+    {
+        float s, k;
+        sincos(color.x, s, k);
+        const float3 g = float3(0.57735027, 0.57735027, 0.57735027);
+        c = c * k + cross(g, c) * s + g * dot(g, c) * (1 - k);
+    }
+    c = saturate(c);
+    return color2.x > 0.5 ? 1 - c : c;
+}
+
 float4 PSLayer(PSIn i) : SV_TARGET
 {
     float a = p0.x;
-    float3 c = tex.Sample(samp, i.uv).rgb;
+    float3 c = Effects(tex.Sample(samp, i.uv).rgb);
     return float4(c * a, a); // premultiplied alpha
 }
 

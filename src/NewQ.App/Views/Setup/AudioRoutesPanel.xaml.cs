@@ -115,7 +115,13 @@ public partial class AudioRoutesPanel : UserControl
         var ws = _context.Workspace;
         if (ws.AudioRoutes.Count == 1)
         {
-            MessageBox.Show("Il workspace deve avere almeno una route audio.", "Route audio", MessageBoxButton.OK, MessageBoxImage.Information);
+            var needing = ws.Cues.Count(Workspace.NeedsAudioRoute);
+            if (needing > 0)
+            {
+                MessageBox.Show($"{needing} cue usano una route audio: è l'ultima.", "Route audio", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            ws.AudioRoutes.Remove(route);
             return;
         }
 

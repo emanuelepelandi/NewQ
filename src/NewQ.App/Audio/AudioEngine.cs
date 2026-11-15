@@ -235,7 +235,7 @@ public sealed class AudioEngine : IDisposable
         var driver = settings.AudioDriver == AudioDriver.Asio
             ? $"ASIO · {settings.AsioDriverName ?? GetAsioDrivers().FirstOrDefault()} · {settings.AsioSampleRate} Hz"
             : $"WASAPI{(settings.WasapiExclusive ? " esclusivo" : "")} · {settings.LatencyMs} ms";
-        return $"{driver} · {routes} route";
+        return routes == 0 ? $"{driver} · nessuna route audio" : $"{driver} · {routes} route";
     }
 
     private void Report(string message) => Error?.Invoke(message);

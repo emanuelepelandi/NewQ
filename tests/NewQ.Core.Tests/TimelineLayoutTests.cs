@@ -17,7 +17,7 @@ public class TimelineLayoutTests
     {
         // Three cues starting together (1 starts 2, 2 starts 3) on the same audio route.
         var ws = new Workspace();
-        ws.EnsureRoutes(1);
+        ws.AddDefaultRoutes();
         ws.Cues.Add(Audio("1", 10, "2"));
         ws.Cues.Add(Audio("2", 10, "3"));
         ws.Cues.Add(Audio("3", 10));
@@ -34,7 +34,7 @@ public class TimelineLayoutTests
     public void A_row_is_reused_once_the_cue_on_it_has_ended()
     {
         var ws = new Workspace();
-        ws.EnsureRoutes(1);
+        ws.AddDefaultRoutes();
         ws.Cues.Add(Audio("1", 5, "2"));
         ws.Cues.Add(new AudioCue { Number = "2", MediaDuration = 2, FilePath = "2.wav", PreWait = 0 });
         ws.Cues.Add(new AudioCue { Number = "3", MediaDuration = 2, FilePath = "3.wav" });

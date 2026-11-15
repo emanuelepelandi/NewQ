@@ -16,6 +16,8 @@ namespace NewQ.App.Views;
 
 public partial class SettingsWindow : Window
 {
+    /// <summary>Indexes of the route tabs (for <c>initialTab</c>).</summary>
+    public const int AudioRoutesTab = 3, VideoRoutesTab = 4;
 
     private readonly WorkspaceSettings _workspaceSettings;
 

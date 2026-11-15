@@ -48,14 +48,28 @@ public sealed class Workspace
         => VideoRoutes.FirstOrDefault(r => r.Id == id) ?? VideoRoutes.FirstOrDefault()
            ?? throw new InvalidOperationException("Il workspace non ha route video.");
 
+    /// <summary>Cues that play sound: audio, video, capture.</summary>
+    public static bool NeedsAudioRoute(Cue cue) => cue is AudioCue or VideoCue or LiveCue;
+
+    /// <summary>Cues that draw on a video route: video, image, capture.</summary>
+    public static bool NeedsVideoRoute(Cue cue) => cue is VisualCue;
+
+    /// <summary>Routes of a new workspace: one audio route on the Windows default device, one video route without outputs.</summary>
+    public void AddDefaultRoutes()
+    {
+        if (AudioRoutes.Count == 0) AudioRoutes.Add(new AudioRoute { Name = "Principale" });
+        if (VideoRoutes.Count == 0) VideoRoutes.Add(new VideoRoute { Name = "Principale" });
+    }
+
     /// <summary>
-    /// Makes sure the workspace has at least one audio and one video route, and converts version-1 files
-    /// (cues that targeted a monitor index) into routes. Safe to call more than once.
+    /// Converts version-1 files (cues that targeted a monitor index) into routes, and gives a route to cues that
+    /// need one when the file has none of that kind (old or hand-edited files). A workspace may have no routes
+    /// when no cue needs them. Safe to call more than once.
     /// </summary>
-    /// <param name="screenCount">Monitors connected now, used to pick the default video output.</param>
+    /// <param name="screenCount">Monitors connected now, used to pick the output of a created video route.</param>
     public void EnsureRoutes(int screenCount)
     {
-        if (AudioRoutes.Count == 0)
+        if (AudioRoutes.Count == 0 && Cues.Any(NeedsAudioRoute))
             AudioRoutes.Add(new AudioRoute { Name = "Principale" });
 
         // Version 1: each distinct monitor used by a cue becomes a route with one output on that monitor.
@@ -72,29 +86,36 @@ public sealed class Workspace
             cue.LegacyScreenIndex = null;
         }
 
-        if (VideoRoutes.Count == 0)
+        if (VideoRoutes.Count == 0 && Cues.Any(NeedsVideoRoute))
             VideoRoutes.Add(CreateVideoRoute(screenCount > 1 ? screenCount - 1 : VideoOutput.PreviewWindow));
 
-        // Cues without a route use the first one: make it explicit, so the inspector shows it.
-        foreach (var cue in Cues)
-        {
-            switch (cue)
-            {
-                case AudioCue a: a.AudioRouteId ??= AudioRoutes[0].Id; break;
-                case VideoCue v:
-                    v.VideoRouteId ??= VideoRoutes[0].Id;
-                    v.AudioRouteId ??= AudioRoutes[0].Id;
-                    break;
-                case ImageCue i: i.VideoRouteId ??= VideoRoutes[0].Id; break;
-                case LiveCue l:
-                    l.VideoRouteId ??= VideoRoutes[0].Id;
-                    l.AudioRouteId ??= AudioRoutes[0].Id;
-                    break;
-            }
-        }
+        foreach (var cue in Cues) AssignDefaultRoutes(cue);
 
         if (FormatVersion < 3) ConvertAutoContinue();
         FormatVersion = CurrentFormatVersion;
+    }
+
+    /// <summary>
+    /// A cue without a route uses the first one of the workspace: makes it explicit, so the inspector shows it.
+    /// Nothing changes when the workspace has no route of that kind (assigned when one is created).
+    /// </summary>
+    public void AssignDefaultRoutes(Cue cue)
+    {
+        var audio = AudioRoutes.FirstOrDefault()?.Id;
+        var video = VideoRoutes.FirstOrDefault()?.Id;
+        switch (cue)
+        {
+            case AudioCue a: a.AudioRouteId ??= audio; break;
+            case VideoCue v:
+                v.VideoRouteId ??= video;
+                v.AudioRouteId ??= audio;
+                break;
+            case ImageCue i: i.VideoRouteId ??= video; break;
+            case LiveCue l:
+                l.VideoRouteId ??= video;
+                l.AudioRouteId ??= audio;
+                break;
+        }
     }
 
     /// <summary>

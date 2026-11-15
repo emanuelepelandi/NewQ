@@ -174,3 +174,11 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 ### 2026-11-12 - Stop e PANIC
 - **Cambiato**: **Stop** (S) ferma subito la cue selezionata.
 - **Cambiato**: **E-STOP** torna **PANIC** (Esc): fade out di tutte le cue in esecuzione nel tempo impostato (*Impostazioni → Controllo → PANIC*). Menu, controllo web e risposte OSC aggiornati; indirizzi OSC invariati.
+
+### 2026-11-15 - Route facoltative, effetti, scala e posizione
+- **Cambiato**: le route audio e video si possono eliminare tutte se nessuna cue le usa. Creando una cue senza la route del suo tipo, NewQ lo segnala e apre la pagina delle route; la cue resta e riceve la prima route creata. Show Check segnala le cue senza route.
+- **Cambiato**: un nuovo workspace ha una route video senza uscite (prima: finestra di anteprima). Show Check segnala come errore una route senza uscite solo se una cue la usa.
+- **Nuovo**: video e immagini, pagina *Scala e posizione* (scala X/Y in %, posizione X/Y in pixel del canvas) e pagina *Effetti* (Hue, saturazione, contrasto, luminosità, inverti colore), sulla GPU e modificabili dal vivo.
+- **Corretto**: README, i test spenti dal PANIC (non più dallo Stop).
+- **Nuovo**: cue **Nota**, vuota: riga separatrice in evidenza nella lista; follow e link funzionano.
+- **Cambiato**: senza route audio e senza cue che ne hanno bisogno, la spia audio della barra di stato è neutra e indica "nessuna route audio".

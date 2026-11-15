@@ -642,3 +642,49 @@ Stesse condizioni, una dopo l'altra. Stress test: le sezioni sopra (Debug: rifer
 | Thread | inizio 80 - fine 56 |
 | Oggetti GDI / USER | inizio 40 / 76 - fine 40 / 67 |
 | Working set a fine giro, MB | 463 498 503 508 510 527 519 518 509 524 502 458 |
+
+## 2026-11-15 15:06 - go-overlap - Route facoltative, effetti, scala e posizione
+
+- Commit: `9e8e203+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.6 - p95 9.2 - max 10.9 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.17 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 20.8 - p99 medio 20.1 - max assoluto 45.7 |
+| Rendering timeline, ms | media 1.2 - max 2.2 (8 campioni) |
+| Ricostruzione timeline, ms | media 10.9 - max 19.1 (2) |
+| CPU per giro, % (tutti i core) | media 11.5 - max 15.4 |
+| Working set, MB | inizio 252 - picco 612 - fine 254 |
+| Private bytes, MB | inizio 277 - fine 223 |
+| Memoria gestita, MB (fine) | 15 |
+| GC gen0 / gen2 (totale) | 159 / 123 |
+| Handle | inizio 1372 - fine 1349 |
+| Thread | inizio 80 - fine 54 |
+| Oggetti GDI / USER | inizio 34 / 77 - fine 34 / 68 |
+| Working set a fine giro, MB | 469 496 495 500 510 494 516 528 501 612 521 470 |
+
+## 2026-11-15 15:55 - go-overlap - Cue Nota, spia audio neutra
+
+- Commit: `9e8e203+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 2.9 - p95 3.8 - max 19.9 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 24.8 - p99 medio 20.8 - max assoluto 51.4 |
+| Rendering timeline, ms | media 1.9 - max 3.9 (8 campioni) |
+| Ricostruzione timeline, ms | media 11.6 - max 21.3 (2) |
+| CPU per giro, % (tutti i core) | media 13.2 - max 23.2 |
+| Working set, MB | inizio 248 - picco 615 - fine 255 |
+| Private bytes, MB | inizio 278 - fine 231 |
+| Memoria gestita, MB (fine) | 14 |
+| GC gen0 / gen2 (totale) | 153 / 118 |
+| Handle | inizio 1371 - fine 1358 |
+| Thread | inizio 80 - fine 56 |
+| Oggetti GDI / USER | inizio 34 / 77 - fine 34 / 67 |
+| Working set a fine giro, MB | 464 479 504 494 502 517 496 523 519 510 615 469 |

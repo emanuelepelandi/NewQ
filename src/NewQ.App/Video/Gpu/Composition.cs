@@ -43,10 +43,25 @@ public sealed record OpacityRamp(double From, double To, double StartSeconds, do
     }
 }
 
-/// <summary>A picture on a route canvas. Opacity changes are atomic swaps, safe from any thread.</summary>
+/// <summary>Scale, position and colour effects of a layer, ready for the renderer.</summary>
+public sealed record LayerLook(double ScaleX, double ScaleY, double OffsetX, double OffsetY,
+    float HueRadians, float Saturation, float Contrast, float Brightness, bool Invert)
+{
+    public static readonly LayerLook Neutral = new(1, 1, 0, 0, 0, 1, 1, 0, false);
+
+    public static LayerLook Of(VisualCue cue) => new(
+        cue.ScaleX / 100, cue.ScaleY / 100, cue.PositionX, cue.PositionY,
+        (float)(cue.Hue * Math.PI / 180), (float)(cue.Saturation / 100), (float)(cue.Contrast / 100), (float)(cue.Brightness / 100),
+        cue.InvertColors);
+
+    public bool IsPlaced => ScaleX != 1 || ScaleY != 1 || OffsetX != 0 || OffsetY != 0;
+}
+
+/// <summary>A picture on a route canvas. Opacity and look changes are atomic swaps, safe from any thread.</summary>
 public sealed class CompositionLayer
 {
     private OpacityRamp _opacity;
+    private LayerLook _look = LayerLook.Neutral;
 
     public CompositionLayer(IFrameSource? source, TestPatternKind? pattern, int zLayer, long order, FitMode fit, double clockNow)
     {
@@ -65,6 +80,12 @@ public sealed class CompositionLayer
     public FitMode Fit { get; }
 
     public OpacityRamp Opacity => System.Threading.Volatile.Read(ref _opacity);
+
+    public LayerLook Look
+    {
+        get => System.Threading.Volatile.Read(ref _look);
+        set => System.Threading.Volatile.Write(ref _look, value ?? LayerLook.Neutral);
+    }
 
     /// <summary>Animates from the current value to <paramref name="to"/>.</summary>
     public void AnimateOpacity(double to, double seconds, double now)

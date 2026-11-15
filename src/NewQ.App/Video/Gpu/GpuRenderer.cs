@@ -43,6 +43,8 @@ internal sealed class GpuRenderer : IDisposable
         public Vector4 P1;          // canvas w, canvas h, output index, identify
         public Vector4 Blend;       // left, right, top, bottom
         public Vector4 BlendShape;  // gamma, curve
+        public Vector4 Color;       // hue (radians), saturation, contrast, brightness
+        public Vector4 Color2;      // invert (1/0)
     }
 
     private sealed class CachedTexture : IDisposable
@@ -347,8 +349,16 @@ internal sealed class GpuRenderer : IDisposable
             }
 
             if (layer.Source is not IFrameSource source || GetTexture(source, frame) is not CachedTexture texture) continue;
+            var look = layer.Look;
             var (x, y, qw, qh) = OutputGeometry.Fit(layer.Fit, source.DisplayWidth, source.DisplayHeight, canvas.Width, canvas.Height);
-            SetParams(new Params { P0 = new Vector4((float)opacity, -1, (float)now, frame) });
+            if (look.IsPlaced)
+                (x, y, qw, qh) = OutputGeometry.Place((x, y, qw, qh), look.ScaleX, look.ScaleY, look.OffsetX, look.OffsetY, canvas.Width, canvas.Height);
+            SetParams(new Params
+            {
+                P0 = new Vector4((float)opacity, -1, (float)now, frame),
+                Color = new Vector4(look.HueRadians, look.Saturation, look.Contrast, look.Brightness),
+                Color2 = new Vector4(look.Invert ? 1 : 0, 0, 0, 0),
+            });
             ctx.PSSetShader(_psLayer);
             ctx.PSSetShaderResource(0, texture.View);
             DrawQuad(x, y, qw, qh);

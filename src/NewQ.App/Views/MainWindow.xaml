@@ -151,6 +151,27 @@
             </WrapPanel>
         </DataTemplate>
 
+        <!-- Scale and position of a video or image, after the fit; live while it plays. -->
+        <DataTemplate x:Key="PageTransform">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Scala X (%)" Text="{Binding ScaleX}" />
+                <TextBox ui:ControlHelper.Header="Scala Y (%)" Text="{Binding ScaleY}" />
+                <TextBox ui:ControlHelper.Header="Posizione X (px)" Text="{Binding PositionX}" />
+                <TextBox ui:ControlHelper.Header="Posizione Y (px)" Text="{Binding PositionY}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <!-- Colour effects of a video or image (GPU); live while it plays. -->
+        <DataTemplate x:Key="PageEffects">
+            <WrapPanel>
+                <TextBox ui:ControlHelper.Header="Hue (°)" Text="{Binding Hue}" />
+                <TextBox ui:ControlHelper.Header="Saturazione (%)" Text="{Binding Saturation}" />
+                <TextBox ui:ControlHelper.Header="Contrasto (%)" Text="{Binding Contrast}" />
+                <TextBox ui:ControlHelper.Header="Luminosità (%)" Text="{Binding Brightness}" />
+                <CheckBox Content="Inverti colore" IsChecked="{Binding InvertColors}" />
+            </WrapPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="PageVideoTime">
             <StackPanel>
             <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrimEditor}" Focusable="False" />
@@ -423,6 +444,7 @@
                 <MenuItem Header="Nuova cue Attesa" Command="{Binding AddCueCommand}" CommandParameter="wait" />
                 <MenuItem Header="Nuova cue Fade" Command="{Binding AddCueCommand}" CommandParameter="fade" />
                 <MenuItem Header="Nuova cue Stop" Command="{Binding AddCueCommand}" CommandParameter="stop" />
+                <MenuItem Header="Nuova cue Nota" Command="{Binding AddCueCommand}" CommandParameter="note" />
                 <Separator />
                 <MenuItem Header="Duplica" InputGestureText="{Binding ShortcutText[Duplicate]}" Command="{Binding DuplicateCueCommand}" />
                 <MenuItem Header="Sposta su" InputGestureText="{Binding ShortcutText[MoveUp]}" Command="{Binding MoveUpCommand}" />
@@ -651,6 +673,8 @@
                             ctl:ButtonIcon.Glyph="{StaticResource IconFade}" ToolTip="Nuova cue fade" />
                     <Button Style="{StaticResource ToolButton}" Content="Stop" Command="{Binding AddCueCommand}" CommandParameter="stop"
                             ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ToolTip="Nuova cue stop" />
+                    <Button Style="{StaticResource ToolButton}" Content="Nota" Command="{Binding AddCueCommand}" CommandParameter="note"
+                            ctl:ButtonIcon.Glyph="{StaticResource IconNote}" ToolTip="Nuova nota (separatore)" />
                     <Rectangle Style="{StaticResource ToolbarDivider}" />
                     <Button Style="{StaticResource ToolButton}" Content="Duplica" Command="{Binding DuplicateCueCommand}"
                             ctl:ButtonIcon.Glyph="{StaticResource IconCopy}" ToolTip="{Binding ShortcutHint[Duplicate], Converter={StaticResource Format}, ConverterParameter='Duplica la cue ({0})'}" />
@@ -707,6 +731,10 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsAudioReady}" Value="False">
                                         <Setter Property="Fill" Value="{StaticResource ErrorBrush}" />
+                                    </DataTrigger>
+                                    <!-- No audio route and nothing needs one: not an error. -->
+                                    <DataTrigger Binding="{Binding IsAudioUnused}" Value="True">
+                                        <Setter Property="Fill" Value="{StaticResource TextMutedBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -776,6 +804,11 @@
                                 <!-- SHOW START / SHOW END markers: structure, not content. -->
                                 <DataTrigger Binding="{Binding IsShowMarker}" Value="True">
                                     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
+                                <!-- Notes: separator rows between parts of the show. -->
+                                <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding RunState}" Value="Running">

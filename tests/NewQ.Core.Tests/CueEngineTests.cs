@@ -368,6 +368,34 @@ public class CueEngineTests
     }
 
     [Fact]
+    public void Note_cue_does_nothing_but_its_follow_and_link_fire()
+    {
+        var engine = CreateEngine(
+            Linked(new NoteCue { Number = "1", ContinueMode = ContinueMode.WaitFollow, PostWait = 2 }, LinkAction.Start, "3"),
+            Audio("2"), Audio("3"));
+
+        engine.Go();
+        Assert.Equal(new[] { "3" }, _player.StartedNumbers); // link at once
+        _scheduler.Advance(1.9);
+        Assert.Equal(new[] { "3" }, _player.StartedNumbers);
+        _scheduler.Advance(0.2);
+        Assert.Equal(new[] { "3", "2" }, _player.StartedNumbers); // wait follow 2 s after the (instant) end
+        Assert.DoesNotContain(engine.Running, r => r.Cue is NoteCue);
+    }
+
+    [Fact]
+    public void Note_cue_round_trips()
+    {
+        var ws = new Workspace();
+        ws.Cues.Add(new NoteCue { Number = "1", Name = "Atto II", Notes = "cambio scena" });
+        var cue = Assert.IsType<NoteCue>(NewQ.Core.Serialization.WorkspaceSerializer.Deserialize(
+            NewQ.Core.Serialization.WorkspaceSerializer.Serialize(ws)).Cues[0]);
+        Assert.Equal(("Atto II", "cambio scena", "Nota"), (cue.Name, cue.Notes, cue.TypeName));
+        Assert.True(cue.IsNote);
+        Assert.False(Workspace.NeedsAudioRoute(cue) || Workspace.NeedsVideoRoute(cue));
+    }
+
+    [Fact]
     public void Fade_cue_sends_fade_request_to_running_target()
     {
         var engine = CreateEngine(

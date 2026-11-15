@@ -87,6 +87,9 @@ public abstract class VisualCue : MediaCue
     private int _layer = 1;
     private FitMode _fitMode = FitMode.Fit;
     private double _opacity = 1.0;
+    private double _scaleX = 100, _scaleY = 100, _positionX, _positionY;
+    private double _hue, _saturation = 100, _contrast = 100, _brightness;
+    private bool _invertColors;
 
     /// <summary>Video route the cue is drawn on; null = the first route of the workspace.</summary>
     public Guid? VideoRouteId { get => _videoRouteId; set => SetField(ref _videoRouteId, value); }
@@ -106,6 +109,30 @@ public abstract class VisualCue : MediaCue
 
     public double Opacity { get => _opacity; set => SetField(ref _opacity, Math.Clamp(value, 0, 1)); }
     public override double? ListOpacity => Opacity;
+
+    // ---- scale and position, after the fit: % of the fitted size, offset of the centre in canvas pixels (y down) ----
+    public double ScaleX { get => _scaleX; set => SetField(ref _scaleX, Math.Clamp(value, 0, 1000)); }
+    public double ScaleY { get => _scaleY; set => SetField(ref _scaleY, Math.Clamp(value, 0, 1000)); }
+    public double PositionX { get => _positionX; set => SetField(ref _positionX, Math.Clamp(value, -16384, 16384)); }
+    public double PositionY { get => _positionY; set => SetField(ref _positionY, Math.Clamp(value, -16384, 16384)); }
+
+    // ---- effects, applied on the GPU while the cue plays (edits show live) ----
+    /// <summary>Hue rotation in degrees.</summary>
+    public double Hue { get => _hue; set => SetField(ref _hue, Math.Clamp(value, -180, 180)); }
+    /// <summary>% (100 = unchanged, 0 = greys).</summary>
+    public double Saturation { get => _saturation; set => SetField(ref _saturation, Math.Clamp(value, 0, 200)); }
+    /// <summary>% (100 = unchanged).</summary>
+    public double Contrast { get => _contrast; set => SetField(ref _contrast, Math.Clamp(value, 0, 200)); }
+    /// <summary>% added to every channel (0 = unchanged).</summary>
+    public double Brightness { get => _brightness; set => SetField(ref _brightness, Math.Clamp(value, -100, 100)); }
+    public bool InvertColors { get => _invertColors; set => SetField(ref _invertColors, value); }
+
+    /// <summary>Names of the properties that change the look of a playing cue (scale, position, effects).</summary>
+    public static readonly IReadOnlySet<string> LookProperties = new HashSet<string>
+    {
+        nameof(ScaleX), nameof(ScaleY), nameof(PositionX), nameof(PositionY),
+        nameof(Hue), nameof(Saturation), nameof(Contrast), nameof(Brightness), nameof(InvertColors),
+    };
 }
 
 public sealed class VideoCue : VisualCue, ITrimmedMedia
@@ -370,6 +397,15 @@ public sealed class StopCue : Cue
     public double FadeTime { get => _fadeTime; set => SetField(ref _fadeTime, Math.Max(0, value)); }
 
     public override string Summary => string.IsNullOrEmpty(TargetNumber) ? "Tutte le cue" : $"→ Cue {TargetNumber}";
+}
+
+/// <summary>
+/// An empty cue: a separator row in the cue list. Firing it does nothing and ends at once, so its follow and link
+/// still fire (after its pre-wait and post-wait).
+/// </summary>
+public sealed class NoteCue : Cue
+{
+    public override string TypeName => "Nota";
 }
 
 // ======================= Show structure =======================
