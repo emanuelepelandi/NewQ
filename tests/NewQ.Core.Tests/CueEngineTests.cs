@@ -533,11 +533,45 @@ public class PauseAndSeekTests
         Assert.Equal(CueRunState.Paused, engine.Workspace.Cues[0].RunState);
         Assert.Equal(CueRunState.Running, engine.Workspace.Cues[1].RunState);
         Assert.True(engine.Workspace.Cues[0].CanSeek);
-        Assert.False(engine.Workspace.Cues[1].CanSeek);
+        Assert.True(engine.Workspace.Cues[1].CanSeek); // playing cues can be scrubbed too
 
         engine.TogglePause(engine.Workspace.Cues[0]);
         Assert.False(_player.Started[0].Paused);
-        Assert.False(engine.Workspace.Cues[0].CanSeek);
+        Assert.True(engine.Workspace.Cues[0].CanSeek);
+    }
+
+    [Fact]
+    public void Playing_cues_scrub_unless_locked()
+    {
+        var engine = Engine(new AudioCue { Number = "1" });
+        engine.Go();
+        var cue = engine.Workspace.Cues[0];
+        Assert.True(cue.CanSeek);
+        engine.Seek(cue, TimeSpan.FromSeconds(3));
+        Assert.Equal(TimeSpan.FromSeconds(3), _player.Started[0].SeekedTo);
+
+        engine.AllowSeek = false;
+        Assert.False(cue.CanSeek);
+        engine.Seek(cue, TimeSpan.FromSeconds(7));
+        Assert.Equal(TimeSpan.FromSeconds(3), _player.Started[0].SeekedTo); // locked: ignored
+        engine.PauseAll();
+        Assert.False(cue.CanSeek); // paused too
+
+        engine.AllowSeek = true;
+        Assert.True(cue.CanSeek);
+    }
+
+    [Fact]
+    public void A_wait_cue_scrubbed_while_running_ends_from_the_new_position()
+    {
+        var engine = Engine(new WaitCue { Number = "1", WaitDuration = 10, ContinueMode = ContinueMode.AutoFollow }, new AudioCue { Number = "2" });
+        engine.Go();
+        _scheduler.Advance(1);
+        engine.Seek(engine.Workspace.Cues[0], TimeSpan.FromSeconds(8));
+        _scheduler.Advance(1.9);
+        Assert.Empty(_player.Started);
+        _scheduler.Advance(0.2);
+        Assert.Equal(new[] { "2" }, _player.StartedNumbers);
     }
 
     [Fact]

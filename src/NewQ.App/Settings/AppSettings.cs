@@ -91,6 +91,9 @@ public sealed class AppSettings
     /// <summary>Show progress on the timeline with one cursor per GO instead of filling the cue bars.</summary>
     public bool TimelineCursors { get; set; }
 
+    /// <summary>Padlock of "In esecuzione": the progress bars of running cues can't be scrubbed.</summary>
+    public bool ScrubLocked { get; set; }
+
     /// <summary>Cue type colours that differ from the defaults: type name → "#RRGGBB" (Impostazioni → Grafica).</summary>
     public Dictionary<string, string> CueColors { get; set; } = new();
 

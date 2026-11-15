@@ -87,6 +87,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 new NetworkCuePlayer(),
             });
 
+        Engine.AllowSeek = !_settings.ScrubLocked;
         Engine.PlayheadChanged += (_, _) => OnPropertyChanged(nameof(SelectedCue));
         Engine.RunningChanged += (_, _) => RefreshActiveCues();
         Engine.Log += (_, e) => AddLog(e.Level, e.Message);
@@ -259,13 +260,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand FadeSelectedCommand { get; }
     public ICommand TogglePauseCueCommand { get; }
 
-    /// <summary>Scrubs a paused cue to a fraction (0–1) of its length.</summary>
+    /// <summary>
+    /// Padlock of "In esecuzione": no scrubbing of running cues. Works in Safe mode too; saved with the settings.
+    /// </summary>
+    public bool IsScrubLocked
+    {
+        get => _settings.ScrubLocked;
+        set
+        {
+            if (_settings.ScrubLocked == value) return;
+            _settings.ScrubLocked = value;
+            Engine.AllowSeek = !value;
+            TrySaveSettings();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Scrubs a running cue (paused or playing) to a fraction (0–1) of its length.</summary>
     public void SeekCue(Cue cue, double fraction)
     {
         // Seeking updates the cue's progress, which moves the timeline slider, which raises another seek:
         // without this guard that loop recursed until the stack overflowed (crash while scrubbing audio).
         if (_seeking) return;
-        if (!cue.CanSeek || cue.RuntimeDuration is not double duration || duration <= 0) return;
+        if (IsScrubLocked || !cue.CanSeek || cue.RuntimeDuration is not double duration || duration <= 0) return;
         _seeking = true;
         try
         {
@@ -447,8 +464,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public double OutputPeakLeftDb { get => _outPeakLeftDb; private set => SetField(ref _outPeakLeftDb, value); }
     public double OutputPeakRightDb { get => _outPeakRightDb; private set => SetField(ref _outPeakRightDb, value); }
 
-    /// <summary>Latched: the output reached digital full scale. Reset with <see cref="ResetClipsCommand"/>.</summary>
+    /// <summary>The output reached digital full scale; cleared 1.5 s after the last clip (or by <see cref="ResetClipsCommand"/>).</summary>
     public bool OutputClip { get => _outputClip; private set => SetField(ref _outputClip, value); }
+
+    private static readonly TimeSpan ClipHold = TimeSpan.FromSeconds(1.5);
+    private TimeSpan _outputClipAt;
+    private readonly Dictionary<Cue, TimeSpan> _cueClipAt = new();
+    private readonly List<Cue> _clipExpired = new();
 
     private void UpdateMeters()
     {
@@ -462,11 +484,17 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OutputRightDb = MeterMath.Fall(OutputRightDb, MeterMath.ToDb(output.Right), dt);
         (OutputPeakLeftDb, _outPeakLeftAt) = Hold(OutputPeakLeftDb, _outPeakLeftAt, OutputLeftDb, now, dt);
         (OutputPeakRightDb, _outPeakRightAt) = Hold(OutputPeakRightDb, _outPeakRightAt, OutputRightDb, now, dt);
-        if (output.Clip && !OutputClip)
+        if (output.Clip)
         {
-            OutputClip = true;
-            AddLog(EngineLogLevel.Warning, "Uscita audio in clip.");
+            _outputClipAt = now;
+            if (!OutputClip)
+            {
+                OutputClip = true;
+                AddLog(EngineLogLevel.Warning, "Uscita audio in clip.");
+            }
         }
+        else if (OutputClip && now - _outputClipAt >= ClipHold)
+            OutputClip = false;
 
         // Each playing audio cue (several instances of the same cue are combined).
         var levels = new Dictionary<Cue, MeterReading>();
@@ -481,12 +509,23 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         foreach (var (cue, reading) in levels)
         {
             cue.MeterDb = MeterMath.Fall(cue.MeterDb, MeterMath.ToDb(reading.Max), dt);
-            if (reading.Clip && !cue.Clipped)
+            if (!reading.Clip) continue;
+            _cueClipAt[cue] = now;
+            if (!cue.Clipped)
             {
                 cue.Clipped = true;
                 AddLog(EngineLogLevel.Warning, $"Cue {cue.Number} in clip.");
             }
         }
+        if (_cueClipAt.Count == 0) return;
+        foreach (var (cue, at) in _cueClipAt)
+            if (now - at >= ClipHold) _clipExpired.Add(cue);
+        foreach (var cue in _clipExpired)
+        {
+            cue.Clipped = false;
+            _cueClipAt.Remove(cue);
+        }
+        _clipExpired.Clear();
     }
 
     private static (double Db, TimeSpan At) Hold(double holdDb, TimeSpan holdAt, double levelDb, TimeSpan now, double dt)
@@ -499,6 +538,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void ResetClips()
     {
         OutputClip = false;
+        _cueClipAt.Clear();
         foreach (var cue in Workspace.Cues) cue.Clipped = false;
     }
 
@@ -1473,6 +1513,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         Engine.StopAll(TimeSpan.Zero);
         _settings = settings;
+        Engine.AllowSeek = !settings.ScrubLocked;
+        OnPropertyChanged(nameof(IsScrubLocked));
         CueColors.Apply(settings.CueColors);
         _shortcuts = ShortcutMap.FromSettings(settings.Shortcuts);
         ShortcutText.Update(_shortcuts);

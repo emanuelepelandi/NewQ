@@ -319,7 +319,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- The bar: the fill follows the cue; paused, a click or drag scrubs it. -->
+                <!-- The bar: the fill follows the cue; a click or drag scrubs it (paused or playing), unless the padlock is on. -->
                 <Border x:Name="Bar" Height="44" Background="{StaticResource ControlBrush}" CornerRadius="{StaticResource RadiusControl}"
                         ClipToBounds="True" Cursor="Arrow"
                         MouseLeftButtonDown="OnRunningBarDown" MouseMove="OnRunningBarMove" MouseLeftButtonUp="OnRunningBarUp">
@@ -341,8 +341,7 @@
                             <TextBlock Text="{Binding Number}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
-                                <Border Style="{StaticResource Badge}" Padding="4,0" Margin="0,0,8,0" Background="{StaticResource ClipBrush}"
-                                        VerticalAlignment="Center" Visibility="{Binding Clipped, Converter={StaticResource BoolToVis}}">
+                                <Border Style="{StaticResource ClipFlash}" Margin="0,0,8,0" Tag="{Binding Clipped}">
                                     <TextBlock Text="CLIP" Style="{StaticResource BadgeText}" FontSize="9" FontWeight="Bold"
                                                Foreground="{StaticResource TextOnAccentBrush}" />
                                 </Border>
@@ -587,26 +586,17 @@
                                 Level="{Binding OutputRightDb}" PeakHold="{Binding OutputPeakRightDb}" />
                 <ctl:MeterScale Grid.Row="2" Grid.Column="1" Margin="0,4,0,0" />
 
-                <!-- 0 dBFS / clip indicator: latches red, click to reset (also resets the cues' clip markers). -->
-                <Button Grid.Column="2" Grid.RowSpan="2" Margin="8,0,0,0" Width="44" Height="20" MinHeight="0"
-                        Padding="0" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold" Focusable="False"
-                        Command="{Binding ResetClipsCommand}"
-                        ToolTip="Clip a 0 dBFS · clic per azzerare">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource DefaultButton}">
-                            <Setter Property="Content" Value="0 dB" />
-                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding OutputClip}" Value="True">
-                                    <Setter Property="Content" Value="CLIP" />
-                                    <Setter Property="Background" Value="{StaticResource ClipBrush}" />
-                                    <Setter Property="BorderBrush" Value="{StaticResource ClipBrush}" />
-                                    <Setter Property="Foreground" Value="{StaticResource TextOnAccentBrush}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                <!-- 0 dBFS / clip indicator: red CLIP on top, fading out 1.5 s after the last clip; a click clears it at once. -->
+                <Grid Grid.Column="2" Grid.RowSpan="2" Margin="8,0,0,0" Width="44" Height="20">
+                    <Button Height="20" MinHeight="0" Padding="0" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold" Focusable="False"
+                            HorizontalAlignment="Stretch" Content="0 dB" Foreground="{StaticResource TextMutedBrush}"
+                            Command="{Binding ResetClipsCommand}" ToolTip="Clip a 0 dBFS · clic per azzerare" />
+                    <Border Style="{StaticResource ClipFlash}" Tag="{Binding OutputClip}" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                            CornerRadius="{StaticResource RadiusControl}">
+                        <TextBlock Text="CLIP" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold" Foreground="{StaticResource TextOnAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
             </Grid>
 
             <!-- Transport: neutral buttons, meaning carried by the glyph colour. -->
@@ -842,9 +832,7 @@
                         <DataGridTemplateColumn Header="" Width="44" MinWidth="44" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource Badge}" Padding="4,0" Background="{StaticResource ClipBrush}"
-                                            Visibility="{Binding Clipped, Converter={StaticResource BoolToVis}}"
-                                            ToolTip="Clip a 0 dBFS">
+                                    <Border Style="{StaticResource ClipFlash}" Tag="{Binding Clipped}">
                                         <TextBlock Text="CLIP" Style="{StaticResource BadgeText}" FontSize="9" FontWeight="Bold"
                                                    Foreground="{StaticResource TextOnAccentBrush}" />
                                     </Border>
@@ -942,7 +930,26 @@
             <!-- ======================= In esecuzione (Visualizza → In esecuzione) ======================= -->
             <DockPanel x:Name="RunningPanel" Grid.Column="2">
                 <Border DockPanel.Dock="Top" Height="37" Padding="16,0,8,0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
-                    <TextBlock Text="IN ESECUZIONE" Style="{StaticResource SectionHeaderFirst}" Margin="0" VerticalAlignment="Center" />
+                    <DockPanel>
+                        <!-- Padlock: no scrubbing of the running cues (works in Safe mode too). -->
+                        <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsScrubLocked, Mode=TwoWay}" VerticalAlignment="Center"
+                                      Width="{StaticResource CompactControlHeight}" Height="{StaticResource CompactControlHeight}" MinHeight="0" Padding="0"
+                                      AutomationProperties.Name="Blocca scorrimento">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource SubtleToggle}">
+                                    <Setter Property="ctl:ButtonIcon.Glyph" Value="{StaticResource IconUnlock}" />
+                                    <Setter Property="ToolTip" Value="Scorrimento attivo · clic per bloccare" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter Property="ctl:ButtonIcon.Glyph" Value="{StaticResource IconLock}" />
+                                            <Setter Property="ToolTip" Value="Scorrimento bloccato · clic per sbloccare" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+                        <TextBlock Text="IN ESECUZIONE" Style="{StaticResource SectionHeaderFirst}" Margin="0" VerticalAlignment="Center" />
+                    </DockPanel>
                 </Border>
                 <Grid>
                     <TextBlock Text="Nessuna cue in esecuzione" Foreground="{StaticResource TextMutedBrush}"

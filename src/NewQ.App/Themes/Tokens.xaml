@@ -139,6 +139,7 @@
     <sys:String x:Key="IconDown">&#xE74B;</sys:String>
     <sys:String x:Key="IconDelete">&#xE74D;</sys:String>
     <sys:String x:Key="IconLock">&#xE72E;</sys:String>
+    <sys:String x:Key="IconUnlock">&#xE785;</sys:String>
     <sys:String x:Key="IconWarning">&#xE7BA;</sys:String>
     <sys:String x:Key="IconCheck">&#xE73E;</sys:String>
     <sys:String x:Key="IconShowCheck">&#xE9D9;</sys:String>

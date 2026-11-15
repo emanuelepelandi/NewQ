@@ -271,7 +271,7 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // ------------------------------------------------------------------ In esecuzione: scrubbing a paused cue
+    // ------------------------------------------------------------------ In esecuzione: scrubbing a running cue (padlock off)
 
     private void OnRunningBarDown(object sender, MouseButtonEventArgs e)
     {

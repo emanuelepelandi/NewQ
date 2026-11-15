@@ -152,13 +152,13 @@ public abstract class Cue : ObservableObject
     [JsonIgnore] public bool IsPlayhead { get => _isPlayhead; set => SetField(ref _isPlayhead, value); }
     [JsonIgnore] public string? ErrorMessage { get => _errorMessage; set => SetField(ref _errorMessage, value); }
 
-    /// <summary>True while the cue is paused and its timeline can be scrubbed.</summary>
+    /// <summary>True while the cue runs (paused or not) and its timeline can be scrubbed (not locked).</summary>
     [JsonIgnore] public bool CanSeek { get => _canSeek; set => SetField(ref _canSeek, value); }
 
     /// <summary>Live output level of the cue in dBFS (audio cues), with meter ballistics applied.</summary>
     [JsonIgnore] public double MeterDb { get => _meterDb; set => SetField(ref _meterDb, value); }
 
-    /// <summary>Latched: the cue reached digital full scale (0 dBFS). Reset on the next GO of the cue.</summary>
+    /// <summary>The cue reached digital full scale (0 dBFS); cleared 1.5 s after its last clip.</summary>
     [JsonIgnore] public bool Clipped { get => _clipped; set => SetField(ref _clipped, value); }
 
     /// <summary>The cue is fading out to a stop (Fade cue button, Stop/Panic with fade, Fade cue, Fade out link).</summary>

@@ -82,6 +82,23 @@ public sealed class CueEngine
     public IReadOnlyList<RunningCue> Running => _running;
     public bool IsPaused { get; private set; }
 
+    /// <summary>
+    /// Running cues (paused or playing) can be scrubbed; false = locked (the operator's padlock, independent of
+    /// Safe mode).
+    /// </summary>
+    public bool AllowSeek
+    {
+        get => _allowSeek;
+        set
+        {
+            if (_allowSeek == value) return;
+            _allowSeek = value;
+            foreach (var rc in _running) RefreshCanSeek(rc.Cue);
+        }
+    }
+
+    private bool _allowSeek = true;
+
     /// <summary>Something of this GO is still going on: a cue running (or in pre-wait), or a wait follow pending.</summary>
     public bool IsGroupActive(int group)
         => _running.Any(r => r.Group == group && !r.IsFinished) || _pendingContinues.Any(p => p.Group == group);
@@ -270,9 +287,10 @@ public sealed class CueEngine
         RunningChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Moves the playback position of a cue's running instances (used to scrub paused cues).</summary>
+    /// <summary>Moves the playback position of a cue's running instances (scrubbing in "In esecuzione").</summary>
     public void Seek(Cue cue, TimeSpan position)
     {
+        if (!AllowSeek) return;
         foreach (var rc in _running.Where(r => ReferenceEquals(r.Cue, cue) && r.Handle is { CanSeek: true }))
             rc.Handle!.Seek(position);
         UpdateProgress();
@@ -315,7 +333,18 @@ public sealed class CueEngine
                 rc.Cue.RuntimeDuration = duration;
                 rc.Cue.Progress = duration is > 0 ? Math.Clamp(elapsed / duration.Value, 0, 1) : 0;
             }
+            // A playing cue becomes seekable once its length is known, and stops being so (e.g. held last frame).
+            RefreshCanSeek(rc.Cue);
         }
+    }
+
+    private void RefreshCanSeek(Cue cue)
+    {
+        var can = false;
+        if (_allowSeek)
+            foreach (var r in _running)
+                if (ReferenceEquals(r.Cue, cue) && r.Handle is { CanSeek: true } h && h.Duration is not null) { can = true; break; }
+        cue.CanSeek = can;
     }
 
     // ------------------------------------------------------------------ internals
@@ -589,7 +618,7 @@ public sealed class CueEngine
         else
             cue.RunState = CueRunState.PreWait;
 
-        cue.CanSeek = instances.Any(r => r.IsPaused && r.Handle is { CanSeek: true } && r.Handle.Duration is not null);
+        RefreshCanSeek(cue);
         cue.IsFadingOut = instances.Any(r => r.IsFadingOut);
     }
 

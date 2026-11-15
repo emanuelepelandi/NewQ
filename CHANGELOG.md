@@ -182,3 +182,7 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Corretto**: README, i test spenti dal PANIC (non più dallo Stop).
 - **Nuovo**: cue **Nota**, vuota: riga separatrice in evidenza nella lista; follow e link funzionano.
 - **Cambiato**: senza route audio e senza cue che ne hanno bisogno, la spia audio della barra di stato è neutra e indica "nessuna route audio".
+
+### 2026-11-15 - Scrubbing e CLIP
+- **Nuovo**: nel pannello *In esecuzione* la barra di una cue si scorre anche mentre suona, non solo in pausa, indipendentemente da Safe. Un lucchetto nell'intestazione del pannello blocca lo scorrimento (salvato nelle impostazioni).
+- **Cambiato**: gli indicatori **CLIP** (uscita e cue) spariscono da soli in dissolvenza 1,5 s dopo l'ultimo clip; il clic sul pulsante 0 dB li azzera ancora subito.

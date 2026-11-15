@@ -688,3 +688,26 @@ Stesse condizioni, una dopo l'altra. Stress test: le sezioni sopra (Debug: rifer
 | Thread | inizio 80 - fine 56 |
 | Oggetti GDI / USER | inizio 34 / 77 - fine 34 / 67 |
 | Working set a fine giro, MB | 464 479 504 494 502 517 496 523 519 510 615 469 |
+
+## 2026-11-15 16:10 - go-overlap - Scrubbing in riproduzione, CLIP in dissolvenza
+
+- Commit: `111811b+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.0 - p95 4.6 - max 8.3 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.25 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 21.2 - p99 medio 20.4 - max assoluto 65.0 |
+| Rendering timeline, ms | media 3.5 - max 15.4 (8 campioni) |
+| Ricostruzione timeline, ms | media 13.2 - max 25.1 (2) |
+| CPU per giro, % (tutti i core) | media 12.8 - max 22.0 |
+| Working set, MB | inizio 248 - picco 631 - fine 256 |
+| Private bytes, MB | inizio 274 - fine 230 |
+| Memoria gestita, MB (fine) | 15 |
+| GC gen0 / gen2 (totale) | 157 / 120 |
+| Handle | inizio 1371 - fine 1346 |
+| Thread | inizio 80 - fine 54 |
+| Oggetti GDI / USER | inizio 34 / 76 - fine 34 / 67 |
+| Working set a fine giro, MB | 456 472 491 493 517 523 515 497 528 631 528 485 |
