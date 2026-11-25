@@ -147,7 +147,9 @@
     <sys:String x:Key="IconSettings">&#xE713;</sys:String>
     <sys:String x:Key="IconFolder">&#xE8B7;</sys:String>
     <sys:String x:Key="IconPlayhead">&#xE768;</sys:String>
-    <!-- The Windows hand: hold it to drag a cue in the list. -->
-    <sys:String x:Key="IconGrip">&#xF271;</sys:String>
-    <sys:String x:Key="IconGroup">&#xF168;</sys:String>
+    <!-- Hold it to drag a cue in the list. -->
+    <sys:String x:Key="IconGrip">&#xE8FD;</sys:String>
+    <sys:String x:Key="IconGroup">&#xE8A9;</sys:String>
+    <sys:String x:Key="IconChevronDown">&#xE70D;</sys:String>
+    <sys:String x:Key="IconChevronRight">&#xE76C;</sys:String>
 </ResourceDictionary>

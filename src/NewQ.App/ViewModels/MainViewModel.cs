@@ -96,7 +96,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             });
 
         Engine.AllowSeek = !_settings.ScrubLocked;
-        Engine.PlayheadChanged += (_, _) => OnPropertyChanged(nameof(SelectedCue));
+        Engine.PlayheadChanged += (_, _) =>
+        {
+            // The playhead reached a cue of a collapsed group (GO in an "enter" group, a cue moved in): show it.
+            if (Engine.Playhead is { IsHidden: true } hidden && CueList.ParentOf(Workspace.Cues, hidden) is GroupCue closed)
+                closed.IsCollapsed = false;
+            OnPropertyChanged(nameof(SelectedCue));
+        };
         Engine.RunningChanged += (_, _) => RefreshActiveCues();
         Engine.Log += (_, e) => AddLog(e.Level, e.Message);
         _audio.Error += message => _dispatcher.BeginInvoke(() => AddLog(EngineLogLevel.Error, message));
@@ -567,6 +573,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         workspace.EnsureRoutes(System.Windows.Forms.Screen.AllScreens.Length);
         workspace.EnsureShowMarkers(); // the playhead starts on --SHOW START--
         CueList.Normalize(workspace.Cues); // a group's cues right below it (hand-edited or older files)
+        CueList.RefreshLayout(workspace.Cues);
 
         UnhookWorkspace(Engine.Workspace);
         Engine.LoadWorkspace(workspace);
@@ -734,6 +741,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (e.OldItems is not null) foreach (Cue c in e.OldItems) _validLinks.Remove(c);
         if (e.NewItems is not null) RememberLinks(e.NewItems.Cast<Cue>());
         IsDirty = true;
+        CueList.RefreshLayout(Workspace.Cues); // groups: hidden rows and frames
         Engine.SchedulePreload(); // reordering can change what the next GO fires
         ScheduleTimeline();
         OnPropertyChanged(nameof(HasProgramCues));
@@ -756,6 +764,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName == nameof(Cue.IsFadingOut)) TimelineStateChanged?.Invoke();
         if (e.PropertyName == nameof(ITrimmedMedia.MediaDuration)) ScheduleTimeline(); // lengths of groups
+        if (e.PropertyName is nameof(Cue.GroupId) or nameof(GroupCue.IsCollapsed))
+        {
+            CueList.RefreshLayout(Workspace.Cues);
+            // Collapsing the group the playhead is in: the playhead goes to the group's row.
+            if (sender is GroupCue { IsCollapsed: true } group && Engine.Playhead?.GroupId == group.Id) Engine.SetPlayhead(group);
+        }
         if (!Cue.IsPersistentProperty(e.PropertyName)) return;
         if (sender is Cue changed && !GuardLinkLoop(changed, e.PropertyName)) return; // undone: it closed a loop
         IsDirty = true;

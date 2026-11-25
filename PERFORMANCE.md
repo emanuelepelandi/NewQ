@@ -734,3 +734,49 @@ Stesse condizioni, una dopo l'altra. Stress test: le sezioni sopra (Debug: rifer
 | Thread | inizio 80 - fine 55 |
 | Oggetti GDI / USER | inizio 40 / 77 - fine 40 / 67 |
 | Working set a fine giro, MB | 455 512 517 497 532 532 517 513 540 548 623 503 |
+
+## 2026-11-26 00:03 - go-overlap - gruppi comprimibili con riquadro, icone lista
+
+- Commit: `a52fcfc+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 3.6 - p95 4.7 - max 6.5 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.26 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 115.4 - p99 medio 22.1 - max assoluto 144.5 |
+| Rendering timeline, ms | media 1.8 - max 3.8 (8 campioni) |
+| Ricostruzione timeline, ms | media 9.9 - max 19.2 (2) |
+| CPU per giro, % (tutti i core) | media 12.9 - max 20.0 |
+| Working set, MB | inizio 256 - picco 622 - fine 266 |
+| Private bytes, MB | inizio 288 - fine 240 |
+| Memoria gestita, MB (fine) | 20 |
+| GC gen0 / gen2 (totale) | 161 / 113 |
+| Handle | inizio 1355 - fine 1339 |
+| Thread | inizio 80 - fine 56 |
+| Oggetti GDI / USER | inizio 40 / 77 - fine 40 / 67 |
+| Working set a fine giro, MB | 441 514 520 530 537 531 534 534 622 490 600 440 |
+
+## 2026-11-26 00:04 - go-overlap - gruppi comprimibili, ripetizione
+
+- Commit: `a52fcfc+modifiche` (build: `Debug`) - Macchina: Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz | NVIDIA GeForce GTX 1070 | 16 GB | Microsoft Windows 11 Home 22000
+- Parametri: 12 giri x 6 GO, 700 ms tra i GO, 72 video (BearGrylls-contro i castori infernali(PARODIA).mp4, COSTA RICA IN 4K 60fps HDR (ULTRA HD).mp4), anteprima in finestra
+- Esito: processo vivo True, player libVLC rimasti 0, cue in esecuzione rimaste 0
+
+| Misura | Valore |
+|---|---|
+| Comando GO (UIA), ms | media 4.0 - p95 5.1 - max 35.7 (72 GO) |
+| Audio dopo ogni GO (picco) | min 0.19 - media 0.25 - GO muti 0 / 72 |
+| Ritardo thread UI, ms (finestre di 5 s) | p99 peggiore 48.1 - p99 medio 19.3 - max assoluto 56.5 |
+| Rendering timeline, ms | media 1.6 - max 2.2 (8 campioni) |
+| Ricostruzione timeline, ms | media 10.7 - max 20.2 (2) |
+| CPU per giro, % (tutti i core) | media 13.7 - max 18.5 |
+| Working set, MB | inizio 256 - picco 607 - fine 275 |
+| Private bytes, MB | inizio 284 - fine 255 |
+| Memoria gestita, MB (fine) | 16 |
+| GC gen0 / gen2 (totale) | 161 / 113 |
+| Handle | inizio 1355 - fine 1343 |
+| Thread | inizio 81 - fine 56 |
+| Oggetti GDI / USER | inizio 40 / 77 - fine 40 / 67 |
+| Working set a fine giro, MB | 424 496 490 487 491 509 516 508 515 607 510 476 |

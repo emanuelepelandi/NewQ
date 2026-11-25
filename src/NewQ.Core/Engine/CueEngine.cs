@@ -174,7 +174,15 @@ public sealed class CueEngine
         var cues = Workspace.Cues;
         if (cues.Count == 0) return;
         var index = Playhead is null ? (delta > 0 ? -1 : cues.Count) : cues.IndexOf(Playhead);
-        SetPlayhead(cues[Math.Clamp(index + delta, 0, cues.Count - 1)]);
+        var step = Math.Sign(delta);
+        for (var n = Math.Abs(delta); n > 0; n--)
+        {
+            var next = index + step;
+            while (next >= 0 && next < cues.Count && cues[next].IsHidden) next += step; // rows of collapsed groups
+            if (next < 0 || next >= cues.Count) break;
+            index = next;
+        }
+        if (index >= 0 && index < cues.Count) SetPlayhead(cues[index]);
     }
 
     // ------------------------------------------------------------------ transport

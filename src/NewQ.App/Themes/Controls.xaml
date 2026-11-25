@@ -476,6 +476,35 @@
         </Setter>
     </Style>
 
+    <!-- Expand / collapse a group in the cue list: a chevron, down when open, right when collapsed. -->
+    <Style x:Key="GroupChevron" TargetType="ToggleButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Body" Background="Transparent" CornerRadius="{StaticResource RadiusControl}">
+                        <TextBlock x:Name="Glyph" Style="{StaticResource Icon}" FontSize="10" HorizontalAlignment="Center"
+                                   Text="{StaticResource IconChevronDown}" Foreground="{TemplateBinding Foreground}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Glyph" Property="Text" Value="{StaticResource IconChevronRight}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Body" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===================================================================== Tabs -->
 
     <!-- Text tabs with an accent underline: used for page navigation (settings) and panel switching. -->

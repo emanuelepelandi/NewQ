@@ -80,7 +80,7 @@ public static class CueColors
 
     public static string ToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 
-    /// <summary>The line beside the cues of a group in the list (the group's colour).</summary>
+    /// <summary>The frame around an expanded group and its cues in the list, and the group's icon (the group's colour).</summary>
     public static SolidColorBrush GroupGuide => BrushOf("Gruppo", 0xC0);
 
     /// <summary>"#RRGGBB" or "RRGGBB".</summary>

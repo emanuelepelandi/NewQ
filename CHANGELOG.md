@@ -194,3 +194,9 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Cambiato**: pagina *Effetti* con slider (la traccia mostra l'effetto, doppio clic = neutro) e anteprima dell'immagine della cue con gli effetti applicati.
 - **Corretto**: un GO su una cue già in esecuzione (per esempio in loop) la faceva ripartire sovrapposta a sé stessa, senza una nuova riga in *In esecuzione*. Ora non fa nulla, come in QLab; l'opzione *Secondo GO: riavvia* (pagina Trigger) la ferma e la fa ripartire.
 - **Corretto**: lo stress test non creava più il workspace di prova (route facoltative).
+
+### 2026-11-26 - Grafica dei gruppi
+- **Cambiato**: i gruppi aperti hanno un riquadro attorno ai nomi delle loro cue (come QLab) al posto della linea verticale; icona del gruppo a quattro quadrati.
+- **Nuovo**: i gruppi si comprimono e si espandono con la freccina a sinistra del nome; lo stato si salva col workspace. Il playhead salta le cue nascoste; se un GO o uno spostamento porta il playhead dentro un gruppo compresso, il gruppo si riapre.
+- **Cambiato**: l'icona di trascinamento delle cue è ora a tre righe con i puntini.
+- **Corretto**: le etichette della pagina *Effetti* sono bianche come le altre intestazioni dei campi.

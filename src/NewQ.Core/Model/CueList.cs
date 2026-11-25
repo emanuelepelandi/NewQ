@@ -54,6 +54,33 @@ public static class CueList
     }
 
     /// <summary>
+    /// The look of the list: rows of collapsed groups hidden, and the frame of each expanded group (its row on top,
+    /// its last cue at the bottom; an empty group a closed box). Call after any change to the order or the groups.
+    /// </summary>
+    public static void RefreshLayout(IReadOnlyList<Cue> cues)
+    {
+        for (var i = 0; i < cues.Count; i++)
+        {
+            var cue = cues[i];
+            if (cue is GroupCue group)
+            {
+                var children = ChildrenOf(cues, group);
+                group.IsHidden = false;
+                group.Frame = group.IsCollapsed ? GroupFrame.None : children.Count == 0 ? GroupFrame.Single : GroupFrame.Top;
+                for (var k = 0; k < children.Count; k++)
+                {
+                    children[k].IsHidden = group.IsCollapsed;
+                    children[k].Frame = group.IsCollapsed ? GroupFrame.None : k == children.Count - 1 ? GroupFrame.Bottom : GroupFrame.Middle;
+                }
+                i += children.Count;
+                continue;
+            }
+            cue.IsHidden = false;
+            cue.Frame = GroupFrame.None;
+        }
+    }
+
+    /// <summary>
     /// One step up (-1) or down (+1), the arrows' move: a cue swaps with its neighbour, enters a group it reaches
     /// (moving down onto a group it becomes its first cue, moving up below a group its last) and leaves it past the
     /// edge; a group moves with its cues and steps over whole groups. False if it can't move.
@@ -143,6 +170,8 @@ public static class CueList
         }
         else if (upperHalf)
             target = new DropTarget(row, over is GroupCue ? null : ParentOf(cues, over));
+        else if (over is GroupCue { IsCollapsed: true } closed)
+            target = new DropTarget(row + BlockLength(cues, closed), null); // below a collapsed group: after it
         else if (over is GroupCue g)
             target = new DropTarget(row + 1, g);
         else

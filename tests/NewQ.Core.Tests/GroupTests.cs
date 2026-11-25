@@ -132,6 +132,42 @@ public class CueListTests
     }
 
     [Fact]
+    public void Layout_frames_expanded_groups_and_hides_collapsed_ones()
+    {
+        var (g, kids) = Group("G", "1", "2");
+        var empty = new GroupCue { Number = "E" };
+        var x = A("X");
+        var list = List(x, g, kids[0], kids[1], empty);
+        CueList.RefreshLayout(list);
+        Assert.Equal(new[] { GroupFrame.None, GroupFrame.Top, GroupFrame.Middle, GroupFrame.Bottom, GroupFrame.Single },
+            new Cue[] { x, g, kids[0], kids[1], empty }.Select(c => c.Frame));
+
+        g.IsCollapsed = true;
+        CueList.RefreshLayout(list);
+        Assert.True(kids[0].IsHidden && kids[1].IsHidden);
+        Assert.False(g.IsHidden);
+        Assert.Equal(GroupFrame.None, g.Frame);
+        // Dropping below a collapsed group puts the cue after it, not inside.
+        Assert.Equal(new DropTarget(5, null), CueList.TargetAt(list, x, 2, upperHalf: false));
+    }
+
+    [Fact]
+    public void The_playhead_skips_the_cues_of_a_collapsed_group()
+    {
+        var (g, kids) = Group("G", "1", "2");
+        g.IsCollapsed = true;
+        var ws = new Workspace();
+        foreach (var c in List(A("X"), g, kids[0], kids[1], A("Y"))) ws.Cues.Add(c);
+        CueList.RefreshLayout(ws.Cues);
+        var engine = new CueEngine(new ManualScheduler(), Array.Empty<ICuePlayer>(), ws);
+        engine.SetPlayhead(g);
+        engine.MovePlayhead(1);
+        Assert.Equal("Y", engine.Playhead?.Number);
+        engine.MovePlayhead(-1);
+        Assert.Equal("G", engine.Playhead?.Number);
+    }
+
+    [Fact]
     public void Group_length_is_the_longest_or_the_sum()
     {
         var (g, kids) = Group("G", "1", "2");

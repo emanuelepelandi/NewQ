@@ -171,7 +171,8 @@
             <Grid HorizontalAlignment="Left">
                 <Grid.Resources>
                     <Style x:Key="EffectLabel" TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        <!-- The colour of the field headers of the other pages (ModernWPF). -->
+                        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                         <Setter Property="VerticalAlignment" Value="Center" />
                         <Setter Property="Margin" Value="0,0,12,0" />
                     </Style>
@@ -864,6 +865,9 @@
                                     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding IsHidden}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
                                 <!-- Groups: the row that holds the cues below it. -->
                                 <DataTrigger Binding="{Binding IsGroup}" Value="True">
                                     <Setter Property="FontWeight" Value="SemiBold" />
@@ -891,7 +895,7 @@
                     </DataGrid.RowStyle>
 
                     <DataGrid.Columns>
-                        <!-- The hand appears on the row under the mouse: hold it and drag to move the cue (a group with its cues). -->
+                        <!-- The grip appears on the row under the mouse: hold it and drag to move the cue (a group with its cues). -->
                         <DataGridTemplateColumn Header="" Width="32" MinWidth="32" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -946,19 +950,46 @@
                         <DataGridTemplateColumn x:Name="ColName" Header="Nome" Width="2*" MinWidth="140" IsReadOnly="True" SortMemberPath="Name">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <DockPanel>
-                                        <Border x:Name="Guide" DockPanel.Dock="Left" Width="2" Margin="4,-4,14,-4"
-                                                Background="{x:Static c:CueColors.GroupGuide}" Visibility="Collapsed" />
-                                        <TextBlock x:Name="GroupIcon" DockPanel.Dock="Left" Style="{StaticResource Icon}" Text="{StaticResource IconGroup}"
-                                                   Margin="0,0,8,0" Foreground="{x:Static c:CueColors.GroupGuide}" Visibility="Collapsed" />
-                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                    </DockPanel>
+                                    <Grid>
+                                        <!-- One piece per row; together they outline the expanded group and its cues. -->
+                                        <Border x:Name="Frame" BorderBrush="{x:Static c:CueColors.GroupGuide}" BorderThickness="0"
+                                                Margin="-2,0,4,0" SnapsToDevicePixels="True" IsHitTestVisible="False" />
+                                        <DockPanel x:Name="Content">
+                                            <ToggleButton x:Name="Chevron" DockPanel.Dock="Left" Style="{StaticResource GroupChevron}"
+                                                          IsChecked="{Binding IsCollapsed, Mode=OneWay, FallbackValue=False}" Click="OnGroupChevronClick"
+                                                          Visibility="Collapsed" Margin="0,0,2,0"
+                                                          ToolTip="Comprimi / espandi" AutomationProperties.Name="Comprimi gruppo" />
+                                            <TextBlock x:Name="GroupIcon" DockPanel.Dock="Left" Style="{StaticResource Icon}" Text="{StaticResource IconGroup}"
+                                                       FontSize="13" Margin="0,0,8,0" Foreground="{x:Static c:CueColors.GroupGuide}" Visibility="Collapsed" />
+                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </Grid>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsInGroup}" Value="True">
-                                            <Setter TargetName="Guide" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="Content" Property="Margin" Value="22,0,0,0" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                            <Setter TargetName="Chevron" Property="Visibility" Value="Visible" />
                                             <Setter TargetName="GroupIcon" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Frame}" Value="Top">
+                                            <Setter TargetName="Frame" Property="BorderThickness" Value="1,1,1,0" />
+                                            <Setter TargetName="Frame" Property="CornerRadius" Value="4,4,0,0" />
+                                            <Setter TargetName="Frame" Property="Margin" Value="-2,2,4,-8" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Frame}" Value="Middle">
+                                            <Setter TargetName="Frame" Property="BorderThickness" Value="1,0,1,0" />
+                                            <Setter TargetName="Frame" Property="Margin" Value="-2,-8,4,-8" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Frame}" Value="Bottom">
+                                            <Setter TargetName="Frame" Property="BorderThickness" Value="1,0,1,1" />
+                                            <Setter TargetName="Frame" Property="CornerRadius" Value="0,0,4,4" />
+                                            <Setter TargetName="Frame" Property="Margin" Value="-2,-8,4,2" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Frame}" Value="Single">
+                                            <Setter TargetName="Frame" Property="BorderThickness" Value="1" />
+                                            <Setter TargetName="Frame" Property="CornerRadius" Value="4" />
+                                            <Setter TargetName="Frame" Property="Margin" Value="-2,2,4,2" />
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>

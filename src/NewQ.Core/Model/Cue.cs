@@ -32,6 +32,9 @@ public enum LinkAction
 
 public enum CueRunState { Idle, PreWait, Running, Paused, Error }
 
+/// <summary>The piece of an expanded group's frame a row draws (the list outlines a group and its cues, as QLab).</summary>
+public enum GroupFrame { None, Top, Middle, Bottom, Single }
+
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(AudioCue), "audio")]
 [JsonDerivedType(typeof(VideoCue), "video")]
@@ -52,7 +55,7 @@ public abstract class Cue : ObservableObject
     {
         nameof(RunState), nameof(Progress), nameof(ElapsedSeconds), nameof(ElapsedText),
         nameof(RemainingText), nameof(RuntimeDuration), nameof(RuntimeDurationText), nameof(IsPlayhead), nameof(ErrorMessage), nameof(CanSeek), nameof(MeterDb), nameof(Clipped),
-        nameof(IsFadingOut),
+        nameof(IsFadingOut), nameof(IsHidden), nameof(Frame),
     };
 
     private static readonly HashSet<string> DerivedProperties = new()
@@ -84,6 +87,8 @@ public abstract class Cue : ObservableObject
     private double _meterDb = Decibels.Floor;
     private bool _clipped;
     private bool _isFadingOut;
+    private bool _isHidden;
+    private GroupFrame _frame;
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Number { get => _number; set => SetField(ref _number, value ?? ""); }
@@ -129,6 +134,12 @@ public abstract class Cue : ObservableObject
         get => _groupId;
         set { if (SetField(ref _groupId, value)) OnPropertyChanged(nameof(IsInGroup)); }
     }
+
+    /// <summary>Inside a collapsed group: the list hides the row and the playhead skips it (<see cref="CueList.RefreshLayout"/>).</summary>
+    [JsonIgnore] public bool IsHidden { get => _isHidden; set => SetField(ref _isHidden, value); }
+
+    /// <summary>The piece of its group's frame this row draws (<see cref="CueList.RefreshLayout"/>).</summary>
+    [JsonIgnore] public GroupFrame Frame { get => _frame; set => SetField(ref _frame, value); }
 
     /// <summary>The cue is inside a group (the list indents it).</summary>
     [JsonIgnore] public bool IsInGroup => GroupId is not null;

@@ -16,7 +16,7 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | **Fade** | Porta volume e/o opacità di una cue in esecuzione a un nuovo valore, e se serve la ferma. |
 | **Stop** | Ferma una cue specifica, o tutte, con un fade opzionale. |
 | **Nota** | Cue vuota: riga separatrice in evidenza nella lista. Non fa nulla, ma pre/post-wait, follow e link funzionano come nelle altre cue. |
-| **Gruppo** | Raccoglie le cue subito sotto di lui (rientrate, con una linea del colore del gruppo). *GO sul gruppo* (come in QLab): **Entra** (parte la prima cue e il playhead va alla seconda: un GO per cue, ognuna col suo follow), **Tutte insieme** (un GO le avvia tutte), **In sequenza** (un GO le suona una dopo l'altra, senza impostare i follow delle singole cue). Negli ultimi due casi il gruppo compare in *In esecuzione* con la sua durata, pausa, fade e stop valgono per tutte le sue cue, e il suo follow parte quando finisce l'ultima. I gruppi non si annidano; eliminare o duplicare un gruppo vale anche per le sue cue. |
+| **Gruppo** | Raccoglie le cue subito sotto di lui: da aperto, un riquadro del colore del gruppo contorna i loro nomi (come in QLab); la freccina a sinistra del nome lo comprime e lo espande (il playhead salta le cue nascoste, e se un GO ci entra il gruppo si riapre). *GO sul gruppo* (come in QLab): **Entra** (parte la prima cue e il playhead va alla seconda: un GO per cue, ognuna col suo follow), **Tutte insieme** (un GO le avvia tutte), **In sequenza** (un GO le suona una dopo l'altra, senza impostare i follow delle singole cue). Negli ultimi due casi il gruppo compare in *In esecuzione* con la sua durata, pausa, fade e stop valgono per tutte le sue cue, e il suo follow parte quando finisce l'ultima. I gruppi non si annidano; eliminare o duplicare un gruppo vale anche per le sue cue. |
 
 Ogni cue ha **pre-wait** (attesa prima di partire), lo stato *armata/disarmata* e:
 - **Follow**: *Nessuno*; *Auto follow*, la cue successiva parte quando questa finisce; *Wait follow*, parte **post-wait** secondi dopo la fine. Una cue fermata a mano non fa partire la successiva.
@@ -106,7 +106,7 @@ I test non sopravvivono mai allo spettacolo: **PANIC**, l'attivazione di **Safe*
 
 Puoi trascinare file audio, video e immagini sulla lista: le cue vengono create automaticamente.
 
-**Spostare le cue col mouse**: passando sopra una riga, a sinistra compare la manina; tenendola premuta si trascina la cue (un gruppo con le sue cue). Una barra verde mostra dove verrà inserita: sulla metà alta di una riga prima di lei, sulla metà bassa dopo; rientrata quando la cue entra in un gruppo (sotto la riga del gruppo diventa la sua prima cue). Il nome di una cue si cambia solo nelle *Proprietà*.
+**Spostare le cue col mouse**: passando sopra una riga, a sinistra compare l'icona di trascinamento (tre righe con i puntini); tenendola premuta si trascina la cue (un gruppo con le sue cue). Una barra verde mostra dove verrà inserita: sulla metà alta di una riga prima di lei, sulla metà bassa dopo; rientrata quando la cue entra in un gruppo (sotto la riga di un gruppo aperto diventa la sua prima cue; sotto un gruppo compresso va dopo il gruppo). Il nome di una cue si cambia solo nelle *Proprietà*.
 
 ## Architettura
 

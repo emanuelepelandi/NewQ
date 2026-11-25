@@ -430,10 +430,14 @@ public sealed class GroupCue : Cue
 {
     private GroupMode _mode;
     private double? _childrenDuration;
+    private bool _isCollapsed;
 
     public override string TypeName => "Gruppo";
 
     public GroupMode Mode { get => _mode; set => SetField(ref _mode, value); }
+
+    /// <summary>The list shows only the group's row (its cues are hidden). Saved with the workspace, as in QLab.</summary>
+    public bool IsCollapsed { get => _isCollapsed; set => SetField(ref _isCollapsed, value); }
 
     /// <summary>True when one GO plays the whole group (not <see cref="GroupMode.Enter"/>).</summary>
     [JsonIgnore] public bool PlaysAsOne => Mode != GroupMode.Enter;

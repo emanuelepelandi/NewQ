@@ -326,7 +326,17 @@ public partial class MainWindow : Window
             ViewModel.AddFiles(files);
     }
 
-    // ------------------------------------------------------------------ dragging cues in the list (the hand)
+    /// <summary>
+    /// The chevron of a group: collapses or expands it. Set here, not by binding: the rows' binding group would hold
+    /// the change until the row is committed.
+    /// </summary>
+    private void OnGroupChevronClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: Core.Model.GroupCue group }) group.IsCollapsed = !group.IsCollapsed;
+        e.Handled = true;
+    }
+
+    // ------------------------------------------------------------------ dragging cues in the list (the grip)
 
     private const string CueDragFormat = "NewQ.Cue";
     private Core.Model.Cue? _gripCue;
