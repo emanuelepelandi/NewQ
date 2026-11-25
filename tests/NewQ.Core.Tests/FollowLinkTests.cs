@@ -178,7 +178,8 @@ public class FollowLinkTests
         engine.Go();
         for (var lap = 0; lap < 400; lap++)
         {
-            player.Started[^1].Finish(); // each cue ends: the show goes round
+            // Each cue ends (oldest first): the show goes round.
+            foreach (var handle in player.Started.Where(h => h.Cue.RunState != CueRunState.Idle).ToList()) handle.Finish();
             scheduler.Advance(0.5);
         }
         Assert.True(player.Started.Count > 400);

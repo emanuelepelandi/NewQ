@@ -16,9 +16,11 @@ Show control per Windows ispirato a QLab: una lista di cue lanciate con **GO** c
 | **Fade** | Porta volume e/o opacità di una cue in esecuzione a un nuovo valore, e se serve la ferma. |
 | **Stop** | Ferma una cue specifica, o tutte, con un fade opzionale. |
 | **Nota** | Cue vuota: riga separatrice in evidenza nella lista. Non fa nulla, ma pre/post-wait, follow e link funzionano come nelle altre cue. |
+| **Gruppo** | Raccoglie le cue subito sotto di lui (rientrate, con una linea del colore del gruppo). *GO sul gruppo* (come in QLab): **Entra** (parte la prima cue e il playhead va alla seconda: un GO per cue, ognuna col suo follow), **Tutte insieme** (un GO le avvia tutte), **In sequenza** (un GO le suona una dopo l'altra, senza impostare i follow delle singole cue). Negli ultimi due casi il gruppo compare in *In esecuzione* con la sua durata, pausa, fade e stop valgono per tutte le sue cue, e il suo follow parte quando finisce l'ultima. I gruppi non si annidano; eliminare o duplicare un gruppo vale anche per le sue cue. |
 
 Ogni cue ha **pre-wait** (attesa prima di partire), lo stato *armata/disarmata* e:
 - **Follow**: *Nessuno*; *Auto follow*, la cue successiva parte quando questa finisce; *Wait follow*, parte **post-wait** secondi dopo la fine. Una cue fermata a mano non fa partire la successiva.
+- **Una sola istanza**: come in QLab, un GO (o follow, link, OSC) su una cue già in esecuzione non fa nulla; con *Secondo GO: riavvia* (pagina *Trigger*) la ferma di colpo e la fa ripartire. Una cue che sta uscendo (Stop, PANIC, fade) riparte sempre.
 - **Link**: quando la cue parte (GO, follow, link, OSC), agisce su un'altra cue indicata per numero: *Avvia* (con il suo pre-wait: per far partire più cue insieme), *Ferma*, *Fade out* (durata "Fade cue" delle impostazioni). Dopo un GO il playhead salta le cue subito sotto che il GO ha già fatto partire. Due o più cue non possono avviarsi a vicenda con dei link (1 avvia 2, 2 avvia 1): ripartirebbero all'infinito nello stesso istante, quindi la modifica che chiude il giro viene annullata subito, con un messaggio; un file che ne contiene uno lo segnala all'apertura e nello Show Check, e ne parte solo il primo giro. Un giro che passa per un follow è invece consentito (aspetta la fine delle cue: lo show si ripete); se però non contiene nulla che duri e gira a vuoto, l'engine lo ferma.
 
 I workspace salvati con le versioni precedenti si convertono all'apertura: ogni *auto-continue* diventa un link *Avvia* verso la cue successiva, che riceve il vecchio post-wait come pre-wait. Lo show suona come prima.
@@ -80,7 +82,7 @@ I test non sopravvivono mai allo spettacolo: **PANIC**, l'attivazione di **Safe*
 
 **In esecuzione** (a destra della lista, in stile QLab): una riga per ogni cue in corso, con sfondo verde che si riempie con l'avanzamento, durata e tempo mancante in sovraimpressione e i pulsanti pausa, fade e stop. Il colore dice lo stato: verde in corso, giallo in pre-wait, blu in pausa, arancio in fade verso lo stop; le cue senza fine (loop, Cattura, immagini fisse) hanno la riga tutta di un verde tenue e "∞". Si scorre la cue con un clic o trascinando sulla riga, in pausa o mentre suona; il lucchetto in alto a destra del pannello blocca lo scorrimento.
 
-**Proprietà cue** (in basso, a tutta larghezza): le proprietà della cue selezionata divise in pagine: *Base* (numero, nome, note, armata), *Trigger* (pre/post-wait, follow, link) e le pagine del tipo (per esempio *Video*, *Layer*, *Tempo e loop*). Passando a una cue dello stesso tipo resta aperta la stessa pagina. Per audio e video, *Tempo e loop* mostra la **forma d'onda** del file (anche il suono dei video MP4/MOV) con il tratto riprodotto: si trascinano le barre di inizio e fine (maniglie in basso) e le maniglie dei fade in alto, oppure si scrivono i valori nei campi sotto. Ctrl = trascinamento preciso, frecce = 0,01 s (Maiusc = 0,1 s), Canc o doppio clic su una maniglia = azzera, Ctrl+rotella = zoom, doppio clic = tutto il file. Mentre la cue suona, una linea verde mostra dove si trova. La forma d'onda è letta in background (circa 1,5 s per 5 minuti di file) e tenuta in memoria per gli ultimi file aperti.
+**Proprietà cue** (in basso, a tutta larghezza): le proprietà della cue selezionata divise in pagine: *Base* (numero, nome, note, armata), *Trigger* (pre/post-wait, follow, link) e le pagine del tipo (per esempio *Video*, *Layer*, *Tempo e loop*). Passando a una cue dello stesso tipo resta aperta la stessa pagina. In *Effetti* (video e immagini) ogni parametro ha uno slider la cui traccia mostra l'effetto lungo tutta la scala (una tacca segna il valore neutro, doppio clic per tornarci) e accanto un'anteprima dell'immagine della cue con tutti gli effetti, calcolata con la stessa formula dell'uscita; se l'immagine manca o è quasi nera (molti video iniziano neri), l'anteprima usa barre di colore e una scala di grigi. Per audio e video, *Tempo e loop* mostra la **forma d'onda** del file (anche il suono dei video MP4/MOV) con il tratto riprodotto: si trascinano le barre di inizio e fine (maniglie in basso) e le maniglie dei fade in alto, oppure si scrivono i valori nei campi sotto. Ctrl = trascinamento preciso, frecce = 0,01 s (Maiusc = 0,1 s), Canc o doppio clic su una maniglia = azzera, Ctrl+rotella = zoom, doppio clic = tutto il file. Mentre la cue suona, una linea verde mostra dove si trova. La forma d'onda è letta in background (circa 1,5 s per 5 minuti di file) e tenuta in memoria per gli ultimi file aperti.
 
 **Log** (Strumenti → Log…): i messaggi dell'app in una finestra a parte, disponibile solo fuori dalla modalità Safe.
 
@@ -98,11 +100,13 @@ I test non sopravvivono mai allo spettacolo: **PANIC**, l'attivazione di **Safe*
 | S | Stop (ferma subito la cue selezionata) |
 | P | Pausa / Riprendi |
 | Ctrl+Invio | Avvia la cue selezionata senza spostare il playhead |
-| Ctrl+↑ / Ctrl+↓ | Sposta la cue |
+| Ctrl+↑ / Ctrl+↓ | Sposta la cue (entra ed esce dai gruppi ai loro bordi; un gruppo si sposta con le sue cue) |
 | Ctrl+D / Canc | Duplica / elimina |
 | Ctrl+N / O / S | Nuovo / Apri / Salva |
 
 Puoi trascinare file audio, video e immagini sulla lista: le cue vengono create automaticamente.
+
+**Spostare le cue col mouse**: passando sopra una riga, a sinistra compare la manina; tenendola premuta si trascina la cue (un gruppo con le sue cue). Una barra verde mostra dove verrà inserita: sulla metà alta di una riga prima di lei, sulla metà bassa dopo; rientrata quando la cue entra in un gruppo (sotto la riga del gruppo diventa la sua prima cue). Il nome di una cue si cambia solo nelle *Proprietà*.
 
 ## Architettura
 

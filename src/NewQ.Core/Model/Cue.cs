@@ -43,6 +43,7 @@ public enum CueRunState { Idle, PreWait, Running, Paused, Error }
 [JsonDerivedType(typeof(FadeCue), "fade")]
 [JsonDerivedType(typeof(StopCue), "stop")]
 [JsonDerivedType(typeof(NoteCue), "note")]
+[JsonDerivedType(typeof(GroupCue), "group")]
 [JsonDerivedType(typeof(ShowMarkerCue), "marker")]
 public abstract class Cue : ObservableObject
 {
@@ -57,7 +58,7 @@ public abstract class Cue : ObservableObject
     private static readonly HashSet<string> DerivedProperties = new()
     {
         nameof(Summary), nameof(DurationText), nameof(ContinueSymbol), nameof(LinkText), nameof(HasLink), nameof(TypeName),
-        nameof(ListVolumeDb), nameof(ListOpacity), "HasOwnGo",
+        nameof(ListVolumeDb), nameof(ListOpacity), "HasOwnGo", nameof(IsInGroup),
     };
 
     private string _number = "";
@@ -70,6 +71,8 @@ public abstract class Cue : ObservableObject
     private string _linkTarget = "";
     private bool _armed = true;
     private string? _color;
+    private bool _restartIfRunning;
+    private Guid? _groupId;
 
     private CueRunState _runState;
     private double _progress;
@@ -109,6 +112,29 @@ public abstract class Cue : ObservableObject
     public bool Armed { get => _armed; set => SetField(ref _armed, value); }
 
     public string? Color { get => _color; set => SetField(ref _color, value); }
+
+    /// <summary>
+    /// A GO (or follow, link, remote) on this cue while it is running: false = nothing happens, as in QLab; true = it
+    /// stops at once and starts again from the beginning. A cue never runs twice at the same time.
+    /// </summary>
+    public bool RestartIfRunning { get => _restartIfRunning; set => SetField(ref _restartIfRunning, value); }
+
+    /// <summary>
+    /// The <see cref="GroupCue"/> this cue belongs to, or null. Children always sit right below their group in the
+    /// list (<see cref="CueList.Normalize"/>); groups don't nest.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Guid? GroupId
+    {
+        get => _groupId;
+        set { if (SetField(ref _groupId, value)) OnPropertyChanged(nameof(IsInGroup)); }
+    }
+
+    /// <summary>The cue is inside a group (the list indents it).</summary>
+    [JsonIgnore] public bool IsInGroup => GroupId is not null;
+
+    /// <summary>A <see cref="GroupCue"/>.</summary>
+    [JsonIgnore] public bool IsGroup => this is GroupCue;
 
     // ---- computed / display ----
 
@@ -197,7 +223,8 @@ public abstract class Cue : ObservableObject
         => propertyName is not null
            && !RuntimeProperties.Contains(propertyName)
            && !DerivedProperties.Contains(propertyName)
-           && propertyName != nameof(ITrimmedMedia.MediaDuration);
+           && propertyName != nameof(ITrimmedMedia.MediaDuration)
+           && propertyName != nameof(GroupCue.ChildrenDuration);
 
     protected override void OnPropertyChanged(string? propertyName = null)
     {

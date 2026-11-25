@@ -84,6 +84,7 @@
     <Color x:Key="CueFadeColor">#D48FB6</Color>
     <Color x:Key="CueStopColor">#D98682</Color>
     <Color x:Key="CueNoteColor">#C3C8D0</Color>
+    <Color x:Key="CueGroupColor">#B9A68A</Color>
 
     <!-- ============ Spacing scale: 4 · 8 · 12 · 16 · 24 · 32 ============ -->
     <sys:Double x:Key="Space4">4</sys:Double>
@@ -146,4 +147,7 @@
     <sys:String x:Key="IconSettings">&#xE713;</sys:String>
     <sys:String x:Key="IconFolder">&#xE8B7;</sys:String>
     <sys:String x:Key="IconPlayhead">&#xE768;</sys:String>
+    <!-- The Windows hand: hold it to drag a cue in the list. -->
+    <sys:String x:Key="IconGrip">&#xF271;</sys:String>
+    <sys:String x:Key="IconGroup">&#xF168;</sys:String>
 </ResourceDictionary>

@@ -15,8 +15,6 @@ switch (args.FirstOrDefault())
     case "workspace" when args.Length >= 4:
     {
         var ws = new Workspace();
-        ws.EnsureRoutes(1);
-        ws.VideoRoutes[0].Outputs[0].ScreenIndex = VideoOutput.PreviewWindow;
         var count = int.Parse(args[2], invariant);
         var videos = args.Skip(3).ToArray();
         for (var i = 0; i < count; i++)
@@ -25,9 +23,9 @@ switch (args.FirstOrDefault())
                 Number = (i + 1).ToString(invariant),
                 Name = "V" + (i + 1),
                 FilePath = videos[i % videos.Length],
-                VideoRouteId = ws.VideoRoutes[0].Id,
-                AudioRouteId = ws.AudioRoutes[0].Id,
             });
+        // Routes exist only for the cues that need them: created now, the video one on the preview window (one screen).
+        ws.EnsureRoutes(1);
         ws.EnsureShowMarkers();
         WorkspaceSerializer.Save(ws, args[1]);
         return 0;

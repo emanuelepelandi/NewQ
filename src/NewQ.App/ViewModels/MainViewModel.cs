@@ -72,6 +72,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _timelineDebounce.Tick += (_, _) => { _timelineDebounce.Stop(); RebuildTimeline(); };
         Thumbnails = new MediaThumbnails(dispatcher, () => Engine is not null && Engine.Running.Count > 0);
         Thumbnails.Updated += ScheduleTimeline;
+        Thumbnails.Updated += Controls.EffectsPreview.RaiseSourcesChanged;
+        Controls.EffectsPreview.SourceOf = cue =>
+        {
+            if (cue is not (VideoCue or ImageCue) || string.IsNullOrWhiteSpace(cue.FilePath)) return null;
+            var path = Workspace.ResolvePath(cue.FilePath);
+            Thumbnails.Request(path, cue is VideoCue);
+            return Thumbnails.Thumbnail(path) as System.Windows.Media.Imaging.BitmapSource;
+        };
         ShortcutText = new ShortcutTexts(_shortcuts);
         ShortcutHint = new ShortcutTexts(_shortcuts, asHint: true);
         _outputs = new OutputWindowManager(_hub) { PreviewSize = new(_settings.PreviewWidth, _settings.PreviewHeight) };
@@ -558,6 +566,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var converted = workspace.FilePath is not null && workspace.FormatVersion < Workspace.CurrentFormatVersion;
         workspace.EnsureRoutes(System.Windows.Forms.Screen.AllScreens.Length);
         workspace.EnsureShowMarkers(); // the playhead starts on --SHOW START--
+        CueList.Normalize(workspace.Cues); // a group's cues right below it (hand-edited or older files)
 
         UnhookWorkspace(Engine.Workspace);
         Engine.LoadWorkspace(workspace);
@@ -746,6 +755,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void OnCuePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Cue.IsFadingOut)) TimelineStateChanged?.Invoke();
+        if (e.PropertyName == nameof(ITrimmedMedia.MediaDuration)) ScheduleTimeline(); // lengths of groups
         if (!Cue.IsPersistentProperty(e.PropertyName)) return;
         if (sender is Cue changed && !GuardLinkLoop(changed, e.PropertyName)) return; // undone: it closed a loop
         IsDirty = true;
@@ -900,6 +910,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             "fade" => new FadeCue { TargetNumber = SelectedCue is MediaCue m ? m.Number : "" },
             "stop" => new StopCue(),
             "note" => new NoteCue(),
+            "group" => new GroupCue(),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
         cue.Name = cue.TypeName;
@@ -924,7 +935,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         Workspace.AssignDefaultRoutes(cue); // explicit, so the inspector shows which route they use
         if (string.IsNullOrEmpty(cue.Number)) cue.Number = Workspace.NextCueNumber();
-        var index = SelectedCue is null ? Workspace.Cues.Count : Workspace.Cues.IndexOf(SelectedCue) + 1;
+        // After the selected cue, in its group (a new group: after the selected group, groups don't nest).
+        var (index, groupId) = CueList.InsertionAfter(Workspace.Cues, SelectedCue, cue is GroupCue);
+        cue.GroupId = cue is GroupCue ? null : groupId;
         Workspace.Cues.Insert(Workspace.ClampToProgram(index), cue); // after START, before END
         SelectedCue = cue;
         if (checkRoutes) WarnMissingRoutes(new[] { cue });
@@ -962,10 +975,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
         var label = $"{cue.Number} {cue.Name}".Trim();
-        if (MessageBox.Show($"Eliminare la cue «{label}»?", "Elimina cue", MessageBoxButton.YesNo, MessageBoxImage.Question,
+        // A group goes with its cues.
+        var children = cue is GroupCue group ? CueList.ChildrenOf(Workspace.Cues, group) : Array.Empty<Cue>();
+        var question = children.Count == 0 ? $"Eliminare la cue «{label}»?"
+            : $"Eliminare il gruppo «{label}» e le sue {children.Count} cue?";
+        if (MessageBox.Show(question, "Elimina cue", MessageBoxButton.YesNo, MessageBoxImage.Question,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         var index = Workspace.Cues.IndexOf(cue);
         Engine.Stop(cue, TimeSpan.Zero);
+        foreach (var child in children)
+        {
+            Engine.Stop(child, TimeSpan.Zero);
+            Workspace.Cues.Remove(child);
+        }
         Workspace.Cues.Remove(cue);
         if (Workspace.Cues.Count > 0) SelectedCue = Workspace.Cues[Math.Min(index, Workspace.Cues.Count - 1)];
     }
@@ -976,16 +998,42 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var copy = WorkspaceSerializer.CloneCue(cue);
         copy.Number = Workspace.NextCueNumber();
         ProbeDuration(copy);
-        AddCue(copy);
+        if (cue is not GroupCue group)
+        {
+            AddCue(copy);
+            return;
+        }
+        // A group is copied with its cues, right after the original group.
+        var children = CueList.ChildrenOf(Workspace.Cues, group);
+        var at = Workspace.Cues.IndexOf(group) + 1 + children.Count;
+        Workspace.Cues.Insert(at, copy);
+        foreach (var child in children)
+        {
+            var childCopy = WorkspaceSerializer.CloneCue(child);
+            childCopy.Number = Workspace.NextCueNumber();
+            childCopy.GroupId = copy.Id;
+            ProbeDuration(childCopy);
+            Workspace.Cues.Insert(++at, childCopy);
+        }
+        SelectedCue = copy;
     }
 
+    /// <summary>
+    /// Sposta su / giù: one step, into and out of groups at their edges; a group moves with its cues
+    /// (<see cref="CueList.MoveStep"/>).
+    /// </summary>
     private void MoveSelected(int delta)
     {
         if (SelectedCue is not Cue cue || cue.IsShowMarker) return;
-        var index = Workspace.Cues.IndexOf(cue);
-        var target = index + delta;
-        if (target < 0 || target >= Workspace.Cues.Count || Workspace.Cues[target].IsShowMarker) return;
-        Workspace.Cues.Move(index, target);
+        if (CueList.MoveStep(Workspace.Cues, cue, delta)) OnPropertyChanged(nameof(SelectedCue));
+    }
+
+    /// <summary>Drag and drop in the list: moves a cue (a group with its cues) to where it was dropped.</summary>
+    public void MoveCue(Cue cue, DropTarget target)
+    {
+        if (!CanEdit) return;
+        if (!CueList.MoveTo(Workspace.Cues, cue, target)) return;
+        SelectedCue = cue;
         OnPropertyChanged(nameof(SelectedCue));
     }
 
@@ -1226,6 +1274,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void RebuildTimeline()
     {
+        // Lengths of the groups that play as one, for the list's Duration column (and the timeline).
+        foreach (var group in Workspace.Cues.OfType<GroupCue>())
+            group.ChildrenDuration = CueList.GroupLength(Workspace.Cues, group, LengthOf);
         if (!_timelineVisible) return;
         var cues = Workspace.Cues.ToList();
         foreach (var cue in cues)
@@ -1620,7 +1671,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     /// <summary>A message in the status bar only (not in the log).</summary>
     public void ReportStatus(string message) => StatusText = message;
 
-    public void ReportUnhandled(Exception ex) => AddLog(EngineLogLevel.Error, $"Errore imprevisto: {ex.Message}");
+    public void ReportUnhandled(Exception ex)
+    {
+        Video.VlcRuntime.Debug("unhandled: " + ex); // the whole stack, in the debug log (NEWQ_DEBUG)
+        AddLog(EngineLogLevel.Error, $"Errore imprevisto: {ex.Message}");
+    }
 
     public void Dispose()
     {

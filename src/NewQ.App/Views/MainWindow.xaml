@@ -98,6 +98,8 @@
                           SelectedItem="{Binding LinkAction}" ItemTemplate="{StaticResource EnumItem}" />
                 <TextBox ui:ControlHelper.Header="Cue (numero)" Text="{Binding LinkTarget}"
                          Visibility="{Binding LinkAction, Converter={StaticResource EnumMatch}, ConverterParameter='Start,Stop,FadeOut'}" />
+                <CheckBox Content="Secondo GO: riavvia" IsChecked="{Binding RestartIfRunning}"
+                          ToolTip="Se già in esecuzione: ferma e riparte. Senza spunta il GO non fa nulla." />
             </WrapPanel>
         </DataTemplate>
 
@@ -161,15 +163,69 @@
             </WrapPanel>
         </DataTemplate>
 
-        <!-- Colour effects of a video or image (GPU); live while it plays. -->
+        <!--
+            Colour effects of a video or image (GPU); live while it plays. Each slider's track shows its effect, the
+            preview shows the cue's picture with all of them (same formula as the output). Double click = neutral.
+        -->
         <DataTemplate x:Key="PageEffects">
-            <WrapPanel>
-                <TextBox ui:ControlHelper.Header="Hue (°)" Text="{Binding Hue}" />
-                <TextBox ui:ControlHelper.Header="Saturazione (%)" Text="{Binding Saturation}" />
-                <TextBox ui:ControlHelper.Header="Contrasto (%)" Text="{Binding Contrast}" />
-                <TextBox ui:ControlHelper.Header="Luminosità (%)" Text="{Binding Brightness}" />
-                <CheckBox Content="Inverti colore" IsChecked="{Binding InvertColors}" />
-            </WrapPanel>
+            <Grid HorizontalAlignment="Left">
+                <Grid.Resources>
+                    <Style x:Key="EffectLabel" TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Margin" Value="0,0,12,0" />
+                    </Style>
+                    <Style x:Key="EffectValue" TargetType="TextBox" BasedOn="{StaticResource FormTextBox}">
+                        <Setter Property="Width" Value="64" />
+                        <Setter Property="Margin" Value="12,0,0,0" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="TextAlignment" Value="Right" />
+                    </Style>
+                </Grid.Resources>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="38" />
+                    <RowDefinition Height="38" />
+                    <RowDefinition Height="38" />
+                    <RowDefinition Height="38" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.RowSpan="5" Margin="0,4,24,12">
+                    <Border Width="{x:Static ctl:EffectsPreview.FrameWidth}" Height="{x:Static ctl:EffectsPreview.FrameHeight}"
+                            Background="{StaticResource InsetBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+                        <ctl:EffectsPreview Cue="{Binding}" AutomationProperties.Name="Anteprima effetti" />
+                    </Border>
+                    <TextBlock Text="Anteprima" Style="{StaticResource Hint}" Margin="0,4,0,0" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="Hue (°)" Style="{StaticResource EffectLabel}" />
+                <Slider Grid.Column="2" Style="{StaticResource EffectSlider}" ctl:EffectTrack.Kind="Hue"
+                        Minimum="-180" Maximum="180" Value="{Binding Hue}" AutomationProperties.Name="Hue" ToolTip="Doppio clic = 0" />
+                <TextBox Grid.Column="3" Style="{StaticResource EffectValue}" Text="{Binding Hue}" AutomationProperties.Name="Hue (°)" />
+
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="Saturazione (%)" Style="{StaticResource EffectLabel}" />
+                <Slider Grid.Row="1" Grid.Column="2" Style="{StaticResource EffectSlider}" ctl:EffectTrack.Kind="Saturation"
+                        Minimum="0" Maximum="200" Value="{Binding Saturation}" AutomationProperties.Name="Saturazione" ToolTip="Doppio clic = 100" />
+                <TextBox Grid.Row="1" Grid.Column="3" Style="{StaticResource EffectValue}" Text="{Binding Saturation}" AutomationProperties.Name="Saturazione (%)" />
+
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="Contrasto (%)" Style="{StaticResource EffectLabel}" />
+                <Slider Grid.Row="2" Grid.Column="2" Style="{StaticResource EffectSlider}" ctl:EffectTrack.Kind="Contrast"
+                        Minimum="0" Maximum="200" Value="{Binding Contrast}" AutomationProperties.Name="Contrasto" ToolTip="Doppio clic = 100" />
+                <TextBox Grid.Row="2" Grid.Column="3" Style="{StaticResource EffectValue}" Text="{Binding Contrast}" AutomationProperties.Name="Contrasto (%)" />
+
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="Luminosità (%)" Style="{StaticResource EffectLabel}" />
+                <Slider Grid.Row="3" Grid.Column="2" Style="{StaticResource EffectSlider}" ctl:EffectTrack.Kind="Brightness"
+                        Minimum="-100" Maximum="100" Value="{Binding Brightness}" AutomationProperties.Name="Luminosità" ToolTip="Doppio clic = 0" />
+                <TextBox Grid.Row="3" Grid.Column="3" Style="{StaticResource EffectValue}" Text="{Binding Brightness}" AutomationProperties.Name="Luminosità (%)" />
+
+                <CheckBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" Content="Inverti colore" IsChecked="{Binding InvertColors}" Margin="0,4,0,12" />
+            </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="PageVideoTime">
@@ -301,6 +357,14 @@
                 <TextBox ui:ControlHelper.Header="Volume finale (dB, -60 = muto)" Text="{Binding TargetVolumeDb}" />
                 <CheckBox Content="Fade opacità (video/immagini)" IsChecked="{Binding FadeOpacity}" />
                 <TextBox ui:ControlHelper.Header="Opacità finale (0–1)" Text="{Binding TargetOpacity}" />
+            </WrapPanel>
+        </DataTemplate>
+
+        <!-- What a GO on the group does; its cues are the rows below it (drag them in, or move them with the arrows). -->
+        <DataTemplate x:Key="PageGroup">
+            <WrapPanel>
+                <ComboBox ui:ControlHelper.Header="GO sul gruppo" ItemsSource="{x:Static c:EnumSources.GroupModes}"
+                          SelectedItem="{Binding Mode}" ItemTemplate="{StaticResource EnumItem}" />
             </WrapPanel>
         </DataTemplate>
 
@@ -444,6 +508,7 @@
                 <MenuItem Header="Nuova cue Fade" Command="{Binding AddCueCommand}" CommandParameter="fade" />
                 <MenuItem Header="Nuova cue Stop" Command="{Binding AddCueCommand}" CommandParameter="stop" />
                 <MenuItem Header="Nuova cue Nota" Command="{Binding AddCueCommand}" CommandParameter="note" />
+                <MenuItem Header="Nuovo gruppo" Command="{Binding AddCueCommand}" CommandParameter="group" />
                 <Separator />
                 <MenuItem Header="Duplica" InputGestureText="{Binding ShortcutText[Duplicate]}" Command="{Binding DuplicateCueCommand}" />
                 <MenuItem Header="Sposta su" InputGestureText="{Binding ShortcutText[MoveUp]}" Command="{Binding MoveUpCommand}" />
@@ -665,6 +730,8 @@
                             ctl:ButtonIcon.Glyph="{StaticResource IconStop}" ToolTip="Nuova cue stop" />
                     <Button Style="{StaticResource ToolButton}" Content="Nota" Command="{Binding AddCueCommand}" CommandParameter="note"
                             ctl:ButtonIcon.Glyph="{StaticResource IconNote}" ToolTip="Nuova nota (separatore)" />
+                    <Button Style="{StaticResource ToolButton}" Content="Gruppo" Command="{Binding AddCueCommand}" CommandParameter="group"
+                            ctl:ButtonIcon.Glyph="{StaticResource IconGroup}" ToolTip="Nuovo gruppo" />
                     <Rectangle Style="{StaticResource ToolbarDivider}" />
                     <Button Style="{StaticResource ToolButton}" Content="Duplica" Command="{Binding DuplicateCueCommand}"
                             ctl:ButtonIcon.Glyph="{StaticResource IconCopy}" ToolTip="{Binding ShortcutHint[Duplicate], Converter={StaticResource Format}, ConverterParameter='Duplica la cue ({0})'}" />
@@ -763,7 +830,8 @@
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource BorderSubtleBrush}"
                           IsReadOnly="{Binding IsSafeMode}"
                           Background="Transparent" BorderThickness="0" RowHeight="34" Padding="4,0"
-                          AllowDrop="{Binding CanEdit}" Drop="OnCueGridDrop" HorizontalScrollBarVisibility="Auto"
+                          AllowDrop="{Binding CanEdit}" Drop="OnCueGridDrop" DragOver="OnCueGridDragOver" DragLeave="OnCueGridDragLeave"
+                          HorizontalScrollBarVisibility="Auto"
                           SelectionChanged="OnCueGridSelectionChanged" BeginningEdit="OnCueGridBeginningEdit">
                     <DataGrid.Resources>
                         <!-- Whole rows are selected: the white frame around the focused cell is noise. -->
@@ -796,6 +864,10 @@
                                     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                 </DataTrigger>
+                                <!-- Groups: the row that holds the cues below it. -->
+                                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
                                 <!-- Notes: separator rows between parts of the show. -->
                                 <DataTrigger Binding="{Binding IsNote}" Value="True">
                                     <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
@@ -819,12 +891,33 @@
                     </DataGrid.RowStyle>
 
                     <DataGrid.Columns>
+                        <!-- The hand appears on the row under the mouse: hold it and drag to move the cue (a group with its cues). -->
                         <DataGridTemplateColumn Header="" Width="32" MinWidth="32" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IconPlayhead}" HorizontalAlignment="Center"
-                                               Foreground="{StaticResource PlayheadBrush}" ToolTip="Playhead"
-                                               Visibility="{Binding IsPlayhead, Converter={StaticResource BoolToVis}}" />
+                                    <Border x:Name="Grip" Background="Transparent" Cursor="Hand" Margin="-4,0"
+                                            ToolTip="Trascina per spostare" AutomationProperties.Name="Sposta cue"
+                                            MouseLeftButtonDown="OnCueGripDown" MouseMove="OnCueGripMove" MouseLeftButtonUp="OnCueGripUp">
+                                        <TextBlock x:Name="Hand" Style="{StaticResource Icon}" Text="{StaticResource IconGrip}"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" Visibility="Hidden" />
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
+                                            <Setter TargetName="Hand" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
+                                            <Setter TargetName="Hand" Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </DataTrigger>
+                                        <Trigger SourceName="Grip" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Hand" Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsShowMarker}" Value="True">
+                                            <Setter TargetName="Grip" Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                            <Setter TargetName="Grip" Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -850,7 +943,27 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Nome" Binding="{Binding Name}" Width="2*" MinWidth="140" />
+                        <DataGridTemplateColumn x:Name="ColName" Header="Nome" Width="2*" MinWidth="140" IsReadOnly="True" SortMemberPath="Name">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <DockPanel>
+                                        <Border x:Name="Guide" DockPanel.Dock="Left" Width="2" Margin="4,-4,14,-4"
+                                                Background="{x:Static c:CueColors.GroupGuide}" Visibility="Collapsed" />
+                                        <TextBlock x:Name="GroupIcon" DockPanel.Dock="Left" Style="{StaticResource Icon}" Text="{StaticResource IconGroup}"
+                                                   Margin="0,0,8,0" Foreground="{x:Static c:CueColors.GroupGuide}" Visibility="Collapsed" />
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsInGroup}" Value="True">
+                                            <Setter TargetName="Guide" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                            <Setter TargetName="GroupIcon" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn x:Name="ColTarget" Header="Destinazione" Binding="{Binding Summary, Mode=OneWay}" Width="2*" MinWidth="110" IsReadOnly="True" />
                         <!-- Optional columns (menu Visualizza → Colonne). Cues without the property show an empty cell. -->
                         <DataGridTextColumn x:Name="ColVideoRoute" Header="Route video" Width="1.2*" MinWidth="100" IsReadOnly="True">
@@ -907,6 +1020,11 @@
                         </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
+
+                <!-- Where a dragged cue will land (GO colour); indented when it goes into a group. -->
+                <Canvas x:Name="DropLayer" IsHitTestVisible="False" ClipToBounds="True">
+                    <Rectangle x:Name="DropLine" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="{StaticResource GoBrush}" Visibility="Collapsed" />
+                </Canvas>
 
                 <TextBlock Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
                            Foreground="{StaticResource TextMutedBrush}" TextAlignment="Center" FontSize="{StaticResource FontTitle}"

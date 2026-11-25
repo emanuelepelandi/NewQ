@@ -408,6 +408,55 @@ public sealed class NoteCue : Cue
     public override string TypeName => "Nota";
 }
 
+// ======================= Groups =======================
+
+/// <summary>What a GO on a group does (QLab's group modes).</summary>
+public enum GroupMode
+{
+    /// <summary>Starts the first cue and the playhead goes inside: each cue gets its own GO (QLab "start first and enter").</summary>
+    Enter,
+    /// <summary>One GO starts every cue of the group at once (QLab "timeline").</summary>
+    Simultaneous,
+    /// <summary>One GO plays the cues one after the other, each when the previous ends (QLab "playlist").</summary>
+    Sequence,
+}
+
+/// <summary>
+/// A group of cues: the cues right below it whose <see cref="Cue.GroupId"/> is its id. Mostly a way to organise the
+/// list; with <see cref="GroupMode.Simultaneous"/> or <see cref="GroupMode.Sequence"/> one GO plays the whole group
+/// (the cues' own follows are not used), and the group ends when its last cue ends: then its own follow fires.
+/// </summary>
+public sealed class GroupCue : Cue
+{
+    private GroupMode _mode;
+    private double? _childrenDuration;
+
+    public override string TypeName => "Gruppo";
+
+    public GroupMode Mode { get => _mode; set => SetField(ref _mode, value); }
+
+    /// <summary>True when one GO plays the whole group (not <see cref="GroupMode.Enter"/>).</summary>
+    [JsonIgnore] public bool PlaysAsOne => Mode != GroupMode.Enter;
+
+    /// <summary>Length of the group from its cues (set by the app, not persisted); null = unknown or endless.</summary>
+    [JsonIgnore] public double? ChildrenDuration { get => _childrenDuration; set => SetField(ref _childrenDuration, value); }
+
+    public override double? Duration => PlaysAsOne ? ChildrenDuration : null;
+
+    public override string Summary => Mode switch
+    {
+        GroupMode.Simultaneous => "Tutte insieme",
+        GroupMode.Sequence => "In sequenza",
+        _ => "Entra nel gruppo",
+    };
+
+    protected override void OnPropertyChanged(string? propertyName = null)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (propertyName == nameof(Mode)) base.OnPropertyChanged(nameof(PlaysAsOne));
+    }
+}
+
 // ======================= Show structure =======================
 
 public enum ShowMarkerKind { Start, End }

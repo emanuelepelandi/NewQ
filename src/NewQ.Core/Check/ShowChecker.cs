@@ -126,10 +126,10 @@ public static class ShowChecker
             if (!cue.Armed)
                 issues.Add(new(CheckSeverity.Info, cue, "Cue disarmata: verrà saltata."));
 
-            if (Engine.ShowSequence.Follows(cue) && i == cues.Count - 1)
+            if (Engine.ShowSequence.Follows(cues, cue) && Engine.ShowSequence.NextInList(cues, cue) is null)
                 issues.Add(new(CheckSeverity.Info, cue, "Follow sull'ultima cue."));
 
-            if (Engine.ShowSequence.Follows(cue) && NeverEnds(cue))
+            if (Engine.ShowSequence.Follows(cues, cue) && NeverEnds(cue))
                 issues.Add(new(CheckSeverity.Warning, cue, "Follow su una cue senza fine: la successiva non partirà mai."));
 
             if (cue.LinkAction != LinkAction.None)

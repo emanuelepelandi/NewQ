@@ -37,7 +37,7 @@ public sealed class TimelineLayout
     /// <summary>Seconds an instant cue (MIDI, network...) keeps its row busy, so labels don't overlap.</summary>
     public const double InstantSeconds = 0.6;
 
-    private static readonly string[] TypeOrder = { "Video", "Cattura", "Immagine", "Audio", "MIDI", "Rete", "Attesa", "Fade", "Stop", "Nota" };
+    private static readonly string[] TypeOrder = { "Video", "Cattura", "Immagine", "Audio", "MIDI", "Rete", "Attesa", "Fade", "Stop", "Nota", "Gruppo" };
 
     private TimelineLayout(IReadOnlyList<TimelineLane> lanes, IReadOnlyList<TimelinePlacement> placements)
     {

@@ -152,6 +152,7 @@ public partial class MainWindow : Window
         Core.Model.WaitCue => Common(("Attesa", "PageWait")),
         Core.Model.FadeCue => Common(("Fade", "PageFade")),
         Core.Model.StopCue => Common(("Stop", "PageStop")),
+        Core.Model.GroupCue => Common(("Gruppo", "PageGroup")),
         _ => Common(),
     };
 
@@ -314,8 +315,143 @@ public partial class MainWindow : Window
 
     private void OnCueGridDrop(object sender, DragEventArgs e)
     {
+        if (e.Data.GetData(CueDragFormat) is Core.Model.Cue cue)
+        {
+            HideDropLine();
+            if (DropTargetAt(e, cue) is Core.Model.DropTarget target) ViewModel.MoveCue(cue, target);
+            e.Handled = true;
+            return;
+        }
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files)
             ViewModel.AddFiles(files);
+    }
+
+    // ------------------------------------------------------------------ dragging cues in the list (the hand)
+
+    private const string CueDragFormat = "NewQ.Cue";
+    private Core.Model.Cue? _gripCue;
+    private Point _gripStart;
+
+    private void OnCueGripDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Core.Model.Cue cue } grip || !ViewModel.CanEdit) return;
+        ViewModel.SelectedCue = cue;
+        CueGrid.Focus();
+        _gripCue = cue;
+        _gripStart = e.GetPosition(CueGrid);
+        grip.CaptureMouse();
+        e.Handled = true; // not the DataGrid's own drag-select
+    }
+
+    private void OnCueGripMove(object sender, MouseEventArgs e)
+    {
+        if (_gripCue is not Core.Model.Cue cue || sender is not FrameworkElement grip || e.LeftButton != MouseButtonState.Pressed) return;
+        var delta = e.GetPosition(CueGrid) - _gripStart;
+        if (Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance
+            && Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance) return;
+        _gripCue = null;
+        grip.ReleaseMouseCapture();
+        try { DragDrop.DoDragDrop(grip, new DataObject(CueDragFormat, cue), DragDropEffects.Move); }
+        finally { HideDropLine(); }
+    }
+
+    private void OnCueGripUp(object sender, MouseButtonEventArgs e)
+    {
+        _gripCue = null;
+        if (sender is FrameworkElement grip) grip.ReleaseMouseCapture();
+    }
+
+    private void OnCueGridDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(CueDragFormat) is not Core.Model.Cue cue) return; // files: the default drop
+        AutoScroll(e.GetPosition(CueGrid).Y);
+        if (DropTargetAt(e, cue) is Core.Model.DropTarget target && ShowDropLine(target))
+            e.Effects = DragDropEffects.Move;
+        else
+        {
+            HideDropLine();
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private void OnCueGridDragLeave(object sender, DragEventArgs e)
+    {
+        // DragLeave also fires moving between the grid's own children: hide only when the mouse is really out.
+        var p = e.GetPosition(CueGrid);
+        if (p.X < 0 || p.Y < 0 || p.X >= CueGrid.ActualWidth || p.Y >= CueGrid.ActualHeight) HideDropLine();
+    }
+
+    /// <summary>Where the dragged cue would land for the mouse of this event (upper or lower half of the row under it).</summary>
+    private Core.Model.DropTarget? DropTargetAt(DragEventArgs e, Core.Model.Cue dragged)
+    {
+        var cues = ViewModel.Workspace.Cues;
+        if (cues.Count == 0) return null;
+        var hit = CueGrid.InputHitTest(e.GetPosition(CueGrid)) as DependencyObject;
+        while (hit is not null and not DataGridRow and not DataGridColumnHeadersPresenter) hit = System.Windows.Media.VisualTreeHelper.GetParent(hit);
+        if (hit is DataGridRow { Item: Core.Model.Cue over } row)
+        {
+            var upper = e.GetPosition(row).Y < row.ActualHeight / 2;
+            return Core.Model.CueList.TargetAt(cues, dragged, cues.IndexOf(over), upper);
+        }
+        if (hit is DataGridColumnHeadersPresenter) return Core.Model.CueList.TargetAt(cues, dragged, 0, upperHalf: false);
+        return Core.Model.CueList.TargetAt(cues, dragged, cues.Count - 1, upperHalf: true); // below the rows: before END
+    }
+
+    /// <summary>Draws the green line before row <c>target.Index</c>, indented when it goes into a group. False if that row isn't on screen.</summary>
+    private bool ShowDropLine(Core.Model.DropTarget target)
+    {
+        var cues = ViewModel.Workspace.Cues;
+        double y;
+        if (target.Index < cues.Count && CueGrid.ItemContainerGenerator.ContainerFromIndex(target.Index) is DataGridRow row && row.IsVisible)
+            y = row.TranslatePoint(new Point(0, 0), DropLayer).Y;
+        else if (target.Index > 0 && CueGrid.ItemContainerGenerator.ContainerFromIndex(target.Index - 1) is DataGridRow above && above.IsVisible)
+            y = above.TranslatePoint(new Point(0, above.ActualHeight), DropLayer).Y;
+        else return false;
+
+        // Into a group: from where the names of its cues start.
+        var left = 4.0;
+        if (target.Group is not null)
+        {
+            left = ColName.DisplayIndex >= 0 ? CueGrid.Columns.Where(c => c.DisplayIndex < ColName.DisplayIndex && c.Visibility == Visibility.Visible)
+                .Sum(c => c.ActualWidth) + 8 : 40;
+            left -= ScrollOffset();
+        }
+        DropLine.Width = Math.Max(24, DropLayer.ActualWidth - left - 8);
+        Canvas.SetLeft(DropLine, left);
+        Canvas.SetTop(DropLine, y - DropLine.Height / 2);
+        DropLine.Visibility = Visibility.Visible;
+        return true;
+    }
+
+    private void HideDropLine() => DropLine.Visibility = Visibility.Collapsed;
+
+    private ScrollViewer? _gridScroll;
+
+    private ScrollViewer? GridScroll()
+    {
+        if (_gridScroll is not null) return _gridScroll;
+        DependencyObject? node = CueGrid;
+        var queue = new Queue<DependencyObject>();
+        queue.Enqueue(CueGrid);
+        while (queue.Count > 0)
+        {
+            node = queue.Dequeue();
+            if (node is ScrollViewer sv) return _gridScroll = sv;
+            for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(node); i++)
+                queue.Enqueue(System.Windows.Media.VisualTreeHelper.GetChild(node, i));
+        }
+        return null;
+    }
+
+    private double ScrollOffset() => GridScroll()?.HorizontalOffset ?? 0;
+
+    /// <summary>Dragging near the top or bottom edge of the list scrolls it.</summary>
+    private void AutoScroll(double y)
+    {
+        if (GridScroll() is not ScrollViewer sv) return;
+        if (y < 48) sv.LineUp();
+        else if (y > CueGrid.ActualHeight - 24) sv.LineDown();
     }
 
     // The route list arrives (RelativeSource binding) after the selected id: show the id again once loaded.

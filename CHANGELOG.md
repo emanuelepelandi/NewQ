@@ -186,3 +186,11 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 ### 2026-11-15 - Scrubbing e CLIP
 - **Nuovo**: nel pannello *In esecuzione* la barra di una cue si scorre anche mentre suona, non solo in pausa, indipendentemente da Safe. Un lucchetto nell'intestazione del pannello blocca lo scorrimento (salvato nelle impostazioni).
 - **Cambiato**: gli indicatori **CLIP** (uscita e cue) spariscono da soli in dissolvenza 1,5 s dopo l'ultimo clip; il clic sul pulsante 0 dB li azzera ancora subito.
+
+### 2026-11-25 - Gruppi, spostamento col mouse, slider degli effetti
+- **Nuovo**: cue **Gruppo** (pulsante *Gruppo*, menu Cue). Le cue entrano trascinandole con la manina o con Ctrl+↑/↓. *GO sul gruppo*: *Entra* (un GO per cue), *Tutte insieme*, *In sequenza* (un GO e le cue si seguono da sole, senza impostare i follow). Pausa, fade e stop di un gruppo valgono per le sue cue; elimina e duplica includono le sue cue.
+- **Nuovo**: le cue si spostano trascinandole dalla manina che compare a sinistra della riga; una barra verde mostra dove verranno inserite.
+- **Cambiato**: niente più triangolino del playhead nella lista (la riga selezionata è la prossima cue). Il nome di una cue si modifica solo nelle Proprietà.
+- **Cambiato**: pagina *Effetti* con slider (la traccia mostra l'effetto, doppio clic = neutro) e anteprima dell'immagine della cue con gli effetti applicati.
+- **Corretto**: un GO su una cue già in esecuzione (per esempio in loop) la faceva ripartire sovrapposta a sé stessa, senza una nuova riga in *In esecuzione*. Ora non fa nulla, come in QLab; l'opzione *Secondo GO: riavvia* (pagina Trigger) la ferma e la fa ripartire.
+- **Corretto**: lo stress test non creava più il workspace di prova (route facoltative).
