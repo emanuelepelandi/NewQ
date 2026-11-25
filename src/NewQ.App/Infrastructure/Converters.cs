@@ -33,9 +33,6 @@ public sealed class EnumDisplayConverter : IValueConverter
         [NetworkProtocol.OscTcp] = "OSC su TCP (SLIP)",
         [NetworkProtocol.Udp] = "Testo/byte su UDP",
         [NetworkProtocol.Tcp] = "Testo/byte su TCP",
-        [GroupMode.Enter] = "Entra: un GO per cue",
-        [GroupMode.Simultaneous] = "Tutte insieme",
-        [GroupMode.Sequence] = "In sequenza (follow)",
     };
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -148,5 +145,4 @@ public static class EnumSources
     public static Array MidiKinds { get; } = Enum.GetValues(typeof(MidiMessageKind));
     public static Array MscCommands { get; } = Enum.GetValues(typeof(MscCommand));
     public static Array NetworkProtocols { get; } = Enum.GetValues(typeof(NetworkProtocol));
-    public static Array GroupModes { get; } = Enum.GetValues(typeof(GroupMode));
 }

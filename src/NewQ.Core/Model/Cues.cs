@@ -411,53 +411,53 @@ public sealed class NoteCue : Cue
 // ======================= Groups =======================
 
 /// <summary>What a GO on a group does (QLab's group modes).</summary>
-public enum GroupMode
-{
-    /// <summary>Starts the first cue and the playhead goes inside: each cue gets its own GO (QLab "start first and enter").</summary>
-    Enter,
-    /// <summary>One GO starts every cue of the group at once (QLab "timeline").</summary>
-    Simultaneous,
-    /// <summary>One GO plays the cues one after the other, each when the previous ends (QLab "playlist").</summary>
-    Sequence,
-}
-
 /// <summary>
-/// A group of cues: the cues right below it whose <see cref="Cue.GroupId"/> is its id. Mostly a way to organise the
-/// list; with <see cref="GroupMode.Simultaneous"/> or <see cref="GroupMode.Sequence"/> one GO plays the whole group
-/// (the cues' own follows are not used), and the group ends when its last cue ends: then its own follow fires.
+/// A group of cues: the cues right below it whose <see cref="Cue.GroupId"/> is its id. A GO on it starts its first
+/// cue; the next ones start through their own follows, which never leave the group (where they stop, the playhead
+/// goes on to the next cue of the group). The group runs while that chain runs, then its own follow fires.
+/// <see cref="AllFollow"/> sets the follow of all its cues in one go.
 /// </summary>
 public sealed class GroupCue : Cue
 {
-    private GroupMode _mode;
+    private ContinueMode _allFollow;
     private double? _childrenDuration;
     private bool _isCollapsed;
 
     public override string TypeName => "Gruppo";
 
-    public GroupMode Mode { get => _mode; set => SetField(ref _mode, value); }
+    /// <summary>
+    /// "All follow": changing it gives that follow to every cue of the group. Each cue can still be changed by hand
+    /// afterwards.
+    /// </summary>
+    public ContinueMode AllFollow { get => _allFollow; set => SetField(ref _allFollow, value); }
+
+    /// <summary>
+    /// The "Mode" of files saved before "All follow" (Enter, Simultaneous, Sequence): read only, to convert them
+    /// (<see cref="CueList.Normalize"/>); never written.
+    /// </summary>
+    [JsonPropertyName("Mode")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LegacyMode { get; set; }
 
     /// <summary>The list shows only the group's row (its cues are hidden). Saved with the workspace, as in QLab.</summary>
     public bool IsCollapsed { get => _isCollapsed; set => SetField(ref _isCollapsed, value); }
 
-    /// <summary>True when one GO plays the whole group (not <see cref="GroupMode.Enter"/>).</summary>
-    [JsonIgnore] public bool PlaysAsOne => Mode != GroupMode.Enter;
-
     /// <summary>Length of the group from its cues (set by the app, not persisted); null = unknown or endless.</summary>
     [JsonIgnore] public double? ChildrenDuration { get => _childrenDuration; set => SetField(ref _childrenDuration, value); }
 
-    public override double? Duration => PlaysAsOne ? ChildrenDuration : null;
+    public override double? Duration => ChildrenDuration;
 
-    public override string Summary => Mode switch
+    public override string Summary => AllFollow switch
     {
-        GroupMode.Simultaneous => "Tutte insieme",
-        GroupMode.Sequence => "In sequenza",
-        _ => "Entra nel gruppo",
+        ContinueMode.AutoFollow => "All follow: auto",
+        ContinueMode.WaitFollow => "All follow: wait",
+        _ => "",
     };
 
-    protected override void OnPropertyChanged(string? propertyName = null)
+    /// <summary>Gives <see cref="AllFollow"/> to these cues (the group's cues).</summary>
+    public void ApplyAllFollow(IEnumerable<Cue> children)
     {
-        base.OnPropertyChanged(propertyName);
-        if (propertyName == nameof(Mode)) base.OnPropertyChanged(nameof(PlaysAsOne));
+        foreach (var child in children) child.ContinueMode = AllFollow;
     }
 }
 

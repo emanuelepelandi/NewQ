@@ -361,11 +361,12 @@
             </WrapPanel>
         </DataTemplate>
 
-        <!-- What a GO on the group does; its cues are the rows below it (drag them in, or move them with the arrows). -->
+        <!-- All follow: choosing it gives that follow to every cue of the group (each can then be changed by hand). -->
         <DataTemplate x:Key="PageGroup">
             <WrapPanel>
-                <ComboBox ui:ControlHelper.Header="GO sul gruppo" ItemsSource="{x:Static c:EnumSources.GroupModes}"
-                          SelectedItem="{Binding Mode}" ItemTemplate="{StaticResource EnumItem}" />
+                <ComboBox ui:ControlHelper.Header="All follow" ItemsSource="{x:Static c:EnumSources.ContinueModes}"
+                          SelectedItem="{Binding AllFollow}" ItemTemplate="{StaticResource EnumItem}"
+                          ToolTip="Imposta il follow di tutte le cue del gruppo" />
             </WrapPanel>
         </DataTemplate>
 

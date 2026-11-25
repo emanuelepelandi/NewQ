@@ -58,7 +58,7 @@ public sealed class CueEngine
     private readonly IScheduler _scheduler;
     private readonly List<ICuePlayer> _players;
     private readonly List<RunningCue> _running = new();
-    private readonly List<(IDisposable Timer, int Group)> _pendingContinues = new();
+    private readonly List<(IDisposable Timer, int Group, RunningCue? Parent)> _pendingContinues = new();
     private static readonly TimeSpan PreloadDebounce = TimeSpan.FromMilliseconds(250);
 
     private TimeSpan? _lastGo;
@@ -441,46 +441,33 @@ public sealed class CueEngine
     // ------------------------------------------------------------------ groups
 
     /// <summary>
-    /// A group: "enter" starts its first cue and is over at once; all together starts every cue, in sequence the
-    /// first one (the next one starts when it ends). Those groups run until their last cue ends.
+    /// A group: starts its first cue (the next ones come through their follows). It runs while that cue and the
+    /// follows it fires are running; then it ends and its own follow fires.
     /// </summary>
     private IActiveCue StartGroup(GroupCue group, RunningCue rc, CueContext context)
     {
         var children = CueList.ChildrenOf(Workspace.Cues, group);
-        if (!group.PlaysAsOne || children.Count == 0)
+        if (children.Count == 0)
         {
-            if (children.Count > 0) Fire(children[0], rc.Group, NoLinks);
             context.Completed();
             return InstantActiveCue.Instance;
         }
         var handle = new GroupRun(this, rc, context);
         rc.GroupHandle = handle;
-        if (group.Mode == GroupMode.Simultaneous)
-            foreach (var child in children) Fire(child, rc.Group, NoLinks, rc);
-        else
-            Fire(children[0], rc.Group, NoLinks, rc);
-        if (!HasRunningChildren(rc)) context.Completed(); // nothing could start (already running)
+        Fire(children[0], rc.Group, NoLinks, rc);
+        CheckGroupDone(rc); // nothing could start (already running)
         return handle;
     }
 
-    private bool HasRunningChildren(RunningCue parent) => _running.Any(r => ReferenceEquals(r.Parent, parent) && !r.IsFinished);
+    /// <summary>Cues of this group run still running, or follows of theirs still waiting (wait follow).</summary>
+    private bool HasRunningChildren(RunningCue parent)
+        => _running.Any(r => ReferenceEquals(r.Parent, parent) && !r.IsFinished)
+           || _pendingContinues.Any(p => ReferenceEquals(p.Parent, parent));
 
-    /// <summary>
-    /// A cue of a running group ended, or its action is over (a video holding its last frame): in sequence the next
-    /// cue starts (once per cue, and not after the group was stopped); the group ends with its last running cue.
-    /// </summary>
-    private void OnGroupChildDone(RunningCue parent, RunningCue child)
+    /// <summary>A running group ends when nothing it started is left.</summary>
+    private void CheckGroupDone(RunningCue parent)
     {
-        if (parent.IsFinished) return;
-        if (parent.Cue is GroupCue { Mode: GroupMode.Sequence } group && !parent.StoppedManually && !child.FollowFired)
-        {
-            child.FollowFired = true;
-            var children = CueList.ChildrenOf(Workspace.Cues, group);
-            var index = -1;
-            for (var i = 0; i < children.Count; i++) if (ReferenceEquals(children[i], child.Cue)) index = i;
-            if (index >= 0 && index + 1 < children.Count) Fire(children[index + 1], parent.Group, NoLinks, parent);
-        }
-        if (!HasRunningChildren(parent) && parent.GroupHandle is GroupRun run) run.Context.Completed();
+        if (!parent.IsFinished && !HasRunningChildren(parent) && parent.GroupHandle is GroupRun run) run.Context.Completed();
     }
 
     /// <summary>A running group: its time, and pause, stop and fades passed on to its cues.</summary>
@@ -523,6 +510,12 @@ public sealed class CueEngine
 
         public void Stop(TimeSpan fade)
         {
+            // Wait follows not fired yet: never.
+            foreach (var pending in _engine._pendingContinues.Where(p => ReferenceEquals(p.Parent, _rc)).ToList())
+            {
+                pending.Timer.Dispose();
+                _engine._pendingContinues.Remove(pending);
+            }
             foreach (var child in Children) _engine.StopInstance(child, fade);
             if (!_engine.HasRunningChildren(_rc)) Context.Completed();
         }
@@ -623,11 +616,11 @@ public sealed class CueEngine
         RefreshState(rc.Cue);
         RunningChanged?.Invoke(this, EventArgs.Empty);
 
-        if (rc.Parent is RunningCue parent) OnGroupChildDone(parent, rc);
         if (!rc.FollowFired && ShowSequence.Follows(Workspace.Cues, rc.Cue) && !rc.StoppedManually && NextCue(rc.Cue) is Cue next)
             ScheduleFollow(next, TimeSpan.FromSeconds(ShowSequence.FollowDelay(rc.Cue)), rc);
         else if (_running.Count == 0 && Playhead is null && Workspace.ShowEnd is ShowMarkerCue end)
             SetPlayhead(end); // everything is over: the playhead waits on --SHOW END--
+        if (rc.Parent is RunningCue parent) CheckGroupDone(parent); // after its follow: the next cue keeps the group on
     }
 
     /// <summary>
@@ -637,31 +630,31 @@ public sealed class CueEngine
     private void ActionDone(RunningCue rc)
     {
         if (rc.IsFinished || rc.FollowFired || rc.StoppedManually) return;
-        if (rc.Parent is RunningCue parent)
-        {
-            OnGroupChildDone(parent, rc); // in sequence: the next cue of the group starts now
-            return;
-        }
         rc.FollowFired = true;
         if (ShowSequence.Follows(Workspace.Cues, rc.Cue) && NextCue(rc.Cue) is Cue next)
             ScheduleFollow(next, TimeSpan.FromSeconds(ShowSequence.FollowDelay(rc.Cue)), rc);
     }
 
-    /// <summary>Follow: the next cue, in the same group, now (auto) or after the post-wait (wait follow).</summary>
+    /// <summary>
+    /// Follow: the next cue, in the same GO, now (auto) or after the post-wait (wait follow). Inside a running group
+    /// the next cue belongs to that group run too.
+    /// </summary>
     private void ScheduleFollow(Cue next, TimeSpan delay, RunningCue from)
     {
+        var parent = from.Parent is { IsFinished: false } p && next.GroupId == from.Cue.GroupId ? p : null;
         if (delay <= TimeSpan.Zero)
         {
-            Fire(next, from.Group, NoLinks);
+            Fire(next, from.Group, NoLinks, parent);
             return;
         }
         IDisposable? timer = null;
         timer = _scheduler.Schedule(delay, () =>
         {
             _pendingContinues.RemoveAll(p => ReferenceEquals(p.Timer, timer));
-            Fire(next, from.Group, NoLinks);
+            Fire(next, from.Group, NoLinks, parent is { IsFinished: false } ? parent : null);
+            if (parent is not null) CheckGroupDone(parent);
         });
-        _pendingContinues.Add((timer, from.Group));
+        _pendingContinues.Add((timer, from.Group, parent));
     }
 
     /// <summary>The link of a cue that starts: start, stop or fade out its target.</summary>
@@ -709,7 +702,7 @@ public sealed class CueEngine
 
     private void CancelPendingContinues(int group)
     {
-        foreach (var (timer, _) in _pendingContinues.Where(p => p.Group == group).ToList())
+        foreach (var (timer, _, _) in _pendingContinues.Where(p => p.Group == group).ToList())
         {
             timer.Dispose();
             _pendingContinues.RemoveAll(p => ReferenceEquals(p.Timer, timer));
@@ -718,7 +711,7 @@ public sealed class CueEngine
 
     private void CancelPendingContinues()
     {
-        foreach (var (timer, _) in _pendingContinues) timer.Dispose();
+        foreach (var (timer, _, _) in _pendingContinues) timer.Dispose();
         _pendingContinues.Clear();
     }
 

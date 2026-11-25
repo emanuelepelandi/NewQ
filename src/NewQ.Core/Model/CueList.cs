@@ -38,6 +38,18 @@ public static class CueList
     public static bool Normalize(IList<Cue> cues)
     {
         var changed = false;
+        // Groups of older files had a mode: "Sequence" (one GO, the cues one after the other) becomes All follow =
+        // Auto follow on every cue; the others keep their cues' follows.
+        foreach (var legacy in cues.OfType<GroupCue>().Where(g => g.LegacyMode is not null).ToList())
+        {
+            if (legacy.LegacyMode == "Sequence")
+            {
+                legacy.AllFollow = ContinueMode.AutoFollow;
+                legacy.ApplyAllFollow(ChildrenOf(AsReadOnly(cues), legacy));
+            }
+            legacy.LegacyMode = null;
+            changed = true;
+        }
         Guid? open = null; // the group whose block the scan is in
         foreach (var cue in cues)
         {
@@ -208,19 +220,19 @@ public static class CueList
     }
 
     /// <summary>
-    /// How long a group plays from its cues (pre-wait + length): all together the longest, in sequence the sum; null
-    /// when it never ends by itself or a length is unknown, or for an "enter" group.
+    /// How long a group plays: the chain of follows from its first cue (pre-waits, lengths, wait-follow post-waits) up
+    /// to the first cue that doesn't follow. Null when a cue never ends by itself or its length is unknown.
     /// </summary>
     public static double? GroupLength(IReadOnlyList<Cue> cues, GroupCue group, Func<Cue, double?> lengthOf)
     {
-        if (!group.PlaysAsOne) return null;
         double total = 0;
         foreach (var child in ChildrenOf(cues, group))
         {
-            if (!child.Armed) continue;
-            if (lengthOf(child) is not double length) return null;
-            var span = Math.Max(0, child.PreWait) + Math.Max(0, length);
-            total = group.Mode == GroupMode.Simultaneous ? Math.Max(total, span) : total + span;
+            var length = child.Armed ? lengthOf(child) : 0;
+            if (length is not double l) return null;
+            total += Math.Max(0, child.PreWait) + Math.Max(0, l);
+            if (!Engine.ShowSequence.Follows(child)) break; // the chain ends here
+            total += Engine.ShowSequence.FollowDelay(child);
         }
         return total;
     }

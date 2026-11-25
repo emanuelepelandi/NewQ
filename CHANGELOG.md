@@ -200,3 +200,8 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Nuovo**: i gruppi si comprimono e si espandono con la freccina a sinistra del nome; lo stato si salva col workspace. Il playhead salta le cue nascoste; se un GO o uno spostamento porta il playhead dentro un gruppo compresso, il gruppo si riapre.
 - **Cambiato**: l'icona di trascinamento delle cue è ora a tre righe con i puntini.
 - **Corretto**: le etichette della pagina *Effetti* sono bianche come le altre intestazioni dei campi.
+
+### 2026-11-26 - All follow dei gruppi
+- **Cambiato**: tolte le modalità del gruppo (*Entra*, *Tutte insieme*, *In sequenza*). Un GO sul gruppo fa partire la prima cue; le altre seguono i propri follow, che non escono dal gruppo. Il follow del gruppo parte quando la catena finisce.
+- **Nuovo**: proprietà **All follow** del gruppo (*Nessuno*, *Auto follow*, *Wait follow*): cambiandola, tutte le cue del gruppo prendono quel follow; ognuna resta modificabile a mano.
+- **Cambiato**: i workspace con le vecchie modalità si convertono all'apertura: *In sequenza* diventa All follow = Auto follow; *Tutte insieme* ed *Entra* tengono i follow delle loro cue.

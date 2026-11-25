@@ -764,6 +764,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName == nameof(Cue.IsFadingOut)) TimelineStateChanged?.Invoke();
         if (e.PropertyName == nameof(ITrimmedMedia.MediaDuration)) ScheduleTimeline(); // lengths of groups
+        // All follow: every cue of the group takes the follow chosen.
+        if (sender is GroupCue allFollow && e.PropertyName == nameof(GroupCue.AllFollow))
+            allFollow.ApplyAllFollow(CueList.ChildrenOf(Workspace.Cues, allFollow));
         if (e.PropertyName is nameof(Cue.GroupId) or nameof(GroupCue.IsCollapsed))
         {
             CueList.RefreshLayout(Workspace.Cues);

@@ -64,21 +64,9 @@ public static class TimelineBuilder
                         StopRunning(carried.Concat(blockItems), target.Number, start,
                             cue.LinkAction == LinkAction.FadeOut ? linkFadeSeconds : 0);
                 }
-                // A group fires its cues: all at once, or the first one (in sequence the next one when it ends).
+                // A group fires its first cue; the others come through their follows.
                 if (cue is GroupCue { Armed: true } group && CueList.ChildrenOf(cues, group) is { Count: > 0 } children)
-                {
-                    if (group.Mode == GroupMode.Simultaneous)
-                        foreach (var child in children) pending.Add((start.Time, order++, child));
-                    else pending.Add((start.Time, order++, children[0]));
-                }
-                if (CueList.ParentOf(cues, cue) is { Mode: GroupMode.Sequence } sequence
-                    && item.ActionEnd is TimelinePoint childEnd && childEnd.Block == block)
-                {
-                    var siblings = CueList.ChildrenOf(cues, sequence);
-                    var at = -1;
-                    for (var n = 0; n < siblings.Count; n++) if (ReferenceEquals(siblings[n], cue)) at = n;
-                    if (at >= 0 && at + 1 < siblings.Count) pending.Add((childEnd.Time, order++, siblings[at + 1]));
-                }
+                    pending.Add((start.Time, order++, children[0]));
                 // A follow on a cue that never ends never fires (Show Check warns about it).
                 if (ShowSequence.Follows(cues, cue) && ShowSequence.NextInList(cues, cue) is Cue next
                     && item.ActionEnd is TimelinePoint end && end.Block == block)
@@ -110,7 +98,7 @@ public static class TimelineBuilder
         {
             MediaCue => TimelineItemKind.Media,
             WaitCue => TimelineItemKind.Wait,
-            GroupCue { PlaysAsOne: true } => TimelineItemKind.Wait, // a bar over the time of its cues
+            GroupCue => TimelineItemKind.Wait, // a bar over the time of its cues
             FadeCue => TimelineItemKind.Fade,
             StopCue => TimelineItemKind.Stop,
             _ => TimelineItemKind.Instant,
