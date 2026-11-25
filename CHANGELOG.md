@@ -188,7 +188,7 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Cambiato**: gli indicatori **CLIP** (uscita e cue) spariscono da soli in dissolvenza 1,5 s dopo l'ultimo clip; il clic sul pulsante 0 dB li azzera ancora subito.
 
 ### 2026-11-25 - Gruppi, spostamento col mouse, slider degli effetti
-- **Nuovo**: cue **Gruppo** (pulsante *Gruppo*, menu Cue). Le cue entrano trascinandole con la manina o con Ctrl+↑/↓. *GO sul gruppo*: *Entra* (un GO per cue), *Tutte insieme*, *In sequenza* (un GO e le cue si seguono da sole, senza impostare i follow). Pausa, fade e stop di un gruppo valgono per le sue cue; elimina e duplica includono le sue cue.
+- **Nuovo**: cue **Gruppo** (pulsante *Gruppo*, menu Cue). Le cue entrano trascinandole con la manina o con Ctrl+↑/↓. 
 - **Nuovo**: le cue si spostano trascinandole dalla manina che compare a sinistra della riga; una barra verde mostra dove verranno inserite.
 - **Cambiato**: niente più triangolino del playhead nella lista (la riga selezionata è la prossima cue). Il nome di una cue si modifica solo nelle Proprietà.
 - **Cambiato**: pagina *Effetti* con slider (la traccia mostra l'effetto, doppio clic = neutro) e anteprima dell'immagine della cue con gli effetti applicati.
@@ -202,6 +202,5 @@ NewQ è uno show control per Windows ispirato a QLab: una lista di cue lanciate 
 - **Corretto**: le etichette della pagina *Effetti* sono bianche come le altre intestazioni dei campi.
 
 ### 2026-11-26 - All follow dei gruppi
-- **Cambiato**: tolte le modalità del gruppo (*Entra*, *Tutte insieme*, *In sequenza*). Un GO sul gruppo fa partire la prima cue; le altre seguono i propri follow, che non escono dal gruppo. Il follow del gruppo parte quando la catena finisce.
 - **Nuovo**: proprietà **All follow** del gruppo (*Nessuno*, *Auto follow*, *Wait follow*): cambiandola, tutte le cue del gruppo prendono quel follow; ognuna resta modificabile a mano.
 - **Cambiato**: i workspace con le vecchie modalità si convertono all'apertura: *In sequenza* diventa All follow = Auto follow; *Tutte insieme* ed *Entra* tengono i follow delle loro cue.
